@@ -3,12 +3,20 @@
 두 구역(계획 4-2, 5-2):
 - 오늘 새로 뜬 것(많아야 4줄): 1~2일째, v_new = max(v(D), v(D−1)) ≥ 0.1(1일째는 v(D)). v_new → 간접 포착 → S_raw → 번호 순.
 - 며칠째 이어지는 것(많아야 6줄): 3일째 이상, v ≥ 0.1 인 날 2일 이상, v(D) 또는 v(D−1) ≥ 0.1, 휴면 아님. S_raw → 번호 순.
-- 한국어, 종료 아님, 민감 RED 아님. 한 분야는 구역 최대 줄 수의 절반까지(넘으면 건너뛰고 capped 에 센다).
+- 한국어, 종료 아님. 한 분야는 구역 최대 줄 수의 절반까지(넘으면 건너뛰고 capped 에 센다).
   '기타'(분야를 정하지 못한 이슈)는 분야가 아니므로 상한을 걸지 않는다.
+- 민감 높음(RED)도 목록과 두 구역에 남긴다(2026-11-15 · 가장 큰 화제가 위에서 빠지던 것을 고침). 줄에 sensitivity 와
+  deck_blocked(덱 만들기 막음)가 붙고, 덱 선택을 막는 것은 운영 화면(/pick)의 일이다.
+
+큰 이야기 순서(story, story_rank · 2026-11-15): 화제 점수와 따로 둔 줄 세우기 값. 점수식(처음 30일 고정)은 바꾸지 않는다.
+  story = 0.3 min(1, H/2.5) + 0.5 min(1, ln(1+F3)/ln 31) + 0.2 G3  (F3: 그날과 앞 이틀의 매체 계열 수 합, G3: 그 사흘의 급상승어 등급 최댓값)
+  story_rank 는 같은 언어 후보 안에서 story(반올림 전 값) → 반올림 전 화제 점수 → 번호 순으로 1부터.
+searches_unmatched: 이슈에 잇지 못한 한국어 급상승어 가운데 검색량 표기가 있는 것(검색어, 등급, 날, 검색량 표기, 딸린 기사 제목).
 """
 from __future__ import annotations
 
 import json
+import math
 import os
 import pathlib
 from collections import Counter
@@ -43,8 +51,49 @@ def full_row(r: dict, aliases: list[str]) -> dict:
            "sensitivity": {"level": sens.get("level", "GREEN"), "reason": "; ".join(sens.get("reasons") or [])},
            "person": bool(r["person"]), "indirect": base["indirect"], "links": base["links"],
            "prev_day": base.get("prev_day"), "zone": None,
-           "_z": base["_z"], "_raw": r["score_raw"]}
+           "deck_blocked": sens.get("level") == "RED",
+           "story": story_value(base.get("story_in")), "story_rank": None,
+           "_z": base["_z"], "_raw": r["score_raw"], "_story": story_raw(base.get("story_in"))}
     return out
+
+
+def story_raw(si: dict | None) -> float | None:
+    """큰 이야기 순서 값(머리말)의 반올림 전 값. 줄 세우기에는 이 값을 쓴다. 입력이 없는 옛 계산 행이면 None."""
+    if not si:
+        return None
+    H = float(si.get("H") or 0.0)
+    F3 = int(si.get("families_3d") or 0)
+    G3 = float(si.get("grade_max_3d") or 0.0)
+    return (config.STORY_W_H * min(1.0, H / config.H_SCREEN)
+            + config.STORY_W_F * min(1.0, math.log(1 + F3) / math.log(config.L_BASE))
+            + config.STORY_W_G * G3)
+
+
+def story_value(si: dict | None) -> dict | None:
+    """큰 이야기 순서 값(머리말). 판에 싣는 값은 소수 여섯 자리로 반올림한다. 입력이 없는 옛 계산 행이면 None."""
+    if not si:
+        return None
+    return {"value": round(story_raw(si), 6), "H": _num(float(si.get("H") or 0.0)),
+            "families_3d": int(si.get("families_3d") or 0), "families_by_day": list(si.get("families_by_day") or []),
+            "grade_max_3d": _num(float(si.get("grade_max_3d") or 0.0))}
+
+
+def _story_key(c):
+    """story(반올림 전) → 반올림 전 화제 점수 → 번호. 반올림한 값으로 세우면 작은 차이가 동점이 되어 화제 점수가 순서를 뒤집는다."""
+    v = c.get("_story")
+    if v is None:
+        v = (c.get("story") or {}).get("value")
+    return (-(v if v is not None else -1.0), -_raw(c), c["issue_id"])
+
+
+def rank_stories(cands: list[dict]) -> None:
+    """story_rank 를 언어마다 1부터 매긴다(제자리)."""
+    by_lang: dict[str, list] = {}
+    for c in cands:
+        by_lang.setdefault(c["lang"], []).append(c)
+    for lst in by_lang.values():
+        for i, c in enumerate(sorted(lst, key=_story_key), 1):
+            c["story_rank"] = i
 
 
 def _raw(c) -> float:
@@ -66,8 +115,7 @@ def _vnew(c) -> float:
 
 
 def _eligible(c) -> bool:
-    return (c["lang"] == "ko" and not c["_z"].get("ended") and c["state"] != "종료"
-            and (c.get("sensitivity") or {}).get("level") != "RED")
+    return c["lang"] == "ko" and not c["_z"].get("ended") and c["state"] != "종료"
 
 
 def _fill(cands: list[dict], limit: int) -> tuple[list[str], list[dict]]:
@@ -116,19 +164,36 @@ def build(meta: dict, day_rows: list[dict], aliases: dict[str, list[str]]) -> di
     cands = [full_row(r, aliases.get(r["issue_id"], [])) for r in day_rows
              if r.get("detail", {}).get("row") and r["detail"].get("active")]
     cands.sort(key=lambda c: (-_raw(c), c["issue_id"]))
+    rank_stories(cands)
     z = zones(cands, meta["failed_both"])
     where = {i: name for name, zz in z.items() for i in zz["rows"]}
     for c in cands:
         c["zone"] = where.get(c["issue_id"])
         c.pop("_z", None)
         c.pop("_raw", None)
+        c.pop("_story", None)
     return {"schema": SCHEMA, "asof": meta["asof"], "base_day": meta["base_day"], "base_day_partial": meta["partial"],
             "decided_at": meta["decided_at"], "calc_id": meta["calc_id"], "mode": meta["mode"],
             "versions": meta["versions"], "basis": meta["basis"], "formula_note": FORMULA_NOTE,
             "sources": meta["sources"], "missing": meta["missing"], "zones": z, "candidates": cands,
-            "searches_unmatched": [{k: s[k] for k in ("keyword", "grade", "day")} for s in meta["unmatched"]
-                                   if s.get("lang", "ko") == "ko"],
+            "searches_unmatched": unmatched_rows(meta["unmatched"]),
             "merge_hints": meta["merge_hints"], "note": NOTE}
+
+
+def unmatched_rows(un: list[dict]) -> list[dict]:
+    """이슈에 잇지 못한 한국어 급상승어. 검색량 표기를 함께 받은 계산(2026-11-15 부터)이면 표기가 있는 것만, 딸린 기사 제목과 함께."""
+    out = []
+    for s in un:
+        if s.get("lang", "ko") != "ko":
+            continue
+        row = {k: s[k] for k in ("keyword", "grade", "day")}
+        if "traffic_raw" in s:
+            if not s.get("traffic_raw"):
+                continue
+            row["traffic_raw"] = s["traffic_raw"]
+            row["news_title"] = s.get("news_title") or ""
+        out.append(row)
+    return out
 
 
 def write(b: dict, path: pathlib.Path | str) -> pathlib.Path:

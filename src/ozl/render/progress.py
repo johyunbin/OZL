@@ -208,8 +208,8 @@ def spec_major(spec_path: str) -> list[str]:
         cid = str(sp.get("card_id") or "")
         card = C.load_card(cid) if C.CARD_ID.match(cid) and C.card_path(cid).exists() else None
         claims, staged = S.load_claims(S.cited_ids(sp))
-        rep = S.check(sp, claims, S.load_template(), card, B.layout_problems, staged=staged, appendix_fn=B.appendix_problems)
-        return [f"검사: {e}" for e in rep.errors]
+        eds = S.check_editions(sp, claims, S.load_template(), card, B.layout_problems, staged=staged, appendix_fn=B.appendix_problems)
+        return [f"검사{'(' + e.name + ')' if e.name else ''}: {x}" for e in eds for x in e.report.errors]   # 두 판 사양은 판마다 검사한다
     except Exception as e:  # noqa: BLE001 — 검사를 못 돌린 것도 큰 오류로 남긴다(통과로 치지 않는다)
         return [f"검사를 돌리지 못했다({type(e).__name__}): {e}"]
 

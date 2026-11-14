@@ -15,6 +15,8 @@ import json
 import os
 import pathlib
 import re
+import time
+import urllib.parse
 from datetime import datetime, timedelta, timezone
 
 from ..research import collect, coverage, ledger, sensitive
@@ -26,14 +28,48 @@ TOP = 30
 OUT = store.PULSE / "out"
 
 
-def fetch_all(now: datetime) -> tuple[list[dict], list[dict]]:
-    cfg = collect.load_config()
-    feeds = [f for f in cfg["feeds"] if f.get("enabled", True)]
+HOST_GAP = 2.0   # 같은 호스트에 보내는 요청 사이의 최소 간격(초). 앞 응답이 끝난 뒤부터 잰다
+WORKERS = 8      # 서로 다른 호스트는 동시에 부른다
+
+
+def host_of(url: str) -> str:
+    return (urllib.parse.urlsplit(url or "").hostname or "").lower()
+
+
+def fetch_all(now: datetime, feeds: list[dict] | None = None, fetch=None,
+              sleep=time.sleep, clock=time.monotonic) -> tuple[list[dict], list[dict]]:
+    """켜진 피드를 받는다. 피드를 호스트별 줄로 나눠 서로 다른 호스트는 동시에, 같은 호스트 안에서는 차례로
+    HOST_GAP 초 간격을 두고 부른다. 피드 하나에 실행 한 번 요청 한 번(재시도 없음).
+    대장 collect 가 허용이 아닌 피드는 요청 없이 꺼짐 상태만 받으므로 줄에 넣지 않는다.
+    feeds, fetch, sleep, clock 은 시험이 바꿔 넣는다(가짜 시계)."""
+    if feeds is None:
+        feeds = [f for f in collect.load_config()["feeds"] if f.get("enabled", True)]
+    fetch = fetch or collect.fetch_feed
+    results: list = [None] * len(feeds)
+    lanes: dict[str, list[int]] = {}
+    for i, f in enumerate(feeds):
+        if ledger.allowed(f["id"], "collect"):
+            lanes.setdefault(host_of(f["url"]), []).append(i)
+        else:
+            results[i] = fetch(f, now)   # 요청을 보내지 않고 꺼짐 상태만 돌려준다
+
+    def lane(idx: list[int]) -> None:
+        done_at = None
+        for i in idx:
+            if done_at is not None:
+                wait = HOST_GAP - (clock() - done_at)
+                if wait > 0:
+                    sleep(wait)
+            results[i] = fetch(feeds[i], now)
+            done_at = clock()
+
+    if lanes:
+        with cf.ThreadPoolExecutor(min(WORKERS, len(lanes))) as ex:
+            list(ex.map(lane, lanes.values()))
     items, statuses = [], []
-    with cf.ThreadPoolExecutor(8) as ex:
-        for got, st in ex.map(lambda f: collect.fetch_feed(f, now), feeds):
-            items += got
-            statuses.append(st)
+    for got, st in results:
+        items += got
+        statuses.append(st)
     return items, statuses
 
 

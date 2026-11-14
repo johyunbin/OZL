@@ -52,6 +52,24 @@ def _gkey(g: dict) -> tuple:
     return (g.get("first_at") or "", g.get("seed") or "")
 
 
+def _same_subject(x: str, y: str) -> bool:
+    """두 이름이 같은 주체를 가리키는가. 같은 이름이거나, 긴 이름이 짧은 이름으로 시작하고 남는 꼬리가 법인·조직을 나타내는
+    정해진 접미(config.LINK_SAME_SUBJECT_TAILS)일 때만이다('한빛'과 '한빛그룹').
+    한 이름이 다른 이름에 들어 있다는 것만으로는 같다고 보지 않는다. 앞에 글자가 붙은 이름('한빛전자'와 '새한빛전자'),
+    꼬리가 업종 낱말인 이름('한빛'과 '한빛전자')은 다른 주체다. 한 글자 이름은 이렇게 견주지 않는다."""
+    if x == y:
+        return True
+    short, long_ = (x, y) if len(x) <= len(y) else (y, x)
+    return len(short) >= 2 and long_.startswith(short) and long_[len(short):].strip() in config.LINK_SAME_SUBJECT_TAILS
+
+
+def _same_names(a: set, b: set) -> bool:
+    """두 이름 묶음에 같은 주체의 이름이 있는가(_same_subject)."""
+    if a & b:
+        return True
+    return any(_same_subject(x, y) for x in a for y in b)
+
+
 @dataclass
 class Linker:
     registry: dict[str, Issue]
@@ -61,6 +79,11 @@ class Linker:
     calc_id: int | None = None
     prev_members: dict[str, set] = field(default_factory=dict)   # 직전 단계: 이슈 → 첫날 구성원(사본 포함)
     trend_hit: object = None                 # (그룹) → bool. 계열 1곳 그룹의 새 이슈 조건(§5-2). 없으면 거짓
+    rare: object = None                      # (고유명사, 날) → bool. 같은 날 잇기의 '드문 고유명사'. 없으면 같은 날 규칙을 쓰지 않는다
+    rare_term: object = None                 # (사건 낱말, 날) → bool. 같은 날 잇기의 '드문 사건 낱말'. 없으면 그 갈래를 쓰지 않는다
+    # (그룹, 이슈의 그날 기사 키, 날, 언어) → 둘 모두에 맞는 검색어 [(검색어, 낱말) …](trends.pair_rule).
+    # .seeds(그룹, 날, 언어) 가 있으면 그 기사 키를 가진 이슈를 잇기 후보에 더한다(_with_trend_candidates)
+    trend_pair: object = None
     history: list = field(default_factory=list)
     aliases: list = field(default_factory=list)
     merge_hints: list = field(default_factory=list)
@@ -76,6 +99,9 @@ class Linker:
         self.tb_idx: dict[str, list] = defaultdict(list)
         self.title_owner: list = []
         self.temp_lang: dict[str, str] = {}
+        self.day_keys: dict[tuple, set] = defaultdict(set)       # (이슈, 날) → 이번 단계에 그 날 붙은 기사 키
+        self.key_issue: dict[tuple, str] = {}                    # (날, 기사 키) → 그 날 그 기사가 붙은 이슈(day_keys 의 역색인)
+        self.core_idx: dict[tuple, set] = defaultdict(set)       # (날, 사건 낱말) → 그 낱말이 그 날 씨앗 그룹에 있던 이슈
         self._pc: dict = {}
         self._mint_splits()
 
@@ -128,8 +154,15 @@ class Linker:
             self.tb_idx[bg].append(tid)
         if p["seed"] is None or _gkey(g) < p["seed"][:2]:
             p["seed"] = (*_gkey(g), set(g["ent_fam"]))
+            p["seed_terms"] = set(g["term_fam"])
+            for t in p["seed_terms"]:        # 씨앗이 더 이른 그룹으로 바뀌어도 앞의 낱말은 남는다(후보만 넓다. 판정은 same_day)
+                self.core_idx[(g["day"], t)].add(iid)
         if iid.startswith("임시-"):
             self.temp_lang[iid] = g["lang"]
+        keys = set(g["units"]) | set(g.get("copies") or ())
+        self.day_keys[(iid, g["day"])] |= keys
+        for k in keys:
+            self.key_issue[(g["day"], k)] = iid
         for k in [k for k in self._pc if k[0] in (iid, self.overrides.resolve(iid, g["day"]))]:
             del self._pc[k]
 
@@ -196,6 +229,117 @@ class Linker:
             ok = (Ee >= 2 and Et >= 2 and S >= config.LINK_FAR_S) or S >= config.LINK_TITLE_ONLY
         return ok, Ee, Et, S
 
+    def same_day(self, iid: str, g: dict, day: str) -> dict | None:
+        """같은 날 잇기(2026-11-15): 이슈의 그날 그룹과 둘 가운데 하나를 함께 가지면 같은 일로 본다.
+        이슈 쪽의 '중심 낱말':
+          중심 고유명사 = 그날 그 이슈 기사에서 LINK_SAME_DAY_CORE_FAMILIES 곳 이상의 매체 계열에 나온 이름과 그날 첫 그룹(씨앗)의 이름.
+          중심 사건 낱말 = 그날 첫 그룹(씨앗)의 사건 낱말뿐이다. 매체 계열 여러 곳이 쓴 낱말까지 넣으면, 가운데 그룹이 딸고 들어온
+            낱말(같은 인물의 다른 일)로 씨앗과 이을 근거가 없는 다른 일이 사슬처럼 이어진다.
+        (가) 이슈의 중심 고유명사 가운데 드문 것 하나 이상 + 이슈의 중심 사건 낱말 LINK_SAME_DAY_TERMS 개 이상.
+        (나) 이슈의 중심 사건 낱말 가운데 드문 것 LINK_SAME_DAY_RARE_TERMS 개 이상(고유명사 없이 띄어쓰기만 다른 제목 — '美전역'/'美 전역' — 을 위해).
+             그룹에 드문 고유명사가 하나라도 있으면 쓰지 않는다.
+        (다) 그날의 같은 급상승어 하나가 그룹과 이슈의 그날 기사 양쪽에 맞고(낱말은 전부 포함, 딸린 기사 조건 그대로),
+             검색어 낱말이 모두 이슈의 중심 낱말이며, 그룹이 이슈의 중심 사건 낱말을 LINK_SAME_DAY_TERMS 개 이상 가진다.
+             양쪽에 맞는 검색어가 여럿이면 그 가운데 이 조건을 채우는 것을 쓴다.
+             그룹과 이슈가 서로 다른 드문 고유명사를 가지면(주어가 다른 같은 꼴 기사 — 회사마다의 평가 결과) 쓰지 않는다.
+        (나)와 (다)는 이름이 있는 서로 다른 주체에는 쓰지 않는다: 그룹에 고유명사가 있고 이슈에 중심 고유명사가 있는데
+             그룹의 이름이 이슈의 그날 기사 어디에도 없을 때. 이름이 드문가와는 따로 본다. 같은 주체로 보는 것은 같은 이름과,
+             긴 이름이 짧은 이름으로 시작하고 꼬리가 정해진 법인·조직 접미인 이름뿐이다(_same_names. 포함 관계만으로는 아니다).
+        사건 낱말은 세 갈래 모두 이슈의 중심 사건 낱말(씨앗 그룹의 낱말)과 견준다. 그날 붙은 그룹의 낱말 전부도, 매체 계열 여러 곳이
+             쓴 낱말도 아니다.
+        여럿이 맞으면 (가) > (다) > (나) 순이다(근거의 prio 3, 2, 1).
+        드물다 = 그 앞 LINK_RARE_DAYS 일 동안 그 낱말이 나온 언론 매체 계열이 LINK_RARE_PRIOR_FAMILIES 곳 이하(self.rare, self.rare_term).
+        넓은 이름은 낱말 분석에서 이미 terms 로 옮겨지고, 직함은 사건 낱말이 아니다(ROLE_WORDS_NOT_TERMS)."""
+        if self.rare is None or not config.LINK_SAME_DAY:
+            return None
+        ents, core_e, core_t = set(), set(), set()
+        n = config.LINK_SAME_DAY_CORE_FAMILIES
+        for j in self._sources(iid, day):
+            p = self.prof.get(j, {}).get(day)
+            if p:
+                ents |= set(p["ent"])
+                core_e |= {e for e, f in p["ent"].items() if len(f) >= n} | set((p["seed"] or (None, None, set()))[2])
+                core_t |= set(p.get("seed_terms") or ())
+        g_ents = set(g["ent_fam"])
+        rare_own = sorted(e for e in g_ents if self.rare(e, day))
+        rare = [e for e in rare_own if e in core_e]
+        # 사건 낱말은 세 갈래 모두 씨앗 그룹의 낱말과만 견준다. 뒤에 붙은 그룹의 낱말까지 견주면(한 매체든 여러 매체든)
+        # 그 그룹이 딸고 들어온 낱말(같은 인물의 다른 일)만으로 다음 그룹이 사슬처럼 이어진다.
+        shared = sorted(set(g["term_fam"]) & core_t)
+        enough = len(shared) >= config.LINK_SAME_DAY_TERMS
+        if rare and enough:
+            return {"rule": "같은 날 드문 고유명사", "prio": 3, "rare": rare, "day_terms": shared}
+        # 이름이 있는 서로 다른 주체: 그룹에 고유명사가 있고 이슈에 중심 고유명사가 있는데 그룹의 이름이 이슈의 그날 기사 어디에도
+        # 없다. 이름이 드문가와 따로 본다(앞 7일에 여러 매체에 나온 회사 둘의 같은 꼴 기사 — 회사마다의 평가 결과).
+        other_subject = bool(g_ents) and bool(core_e) and not _same_names(g_ents, ents)
+        if self.trend_pair is not None and config.LINK_SAME_DAY_TREND and enough and not other_subject:
+            conflict = bool(rare_own) and not (set(rare_own) & ents) and bool({e for e in core_e if self.rare(e, day)})
+            keys = set()
+            if not conflict:
+                for j in self._sources(iid, day):
+                    keys |= self.day_keys.get((j, day), set())
+            # 양쪽에 맞는 검색어가 여럿이면 검색어 낱말이 모두 이슈의 중심 낱말인 것을 고른다(키 순으로 첫째).
+            hit = next((h for h in (self.trend_pair(g, keys, day, g["lang"]) if keys else ())
+                        if h[1] <= (core_e | core_t)), None)
+            if hit:
+                return {"rule": "같은 날 같은 급상승어", "prio": 2, "keyword": hit[0], "day_terms": shared}
+        # (나)는 그룹에 드문 고유명사가 있으면 쓰지 않는다: 이름이 붙은 다른 일(배우의 사고 CCTV)이
+        # 낱말만 겹치는 이슈(같은 날 다른 뺑소니)로 가는 것을 막는다. 이름이 있는 서로 다른 주체에도 쓰지 않는다.
+        if self.rare_term is not None and not rare_own and not other_subject:
+            rt = [t for t in shared if self.rare_term(t, day)]
+            if len(rt) >= config.LINK_SAME_DAY_RARE_TERMS:
+                return {"rule": "같은 날 드문 사건 낱말", "prio": 1, "rare_terms": rt, "day_terms": shared}
+        return None
+
+    def _with_trend_candidates(self, g: dict, day: str) -> list[str]:
+        """잇기 후보(candidates) + 그룹에 맞는 급상승어가 하나라도 있으면 같은 날 잇기가 볼 그날의 같은 언어 이슈.
+        같은 날 잇기는 고유명사나 제목이 겹치지 않는 같은 일(띄어쓰기만 다른 제목)을 잇는 것이라 candidates 의 거르기를 넘을 수 있어야 한다.
+        기준은 전수 검사다: 그룹에 맞는 검색어가 있으면 그날 그룹이 붙은 이슈 전부를 본다(trend_pair 에 seeds 가 없을 때 이렇게 한다).
+        seeds 가 있으면 그 전부를 다시 보지 않고 same_day 가 이을 수 있는 이슈만 색인으로 찾는다. 결과는 전수 검사와 같아야 한다:
+          (가) 드문 고유명사 갈래는 이름이 겹쳐야 하므로 candidates 에 이미 있다.
+          (다) 같은 급상승어 갈래는 그 검색어가 맞을 수 있는 기사를 그날 가진 이슈(trend_pair.seeds → key_issue).
+          (나) 드문 사건 낱말 갈래는 검색어를 요구하지 않는다. 그룹의 드문 사건 낱말을 그날 중심 사건 낱말(씨앗 그룹의 낱말)로
+               LINK_SAME_DAY_RARE_TERMS 개 이상 가진 이슈(core_idx). 검색어가 새 그룹에만 맞을 때도 이 이슈를 놓치지 않는다."""
+        out = self.candidates(g, day)
+        if self.trend_pair is None or not config.LINK_SAME_DAY_TREND or not self.trend_pair(g, None, day, g["lang"]):
+            return out
+        seeds = getattr(self.trend_pair, "seeds", None)
+        if seeds is None:
+            extra = {self.overrides.resolve(i, day) for (i, d) in self.day_keys if d == day}
+        else:
+            extra = set()
+            for k in seeds(g, day, g["lang"]):
+                i = self.key_issue.get((day, k))
+                if i is not None:
+                    extra.add(self.overrides.resolve(i, day))
+            if self.rare_term is not None:
+                n: dict[str, int] = defaultdict(int)
+                for t in g["term_fam"]:
+                    if self.rare_term(t, day):
+                        for i in {self.overrides.resolve(j, day) for j in self.core_idx.get((day, t), ())}:
+                            n[i] += 1
+                extra |= {i for i, c in n.items() if c >= config.LINK_SAME_DAY_RARE_TERMS}
+        have = set(out)
+        return out + sorted(i for i in extra if i not in have and self._ok_issue(i, g["lang"], day))
+
+    def _same_day_over_reid(self, g: dict, day: str, reid_id: str, keys: set) -> tuple[str, dict] | None:
+        """재식별로 잠정 번호를 받을 그룹이, 같은 날 이미 다른 이슈에 붙은 그룹과 같은 날 잇기 조건을 넘으면 (그 이슈, 근거)."""
+        if self.rare is None or not config.LINK_SAME_DAY:
+            return None
+        blocked = set()
+        for own in self._prev_owner(keys) | {reid_id}:
+            blocked |= self.overrides.blocked_with(own)
+        best = None
+        for iid in self._with_trend_candidates(g, day):
+            if iid == reid_id or iid in blocked or iid.startswith("임시-"):
+                continue
+            if not any(self.prof.get(j, {}).get(day) for j in self._sources(iid, day)):
+                continue
+            sd = self.same_day(iid, g, day)
+            if sd and (best is None or (sd["prio"], len(sd["day_terms"])) > (best[1]["prio"], len(best[1]["day_terms"]))):
+                best = (iid, sd)
+        return best
+
     # ── 하루 처리
     def _ok_issue(self, iid: str, lang: str, day: str) -> bool:
         if iid.startswith("임시-"):
@@ -242,23 +386,36 @@ class Linker:
                 continue
             if g["group_id"] in reid:
                 iid, why = reid[g["group_id"]]
+                tgt = self._same_day_over_reid(g, day, iid, keys)
+                if tgt:
+                    # 같은 날 앞선 그룹이 붙은 다른 이슈와 같은 일이다(같은 날 잇기). 재식별한 잠정 번호는 놓아 두고
+                    # 단계 끝(finish)에서 구성원이 옮겨 간 쪽으로 흡수(별칭)되게 한다.
+                    self.claimed.discard(iid)
+                    self._attach(tgt[0], g, day, {**tgt[1], "instead_of": iid})
+                    continue
                 self._attach(iid, g, day, why)
                 continue
             blocked = set()
             for own in self._prev_owner(keys):
                 blocked |= self.overrides.blocked_with(own)
             scored = []
-            for iid in self.candidates(g, day):
+            for iid in self._with_trend_candidates(g, day):
                 if iid in blocked:
                     continue
                 prof = self.profile(iid, day)
                 if prof is None:
                     continue
                 ok, Ee, Et, S = self.match(g, prof)
+                why = {"Ee": Ee, "Et": Et, "S": round(S, 6), "gap": prof["gap"],
+                       "ents": sorted(set(g["ent_fam"]) & prof["ent"]), "terms": sorted(set(g["term_fam"]) & prof["term"])}
+                if not ok and prof["gap"] == 0:
+                    sd = self.same_day(iid, g, day)
+                    if sd:
+                        ok = True
+                        why.update(sd)
                 if ok:
-                    scored.append(((Ee + Et, S), iid, {"Ee": Ee, "Et": Et, "S": round(S, 6), "gap": prof["gap"],
-                                                       "ents": sorted(set(g["ent_fam"]) & prof["ent"]),
-                                                       "terms": sorted(set(g["term_fam"]) & prof["term"])}))
+                    # 설계의 잇기 조건을 넘은 것이 같은 날 규칙보다 앞서고, 같은 날 규칙끼리는 (가) > (다) > (나).
+                    scored.append(((why.get("prio", 9), Ee + Et, S), iid, why))
             keep = set(self._prefer_split_children([s[1] for s in scored], day))
             scored = [s for s in scored if s[1] in keep]
             self._hints(g, [s[1] for s in scored])

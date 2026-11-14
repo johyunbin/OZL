@@ -31,6 +31,48 @@ feeds:
   - {id: sbs_international, outlet: SBS, url: "https://news.sbs.co.kr/news/SectionRssFeed.do?sectionId=07&plink=RSSREADER", tier: T3, lang: ko, kind: news, section: 국제}
   - {id: yonhaptv_economy, outlet: 연합뉴스TV, url: "https://www.yonhapnewstv.co.kr/category/news/economy/feed/", tier: T3, lang: ko, kind: news, section: 경제}
   - {id: yonhaptv_international, outlet: 연합뉴스TV, url: "https://www.yonhapnewstv.co.kr/category/news/international/feed/", tier: T3, lang: ko, kind: news, section: 국제}
+  # ── 국내 언론의 정치, 사회, 연예, 스포츠, 문화 RSS (T3 · 2026-11-15 추가) — 위와 같은 매체의 RSS 안내 쪽에 실린 주소다.
+  #    robots 를 먼저 보고 한 번씩 받아 응답 200, 항목 수, 발행 시각 파싱을 확인한 것만 켰다. 대장 줄 = 같은 매체의 기존 줄과 같은 근거.
+  #    스포츠동아는 rss.donga.com RSS 안내 쪽에 함께 실린 동아 계열 피드다(계열은 signals/data/outlet_family.yaml). 확인 기록 = private/out/rebuild_20261114_2045/streams/signals_sources_*.md
+  - {id: yna_politics, outlet: 연합뉴스, url: "https://www.yna.co.kr/rss/politics.xml", tier: T3, lang: ko, kind: news, section: 정치}
+  - {id: yna_society, outlet: 연합뉴스, url: "https://www.yna.co.kr/rss/society.xml", tier: T3, lang: ko, kind: news, section: 사회}
+  - {id: yna_entertainment, outlet: 연합뉴스, url: "https://www.yna.co.kr/rss/entertainment.xml", tier: T3, lang: ko, kind: news, section: 연예}
+  - {id: yna_sports, outlet: 연합뉴스, url: "https://www.yna.co.kr/rss/sports.xml", tier: T3, lang: ko, kind: news, section: 스포츠}
+  - {id: yna_culture, outlet: 연합뉴스, url: "https://www.yna.co.kr/rss/culture.xml", tier: T3, lang: ko, kind: news, section: 문화}
+  - {id: hk_politics, outlet: 한국경제, url: "https://www.hankyung.com/feed/politics", tier: T3, lang: ko, kind: news, section: 정치}
+  - {id: hk_society, outlet: 한국경제, url: "https://www.hankyung.com/feed/society", tier: T3, lang: ko, kind: news, section: 사회}
+  - {id: hk_entertainment, outlet: 한국경제, url: "https://www.hankyung.com/feed/entertainment", tier: T3, lang: ko, kind: news, section: 연예}
+  - {id: hk_sports, outlet: 한국경제, url: "https://www.hankyung.com/feed/sports", tier: T3, lang: ko, kind: news, section: 스포츠}
+  - {id: mk_politics, outlet: 매일경제, url: "https://www.mk.co.kr/rss/30200030/", tier: T3, lang: ko, kind: news, section: 정치}
+  - {id: mk_society, outlet: 매일경제, url: "https://www.mk.co.kr/rss/50400012/", tier: T3, lang: ko, kind: news, section: 사회}
+  - {id: mk_culture, outlet: 매일경제, url: "https://www.mk.co.kr/rss/30000023/", tier: T3, lang: ko, kind: news, section: 연예}
+  - {id: mk_sports, outlet: 매일경제, url: "https://www.mk.co.kr/rss/71000001/", tier: T3, lang: ko, kind: news, section: 스포츠}
+  - {id: chosun_politics, outlet: 조선일보, url: "https://www.chosun.com/arc/outboundfeeds/rss/category/politics/?outputType=xml", tier: T3, lang: ko, kind: news, section: 정치}
+  - {id: chosun_national, outlet: 조선일보, url: "https://www.chosun.com/arc/outboundfeeds/rss/category/national/?outputType=xml", tier: T3, lang: ko, kind: news, section: 사회}
+  - {id: chosun_entertainments, outlet: 조선일보, url: "https://www.chosun.com/arc/outboundfeeds/rss/category/entertainments/?outputType=xml", tier: T3, lang: ko, kind: news, section: 연예}
+  - {id: chosun_sports, outlet: 조선일보, url: "https://www.chosun.com/arc/outboundfeeds/rss/category/sports/?outputType=xml", tier: T3, lang: ko, kind: news, section: 스포츠}
+  - {id: chosun_culture, outlet: 조선일보, url: "https://www.chosun.com/arc/outboundfeeds/rss/category/culture-life/?outputType=xml", tier: T3, lang: ko, kind: news, section: 문화}
+  - {id: donga_politics, outlet: 동아일보, url: "https://rss.donga.com/politics.xml", tier: T3, lang: ko, kind: news, section: 정치}
+  - {id: donga_national, outlet: 동아일보, url: "https://rss.donga.com/national.xml", tier: T3, lang: ko, kind: news, section: 사회}
+  - {id: donga_sports, outlet: 동아일보, url: "https://rss.donga.com/sports.xml", tier: T3, lang: ko, kind: news, section: 스포츠}
+  - {id: donga_culture, outlet: 동아일보, url: "https://rss.donga.com/culture.xml", tier: T3, lang: ko, kind: news, section: 문화}
+  - {id: sportsdonga_entertainment, outlet: 스포츠동아, url: "https://rss.donga.com/sportsdonga/entertainment.xml", tier: T3, lang: ko, kind: news, section: 연예}
+  - {id: sportsdonga_sports, outlet: 스포츠동아, url: "https://rss.donga.com/sportsdonga/sports.xml", tier: T3, lang: ko, kind: news, section: 스포츠}
+  - {id: khan_politics, outlet: 경향신문, url: "https://www.khan.co.kr/rss/rssdata/politic_news.xml", tier: T3, lang: ko, kind: news, section: 정치}
+  - {id: khan_society, outlet: 경향신문, url: "https://www.khan.co.kr/rss/rssdata/society_news.xml", tier: T3, lang: ko, kind: news, section: 사회}
+  - {id: khan_culture, outlet: 경향신문, url: "https://www.khan.co.kr/rss/rssdata/culture_news.xml", tier: T3, lang: ko, kind: news, section: 문화}
+  - {id: sbs_politics, outlet: SBS, url: "https://news.sbs.co.kr/news/SectionRssFeed.do?sectionId=01&plink=RSSREADER", tier: T3, lang: ko, kind: news, section: 정치}
+  - {id: sbs_society, outlet: SBS, url: "https://news.sbs.co.kr/news/SectionRssFeed.do?sectionId=03&plink=RSSREADER", tier: T3, lang: ko, kind: news, section: 사회}
+  - {id: sbs_culture, outlet: SBS, url: "https://news.sbs.co.kr/news/SectionRssFeed.do?sectionId=08&plink=RSSREADER", tier: T3, lang: ko, kind: news, section: 문화}
+  - {id: sbs_entertainment, outlet: SBS, url: "https://news.sbs.co.kr/news/SectionRssFeed.do?sectionId=14&plink=RSSREADER", tier: T3, lang: ko, kind: news, section: 연예}
+  - {id: sbs_sports, outlet: SBS, url: "https://news.sbs.co.kr/news/SectionRssFeed.do?sectionId=09&plink=RSSREADER", tier: T3, lang: ko, kind: news, section: 스포츠}
+  - {id: yonhaptv_politics, outlet: 연합뉴스TV, url: "https://www.yonhapnewstv.co.kr/category/news/politics/feed/", tier: T3, lang: ko, kind: news, section: 정치}
+  - {id: yonhaptv_society, outlet: 연합뉴스TV, url: "https://www.yonhapnewstv.co.kr/category/news/society/feed/", tier: T3, lang: ko, kind: news, section: 사회}
+  - {id: yonhaptv_culture, outlet: 연합뉴스TV, url: "https://www.yonhapnewstv.co.kr/category/news/culture/feed/", tier: T3, lang: ko, kind: news, section: 문화}
+  - {id: yonhaptv_sports, outlet: 연합뉴스TV, url: "https://www.yonhapnewstv.co.kr/category/news/sports/feed/", tier: T3, lang: ko, kind: news, section: 스포츠}
+  - {id: donga_show, enabled: false, note: "연예 피드는 2026-11-15 확인 때 항목이 1개(11-11)뿐이라 받지 않습니다", outlet: 동아일보, url: "https://rss.donga.com/show.xml", tier: T3, lang: ko, kind: news, section: 연예}
+  - {id: khan_sports, enabled: false, note: "스포츠 피드는 2026-11-15 확인 때 50건이 10-20 ~ 11-12 기사라 갱신이 느려 받지 않습니다", outlet: 경향신문, url: "https://www.khan.co.kr/rss/rssdata/kh_sports.xml", tier: T3, lang: ko, kind: news, section: 스포츠}
+  - {id: yonhaptv_entertainment, enabled: false, note: "연예 피드는 2026-11-15 확인 때 항목 0개", outlet: 연합뉴스TV, url: "https://www.yonhapnewstv.co.kr/category/news/entertainment/feed/", tier: T3, lang: ko, kind: news, section: 연예}
   # ── 해외 언론 (T3)
   # BBC 두 피드는 껐다(2026-11-14). 출처 대장에서 보관과 점수 이용이 금지로 확인됐다(bbc.com robots 의 안내). 받아도 보관할 수 없다.
   - {id: bbc_business, enabled: false, note: "보관과 점수 이용이 금지로 확인돼 받지 않습니다", outlet: BBC, url: "https://feeds.bbci.co.uk/news/business/rss.xml", tier: T3, lang: en, kind: news, section: 경제}
@@ -62,6 +104,10 @@ feeds:
   - {id: eurostat, outlet: Eurostat, url: "https://ec.europa.eu/eurostat/en/search?p_p_id=estatsearchportlet_WAR_estatsearchportlet&p_p_lifecycle=2&p_p_resource_id=atom&_estatsearchportlet_WAR_estatsearchportlet_collection=CAT_EURNEW", tier: T1, lang: en, kind: official, section: 유럽 통계}
   - {id: bok_press, outlet: 한국은행, url: "https://www.bok.or.kr/portal/bbs/B0000338/news.rss?menuNo=200761", tier: T1, lang: ko, kind: official, section: 한국 통화}
   - {id: moef_press, outlet: 기획재정부, url: "https://www.moef.go.kr/com/detailRssTagService.do?bbsId=MOSFBBS_000000000028", tier: T1, lang: ko, kind: official, section: 한국 정책}
+  # 2026-11-15 추가: 대장에서 collect·score_use·store·publish 가 허용인 부처 보도자료 RSS. 받아 보니 복지부 30건, 식약처 29건, 발행 시각 파싱 정상.
+  - {id: mohw_press_rss, outlet: 보건복지부, url: "https://www.mohw.go.kr/rss/board.es?mid=a10503000000&bid=0027", tier: T1, lang: ko, kind: official, section: 한국 정책}
+  - {id: mfds_press_rss, outlet: 식품의약품안전처, url: "https://www.mfds.go.kr/www/rss/brd.do?brdId=ntc0021", tier: T1, lang: ko, kind: official, section: 한국 정책}
+  - {id: msit_press_rss, enabled: false, note: "발행일 표기('2026.11.13' 꼴)를 지금 수집기가 11월 1일로 잘못 읽어 받지 않습니다(2026-11-15 확인, 50건 모두). 수집기의 날짜 처리를 고친 뒤 켭니다", outlet: 과학기술정보통신부, url: "https://www.msit.go.kr/user/rss/rss.do?bbsSeqNo=94", tier: T1, lang: ko, kind: official, section: 한국 정책}
   - {id: nber_new, outlet: NBER, url: "https://www.nber.org/rss/new.xml", tier: T4, lang: en, kind: paper, section: 학술, note: "워킹페이퍼(동료심사 전) — T4 로만 쓴다. 발행 시각 없음"}
   # ── 트렌드·커뮤니티 (단서 전용)
   - {id: trends_kr, outlet: Google Trends KR, url: "https://trends.google.com/trending/rss?geo=KR", tier: T5, lang: ko, kind: trend, section: 급상승}
@@ -71,8 +117,8 @@ feeds:
   - {id: bls_latest, outlet: BLS, url: "https://www.bls.gov/feed/bls_latest.rss", tier: T1, lang: en, kind: official, section: 미국 통계, enabled: false, note: "항목 1개짜리 요약 피드 — 발표 일정은 calendar.yaml 로 대신"}
   - {id: imf_news, outlet: IMF, url: "https://www.imf.org/en/News/RSS?Language=ENG", tier: T2, lang: en, kind: official, section: 국제기구, enabled: false, note: "403"}
   - {id: koreakr_press, outlet: 정책브리핑, url: "https://www.korea.kr/rss/pressrelease.xml", tier: T1, lang: ko, kind: official, section: 한국 정책, enabled: false, note: "404"}
-  - {id: fsc_press, outlet: 금융위원회, url: "https://www.fsc.go.kr/about/fsc_bbs_rss/?fid=0111", tier: T1, lang: ko, kind: official, section: 한국 정책, enabled: false, note: "503"}
-  - {id: kostat_press, outlet: 통계청, url: "https://kostat.go.kr/rss/board.es?mid=a10301010000&bid=a103010100", tier: T1, lang: ko, kind: official, section: 한국 통계, enabled: false, note: "항목 0개"}
+  - {id: fsc_press, outlet: 금융위원회, url: "https://www.fsc.go.kr/about/fsc_bbs_rss/?fid=0111", tier: T1, lang: ko, kind: official, section: 한국 정책, enabled: false, note: "503(2026-11-15 다시 확인해도 RSS 점검 중)"}
+  - {id: kostat_press, outlet: 통계청, url: "https://kostat.go.kr/rss/board.es?mid=a10301010000&bid=a103010100", tier: T1, lang: ko, kind: official, section: 한국 통계, enabled: false, note: "항목 0개(2026-11-15 다시 확인하니 다른 주소로 옮겨져 피드가 아닌 쪽이 열림)"}
   - {id: oecd_news, outlet: OECD, url: "https://www.oecd.org/en/about/news.rss", tier: T2, lang: en, kind: official, section: 국제기구, enabled: false, note: "응답 시간 초과"}
 
 # 슈카월드 최신 업로드(커버리지 대조용) — 키 없이 받는 공개 채널 피드

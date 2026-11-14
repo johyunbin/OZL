@@ -363,7 +363,7 @@ def test_zone_conditions():
           cand("on-dorm", day_n=9, v=0.0, v_prev=0.2, vdays=3, s=60, st="휴면"),
           cand("on-2", day_n=4, v=0.05, v_prev=0.15, vdays=3, s=20, st="식는 중")]
     z = board.zones(cs, failed_both=False)
-    assert z["new"]["rows"] == ["new-yday"]
+    assert z["new"]["rows"] == ["red", "new-yday"]          # 민감 높음도 구역에 남는다(2026-11-15)
     assert z["ongoing"]["rows"] == ["on-1", "on-2"]
 
 

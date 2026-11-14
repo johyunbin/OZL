@@ -276,18 +276,27 @@ def test_image_pair_unaccepted_capture_fails_strict_waits_in_draft(desk, png):
 
 
 # ── 그림 검수 대장 ───────────────────────────────────────────────────────
-# 설계 5-7절 그림 종류 표 — 코드 상수를 읽지 않고 표를 그대로 다시 적어 견준다
+# 설계 5-7절 그림 종류 표 + 2026-11-15 덱 계획 2절 4번(비공개 판 전용 판정 · 원문 화면 갈무리) — 코드 상수를 읽지 않고 표를 그대로 다시 적어 견준다
 DESIGN_TABLE = {
-    "직접 그린 도표": "쓴다", "직접 그린 지도": "쓴다", "공공누리 1유형": "쓴다", "CC BY": "쓴다",
+    "직접 그린 도표": "쓴다", "직접 그린 지도": "쓴다", "원문 화면 갈무리": "쓴다", "공공누리 1유형": "쓴다", "CC BY": "쓴다",
     "CC BY-SA": "원형 그대로만", "공공누리 3유형": "원형 그대로만", "기업 뉴스룸": "허락 기록이 있을 때만 원형으로",
     "무료 스톡 인물 사진": "쓴다", "로고": "원형 그대로만", "AI 개념도": "쓴다", "밈": "연습용 판에서만",
-    "통신사·언론사 사진": "쓰지 않는다", "방송 화면 캡처": "쓰지 않는다", "공공누리 2유형": "쓰지 않는다", "공공누리 4유형": "쓰지 않는다",
-    "실존 인물 AI 그림": "쓰지 않는다", "사실처럼 보이는 AI 장면": "쓰지 않는다",
+    "통신사·언론사 사진": "비공개 판에서만", "화제 그림": "비공개 판에서만", "공공누리 2유형": "비공개 판에서만", "공공누리 4유형": "비공개 판에서만",
+    "비상업(NC) 라이선스 그림": "비공개 판에서만",
+    "방송 화면 캡처": "쓰지 않는다", "실존 인물 AI 그림": "쓰지 않는다", "사실처럼 보이는 AI 장면": "쓰지 않는다",
 }
 LICENSE_FOR = {"공공누리 1유형": "공공누리 제1유형", "공공누리 2유형": "공공누리 제2유형", "공공누리 3유형": "공공누리 제3유형",
-               "공공누리 4유형": "공공누리 제4유형", "CC BY-SA": "CC BY-SA 4.0"}
+               "공공누리 4유형": "공공누리 제4유형", "CC BY-SA": "CC BY-SA 4.0", "비상업(NC) 라이선스 그림": "CC BY-NC 4.0"}
+ORIGIN_OK = {"origin_check": {"url": "https://press.example.org/photo/1", "sha256": "a" * 64, "phash_distance": 0, "local_diff": 0.0,
+                              "checked_at": "2099-01-02T10:00:00+09:00"}}
+CONTEXT_OK = {"context_check": {"spread": "가상 통신사 누리집에 처음 실렸다", "mockery": "조롱이나 비하 맥락을 찾지 못했다", "manipulation": "합성 이력을 찾지 못했다"}}
+AI_OK = {"generator": "가상 그림 모델 1판", "prompt": "빈 들판 위 상자 세 개의 개념도", "generated_at": "2099-01-02T09:00:00+09:00",
+         "concept": True, "concept_check": {"people": False, "real_place": False, "photoreal": False, "logo_text": False}}
 EXTRA_FOR = {"직접 그린 지도": {"map": True, "map_check": {"east_sea": True, "dokdo": True}}, "기업 뉴스룸": {"permission": "가상 뉴스룸 이용 조건 3항을 읽었다"},
-             "밈": {"meme_origin": "가상 게시판의 오래된 글에서 시작했다"}}
+             "밈": {"meme_origin": "가상 게시판의 오래된 글에서 시작했다", **ORIGIN_OK, **CONTEXT_OK}, "로고": ORIGIN_OK,
+             "통신사·언론사 사진": {**ORIGIN_OK, **CONTEXT_OK}, "화제 그림": {**ORIGIN_OK, **CONTEXT_OK}, "AI 개념도": AI_OK,
+             "공공누리 2유형": {"commercial_ok": False}, "공공누리 4유형": {"commercial_ok": False, "modify_ok": False},
+             "비상업(NC) 라이선스 그림": {"commercial_ok": False}}
 
 
 @pytest.mark.parametrize("kind", list(DESIGN_TABLE))
@@ -307,7 +316,7 @@ def test_judge_matches_design_table(png, kind):
 
 def test_ai_concept_picture_carries_the_mark(desk, png):
     from pptx import Presentation
-    e = entry(png, kind="AI 개념도", license="자체 생성", rights_holder="지어낸 제작팀", attribution="지어낸 제작팀 생성")
+    e = entry(png, kind="AI 개념도", license="자체 생성", rights_holder="지어낸 제작팀", attribution="지어낸 제작팀 생성", **AI_OK)
     assert PIC.credit_lines(e) == [PIC.AI_MARK, "지어낸 제작팀 생성 · 자체 생성"]
     sp = V.spec_of([photo()])
     sp["pictures"] = [e]
@@ -364,7 +373,7 @@ def test_blocked_logo_and_other_rules(png, monkeypatch):
     e = entry(png, kind="로고", rights_holder="지어낸 과일 회사", attribution="지어낸 과일 회사 로고", license="상표")
     verdict, why, _ = PIC.judge(e)
     assert verdict == "쓰지 않는다" and any("따로 허락을 요구하는 회사" in x for x in why)
-    ok = entry(png, kind="로고", rights_holder="지어낸 채소 회사", attribution="지어낸 채소 회사 로고", license="상표")
+    ok = entry(png, kind="로고", rights_holder="지어낸 채소 회사", attribution="지어낸 채소 회사 로고", license="상표", **ORIGIN_OK)
     assert not PIC.judge(ok)[1] and PIC.credit_lines(ok) == ["지어낸 채소 회사 로고 · 상표 · " + PIC.TRADEMARK_NOTE]
     assert PIC.judge(entry(png, commercial_ok=False))[0] == "쓰지 않는다"                # 상업적 이용이 안 되면 종류와 상관없이
     assert any("저작자" in x for x in PIC.judge(entry(png, attribution="지어낸 누리집"))[1])  # CC BY 는 저작자 표기
@@ -381,7 +390,7 @@ def test_stock_person_photo_warns(png):
 
 # ── 밈 ──────────────────────────────────────────────────────────────────
 def meme(png, pid="p2"):
-    return entry(png, pid=pid, kind="밈", meme_origin="가상 게시판의 오래된 글에서 시작했다", license="CC BY 4.0")
+    return entry(png, pid=pid, kind="밈", meme_origin="가상 게시판의 오래된 글에서 시작했다", license="CC BY 4.0", **ORIGIN_OK, **CONTEXT_OK)
 
 
 def test_meme_is_dropped_in_strict_and_kept_in_draft(desk, png):

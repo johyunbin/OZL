@@ -34,6 +34,37 @@ def analyze_all(con, arts: list[dict], dict_ver: str) -> list[dict]:
     return fresh
 
 
+def rare_index(arts: list[dict], field: str = "entities"):
+    """(낱말, 날) → 드문가. 그 앞 LINK_RARE_DAYS 일 동안 그 낱말(field: entities 또는 terms)이 나온 언론 매체 계열이
+    LINK_RARE_PRIOR_FAMILIES 곳 이하면 드물다.
+    그 날의 확정 시각(config.t_final(날))까지 받은 기사만 센다. 묶기가 그 날 자료를 자르는 상한(step 의 work)과 같다.
+    지난 날짜를 뒤늦게 계산해도 그 뒤에 받은 앞 날짜 기사가 그날의 판정을 바꾸지 않는다."""
+    idx: dict[str, dict[str, dict]] = {}       # 낱말 → 날 → 매체 계열 → 그 계열에서 가장 이르게 받은 시각
+    for a in arts:
+        if a["kind"] != "news":
+            continue
+        at = a.get("received_at")
+        for e in a.get(field) or ():
+            fams = idx.setdefault(e, {}).setdefault(a["day"], {})
+            f = a["family"]
+            if f not in fams or at is None or (fams[f] is not None and at < fams[f]):
+                fams[f] = at
+    memo: dict = {}
+
+    def rare(e: str, day: str) -> bool:
+        k = (e, day)
+        if k not in memo:
+            lo = config.day_add(day, -config.LINK_RARE_DAYS)
+            cut = config.t_final(day)
+            fams = set()
+            for d, f in (idx.get(e) or {}).items():
+                if lo <= d < day:
+                    fams |= {fam for fam, at in f.items() if at is None or at <= cut}
+            memo[k] = len(fams) <= config.LINK_RARE_PRIOR_FAMILIES
+        return memo[k]
+    return rare
+
+
 def _prev_members(con, registry) -> dict[str, set]:
     cid = store.last_step_calc(con)
     out: dict[str, set] = {}
@@ -48,7 +79,7 @@ def _prev_members(con, registry) -> dict[str, set]:
 
 def step(con, pulse_db: pathlib.Path | str, asof: datetime, mode: str = "step",
          overrides_path: pathlib.Path | str | None = None, trend_hit=None, decided_at: datetime | None = None,
-         trend_rule=None) -> dict:
+         trend_rule=None, trend_pair_rule=None) -> dict:
     """기준 시각 asof 의 묶기 한 번. mode='step' 은 번호를 발급하고 저장한다. 'view' 는 저장하지 않는다(임시 번호).
     trend_rule(group, 검색어 목록, 기사 사전) -> bool 을 주면 이번에 읽은 검색어로 '계열 1곳 + 급상승' 새 이슈 조건을 본다."""
     asof = asof.astimezone(config.UTC)
@@ -88,12 +119,17 @@ def step(con, pulse_db: pathlib.Path | str, asof: datetime, mode: str = "step",
                    for k, v in copies.items() if v["rep"] in frozen_units}
     units = [a for a in work if a["kind"] in ("news", "official") and a["key"] not in copies]
 
-    if trend_hit is None and trend_rule is not None:
+    trend_pair = None
+    if (trend_hit is None and trend_rule is not None) or trend_pair_rule is not None:
         tr = [a for a in work if a["kind"] == "trend"]
         amap = {a["key"]: a for a in arts}
-        trend_hit = (lambda g: trend_rule(g, tr, amap)) if tr else None
+        if trend_hit is None and trend_rule is not None:
+            trend_hit = (lambda g: trend_rule(g, tr, amap)) if tr else None
+        if trend_pair_rule is not None and tr:
+            trend_pair = trend_pair_rule(tr, amap)
     registry = store.load_registry(con, asof_iso)
-    linker = Linker(registry, ov, asof_iso, mode, calc_id, _prev_members(con, registry), trend_hit)
+    linker = Linker(registry, ov, asof_iso, mode, calc_id, _prev_members(con, registry), trend_hit, rare=rare_index(arts),
+                    rare_term=rare_index(arts, "terms"), trend_pair=trend_pair)
     for g in frozen:
         if g["issue_id"]:
             linker.add_group(g["issue_id"], g)

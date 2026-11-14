@@ -287,9 +287,10 @@ def test_zone_day2_uses_yesterday_v_and_day3_moves_to_ongoing():
 
 
 def test_zone_ongoing_sorted_by_score_and_sensitivity():
+    """민감 높음(RED)도 구역에 남는다(2026-11-15 · 덱 선택을 막는 것은 운영 화면의 일)."""
     cs = [_c("t1", day_n=4, score_raw=10, cat="정치"), _c("t2", day_n=4, score_raw=30, cat="사회"),
           _c("t3", day_n=4, score_raw=20, cat="경제", level="YELLOW"), _c("t4", day_n=4, score_raw=90, level="RED")]
-    assert board.zones(cs, False)["ongoing"]["rows"] == ["t2", "t3", "t1"]
+    assert board.zones(cs, False)["ongoing"]["rows"] == ["t4", "t2", "t3", "t1"]
 
 
 def test_zone_category_cap_exact_and_odd_limit(monkeypatch):

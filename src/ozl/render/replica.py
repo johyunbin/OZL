@@ -65,6 +65,7 @@ def build() -> pathlib.Path:
     deck._text(s, deck.px(b["x0"] - INK_DX), deck.px(b["top"] - BODY_INK_DY), deck.W - deck.px(b["x0"]) , Inches(5), runs)
     OUT.mkdir(parents=True, exist_ok=True)
     out = OUT / f"replica_{dt.datetime.now():%Y%m%d_%H%M%S}.pptx"
+    deck.clear_template_props(prs)
     prs.save(str(out))
     return out
 

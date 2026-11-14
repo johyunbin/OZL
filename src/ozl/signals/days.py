@@ -48,6 +48,7 @@ class DayCalc:
                 self.late[(v["issue_id"], a["day"])].append(k)
         self.out_rows, self.trend_rows, self.fu_rows, self.ent_rows, self.hist = [], [], [], [], []
         self.unmatched: dict[str, list] = {}
+        self.trend_hints: dict[str, list] = {}         # 날 → 같은 급상승어가 둘 이상의 이슈에 맞은 합침 후보
 
     # ── 번호
     def owner_map(self, d: str) -> dict[str, str]:
@@ -135,9 +136,12 @@ class DayCalc:
             u, c = self._arts_of(gs, late)
             sides[iid] = (gs[0]["lang"] if gs else self._lang(iid), trends.side_of(u + c))
         tr_d = [a for a in self.arts.values() if a["kind"] == "trend" and a["day"] == d and a["received_at"] <= cut]
-        got, un = trends.assign(tr_d, {i: s for i, s in sides.items() if s[1][0]})
-        self.unmatched[d] = [{"keyword": t["title"], "grade": score.grade(trends.traffic(t)), "day": d, "lang": t["lang"]}
-                             for t in un]
+        multi: list = []
+        got, un = trends.assign(tr_d, {i: s for i, s in sides.items() if s[1][0]}, multi)
+        self.unmatched[d] = [{"keyword": t["title"], "grade": score.grade(trends.traffic(t)), "day": d, "lang": t["lang"],
+                              "traffic_raw": trends.traffic(t), "news_title": trends.news_title(t)} for t in un]
+        self.trend_hints[d] = [{"issues": sorted(own_ids), "why": f"급상승어 '{t['title']}' 가 같은 날 두 이슈 이상에 맞음",
+                                "keyword": t["title"]} for t, own_ids in multi]
         by_issue_tr = defaultdict(list)
         for t in got.values():
             by_issue_tr[t["issue_id"]].append(t)
@@ -198,7 +202,7 @@ class DayCalc:
                 "followups": fus, "entities": ents, "category_points": cat_pts,
                 "indirect": [a["key"] for a in units if a.get("indirect")], "groups": [g["group_id"] for g in gs]})
         if d == self.base:
-            row["detail"]["row"] = self.candidate(iid, d, row, gdays, fus, ents, units, ind)
+            row["detail"]["row"] = self.candidate(iid, d, row, gdays, fus, ents, units, ind, srcs)
             row["detail"]["row"]["_z"] = {"v": r["v"], "v_prev": vh.get(config.day_add(d, -1)),
                                           "vdays": sum(1 for x, v in vh.items() if x >= first and v is not None
                                                        and v >= config.V_ACTIVE),
@@ -237,7 +241,7 @@ class DayCalc:
                 return g
         return min(order, key=lambda g: (rank.get(self._gsens(g), 2), order.index(g)))
 
-    def candidate(self, iid, d, row, gdays, fus, ents, units, ind) -> dict:
+    def candidate(self, iid, d, row, gdays, fus, ents, units, ind, srcs=()) -> dict:
         rec = self.reg.get(iid)
         allg = [g for x in sorted(gdays) for g in gdays[x]]
         rep = self.rep_group(iid, allg)
@@ -257,7 +261,21 @@ class DayCalc:
             prev_day = {"day": config.day_add(d, -1), "outlets_n": yrow["A"], "articles_n": yrow["articles_n"],
                         "kinds": list(yrow["kinds_present"]), "kinds_ok": list(yrow["kinds_ok"]),
                         "score": yrow["score"], "state": yrow["state"]}
+        # 사람 판단으로 합친 이슈는 합쳐져 들어온 번호(srcs)의 지난 줄도 본다. 지난 날의 줄은 번호마다 따로 있으므로,
+        # 줄이 둘 이상인 날의 매체 계열은 그날 그룹(gdays 에 그 번호들의 그룹이 함께 들어 있다)에서 다시 세어 같은 계열을
+        # 한 번만 세고, 급상승 등급은 가장 큰 값을 쓴다.
+        fam_days, g_days = [], []
+        for k in range(config.STORY_DAYS - 1, -1, -1):
+            x = config.day_add(d, -k)
+            xrs = [row] if x == d else [r for j in sorted(set(srcs) | {iid}) if (r := self.rows.get(j, {}).get(x))]
+            if len(xrs) > 1:
+                fam_days.append(len({f for g in gdays.get(x, []) for f in g["families"]}))
+            else:
+                fam_days.append(int(xrs[0]["A"]) if xrs else 0)
+            g_days.append(max([float(r["g"] or 0.0) for r in xrs] or [0.0]))
+        story_in = {"H": row["H"], "families_by_day": fam_days, "families_3d": sum(fam_days), "grade_max_3d": max(g_days)}
         return {"issue_id": iid, "lang": rec.lang if rec else (allg[0]["lang"] if allg else "ko"), "title": title,
+                "story_in": story_in,
                 "day_n": n, "first_day": row["first_day"],
                 "status_line": f"{n}일째" + (f" · {row['state']}" if row["state"] else ""), "new_thing": new_thing,
                 "outlets_n": row["A"], "articles_n": row["articles_n"], "copies_n": row["copies_n"],

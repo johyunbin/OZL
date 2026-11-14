@@ -37,6 +37,19 @@ CAPTION_SIZE = 20  # 그림 밑 캡션(글자 높이 24~25px 군)
 LINE = 1.5  # 줄 간격 59.4px = 1.79em ≈ 파워포인트 1.5줄(1.5 × 1.2em)
 
 
+def clear_template_props(prs, now: dt.datetime | None = None) -> None:
+    """python-pptx 기본 틀이 문서 속성에 남기는 값(comments 'generated using python-pptx', last_modified_by 틀 작성자,
+    2013년 작성·수정 시각)을 지운다. keywords(비공개 표시)는 건드리지 않는다. 작성·수정 시각은 만든 시각으로 둔다."""
+    cp = prs.core_properties
+    cp.comments = ""
+    cp.last_modified_by = ""
+    cp.author = ""
+    when = (now or dt.datetime.now()).replace(microsecond=0)
+    cp.created = when
+    cp.modified = when
+    cp.revision = 1
+
+
 def set_run_font(run, name: str) -> None:
     """라틴(a:latin)뿐 아니라 동아시아(a:ea)·복합(a:cs) 서체까지 지정 — 빠뜨리면 LibreOffice/PowerPoint가 한글을 다른 폰트로 대체하거나 비운다."""
     rPr = run._r.get_or_add_rPr()
@@ -219,6 +232,7 @@ def build_prototype() -> pathlib.Path:
     DRAFTS.mkdir(parents=True, exist_ok=True)
     ts = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
     out = DRAFTS / f"prototype_sample_{ts}.pptx"
+    clear_template_props(prs)
     prs.save(str(out))
     return out
 

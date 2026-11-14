@@ -298,6 +298,487 @@ sources:
     basis: "yonhaptv_economy 와 같음"
     evidence: ["https://www.yonhapnewstv.co.kr/robots.txt"]
     verified: 직접
+  # ── 국내 언론 RSS 분야 확장(2026-11-15 01:2x KST 확인 — robots.txt 와 RSS 안내 쪽을 다시 열고 피드를 한 번씩 받아 봄)
+  yna_politics:
+    name: 연합뉴스 정치 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 금지
+    backup: 불명
+    agent_read: 허용
+    basis: "yna_economy 와 같음. 2026-11-15 robots 재확인(피드 경로 허용), RSS 안내 쪽에 이 주소가 있음. 받아 봄: 응답 200, 발행 시각 파싱 정상"
+    evidence: ["https://www.yna.co.kr/robots.txt", "https://www.yna.co.kr/rss/index", "https://www.yna.co.kr/rss/politics.xml"]
+    verified: 직접
+  yna_society:
+    name: 연합뉴스 사회 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 금지
+    backup: 불명
+    agent_read: 허용
+    basis: "yna_economy 와 같음. 2026-11-15 robots 재확인(피드 경로 허용), RSS 안내 쪽에 이 주소가 있음. 받아 봄: 응답 200, 발행 시각 파싱 정상"
+    evidence: ["https://www.yna.co.kr/robots.txt", "https://www.yna.co.kr/rss/index", "https://www.yna.co.kr/rss/society.xml"]
+    verified: 직접
+  yna_entertainment:
+    name: 연합뉴스 연예 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 금지
+    backup: 불명
+    agent_read: 허용
+    basis: "yna_economy 와 같음. 2026-11-15 robots 재확인(피드 경로 허용), RSS 안내 쪽에 이 주소가 있음. 받아 봄: 응답 200, 발행 시각 파싱 정상"
+    evidence: ["https://www.yna.co.kr/robots.txt", "https://www.yna.co.kr/rss/index", "https://www.yna.co.kr/rss/entertainment.xml"]
+    verified: 직접
+  yna_sports:
+    name: 연합뉴스 스포츠 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 금지
+    backup: 불명
+    agent_read: 허용
+    basis: "yna_economy 와 같음. 2026-11-15 robots 재확인(피드 경로 허용), RSS 안내 쪽에 이 주소가 있음. 받아 봄: 응답 200, 발행 시각 파싱 정상"
+    evidence: ["https://www.yna.co.kr/robots.txt", "https://www.yna.co.kr/rss/index", "https://www.yna.co.kr/rss/sports.xml"]
+    verified: 직접
+  yna_culture:
+    name: 연합뉴스 문화 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 금지
+    backup: 불명
+    agent_read: 허용
+    basis: "yna_economy 와 같음. 2026-11-15 robots 재확인(피드 경로 허용), RSS 안내 쪽에 이 주소가 있음. 받아 봄: 응답 200, 발행 시각 파싱 정상"
+    evidence: ["https://www.yna.co.kr/robots.txt", "https://www.yna.co.kr/rss/index", "https://www.yna.co.kr/rss/culture.xml"]
+    verified: 직접
+  hk_politics:
+    name: 한국경제 정치 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 허용
+    basis: "hk_economy 와 같음. 2026-11-15 robots 재확인(피드 경로 허용), RSS 안내 쪽에 이 주소가 있음. 받아 봄: 응답 200, 발행 시각 파싱 정상"
+    evidence: ["https://www.hankyung.com/robots.txt", "https://www.hankyung.com/feed", "https://www.hankyung.com/feed/politics"]
+    verified: 직접
+  hk_society:
+    name: 한국경제 사회 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 허용
+    basis: "hk_economy 와 같음. 2026-11-15 robots 재확인(피드 경로 허용), RSS 안내 쪽에 이 주소가 있음. 받아 봄: 응답 200, 발행 시각 파싱 정상"
+    evidence: ["https://www.hankyung.com/robots.txt", "https://www.hankyung.com/feed", "https://www.hankyung.com/feed/society"]
+    verified: 직접
+  hk_entertainment:
+    name: 한국경제 연예 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 허용
+    basis: "hk_economy 와 같음. 2026-11-15 robots 재확인(피드 경로 허용), RSS 안내 쪽에 이 주소가 있음. 받아 봄: 응답 200, 발행 시각 파싱 정상"
+    evidence: ["https://www.hankyung.com/robots.txt", "https://www.hankyung.com/feed", "https://www.hankyung.com/feed/entertainment"]
+    verified: 직접
+  hk_sports:
+    name: 한국경제 스포츠 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 허용
+    basis: "hk_economy 와 같음. 2026-11-15 robots 재확인(피드 경로 허용), RSS 안내 쪽에 이 주소가 있음. 받아 봄: 응답 200, 발행 시각 파싱 정상"
+    evidence: ["https://www.hankyung.com/robots.txt", "https://www.hankyung.com/feed", "https://www.hankyung.com/feed/sports"]
+    verified: 직접
+  mk_politics:
+    name: 매일경제 정치 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 허용
+    basis: "mk_economy 와 같음. 2026-11-15 robots 재확인(피드 경로 허용), RSS 안내 쪽에 이 주소가 있음. 받아 봄: 응답 200, 발행 시각 파싱 정상"
+    evidence: ["https://www.mk.co.kr/robots.txt", "https://www.mk.co.kr/llms.txt", "https://www.mk.co.kr/rss", "https://www.mk.co.kr/rss/30200030/"]
+    verified: 직접
+  mk_society:
+    name: 매일경제 사회 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 허용
+    basis: "mk_economy 와 같음. 2026-11-15 robots 재확인(피드 경로 허용), RSS 안내 쪽에 이 주소가 있음. 받아 봄: 응답 200, 발행 시각 파싱 정상"
+    evidence: ["https://www.mk.co.kr/robots.txt", "https://www.mk.co.kr/llms.txt", "https://www.mk.co.kr/rss", "https://www.mk.co.kr/rss/50400012/"]
+    verified: 직접
+  mk_culture:
+    name: 매일경제 문화·연예 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 허용
+    basis: "mk_economy 와 같음. 2026-11-15 robots 재확인(피드 경로 허용), RSS 안내 쪽에 이 주소가 있음. 받아 봄: 응답 200, 발행 시각 파싱 정상"
+    evidence: ["https://www.mk.co.kr/robots.txt", "https://www.mk.co.kr/llms.txt", "https://www.mk.co.kr/rss", "https://www.mk.co.kr/rss/30000023/"]
+    verified: 직접
+  mk_sports:
+    name: 매일경제 스포츠 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 허용
+    basis: "mk_economy 와 같음. 2026-11-15 robots 재확인(피드 경로 허용), RSS 안내 쪽에 이 주소가 있음. 받아 봄: 응답 200, 발행 시각 파싱 정상"
+    evidence: ["https://www.mk.co.kr/robots.txt", "https://www.mk.co.kr/llms.txt", "https://www.mk.co.kr/rss", "https://www.mk.co.kr/rss/71000001/"]
+    verified: 직접
+  chosun_politics:
+    name: 조선일보 정치 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 허용
+    basis: "chosun_economy 와 같음. RSS 안내 쪽은 없고(/rss/ 404) Arc 공개 피드의 분야 주소. 2026-11-15 robots 재확인(피드 경로 허용), 받아 봄: 응답 200, 발행 시각 파싱 정상"
+    evidence: ["https://www.chosun.com/robots.txt", "https://www.chosun.com/arc/outboundfeeds/rss/category/politics/?outputType=xml"]
+    verified: 직접
+  chosun_national:
+    name: 조선일보 사회 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 허용
+    basis: "chosun_economy 와 같음. RSS 안내 쪽은 없고(/rss/ 404) Arc 공개 피드의 분야 주소. 2026-11-15 robots 재확인(피드 경로 허용), 받아 봄: 응답 200, 발행 시각 파싱 정상"
+    evidence: ["https://www.chosun.com/robots.txt", "https://www.chosun.com/arc/outboundfeeds/rss/category/national/?outputType=xml"]
+    verified: 직접
+  chosun_entertainments:
+    name: 조선일보 연예 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 허용
+    basis: "chosun_economy 와 같음. RSS 안내 쪽은 없고(/rss/ 404) Arc 공개 피드의 분야 주소. 2026-11-15 robots 재확인(피드 경로 허용), 받아 봄: 응답 200, 발행 시각 파싱 정상"
+    evidence: ["https://www.chosun.com/robots.txt", "https://www.chosun.com/arc/outboundfeeds/rss/category/entertainments/?outputType=xml"]
+    verified: 직접
+  chosun_sports:
+    name: 조선일보 스포츠 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 허용
+    basis: "chosun_economy 와 같음. RSS 안내 쪽은 없고(/rss/ 404) Arc 공개 피드의 분야 주소. 2026-11-15 robots 재확인(피드 경로 허용), 받아 봄: 응답 200, 발행 시각 파싱 정상"
+    evidence: ["https://www.chosun.com/robots.txt", "https://www.chosun.com/arc/outboundfeeds/rss/category/sports/?outputType=xml"]
+    verified: 직접
+  chosun_culture:
+    name: 조선일보 문화·라이프 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 허용
+    basis: "chosun_economy 와 같음. RSS 안내 쪽은 없고(/rss/ 404) Arc 공개 피드의 분야 주소. 2026-11-15 robots 재확인(피드 경로 허용), 받아 봄: 응답 200, 발행 시각 파싱 정상"
+    evidence: ["https://www.chosun.com/robots.txt", "https://www.chosun.com/arc/outboundfeeds/rss/category/culture-life/?outputType=xml"]
+    verified: 직접
+  donga_politics:
+    name: 동아일보 정치 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 금지
+    backup: 불명
+    agent_read: 허용
+    basis: "donga_economy 와 같음. 2026-11-15 robots 재확인(피드 경로 허용), RSS 안내 쪽에 이 주소가 있음. 받아 봄: 응답 200, 발행 시각 파싱 정상"
+    evidence: ["https://rss.donga.com/robots.txt", "https://rss.donga.com/", "https://rss.donga.com/politics.xml"]
+    verified: 직접
+  donga_national:
+    name: 동아일보 사회 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 금지
+    backup: 불명
+    agent_read: 허용
+    basis: "donga_economy 와 같음. 2026-11-15 robots 재확인(피드 경로 허용), RSS 안내 쪽에 이 주소가 있음. 받아 봄: 응답 200, 발행 시각 파싱 정상"
+    evidence: ["https://rss.donga.com/robots.txt", "https://rss.donga.com/", "https://rss.donga.com/national.xml"]
+    verified: 직접
+  donga_sports:
+    name: 동아일보 스포츠 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 금지
+    backup: 불명
+    agent_read: 허용
+    basis: "donga_economy 와 같음. 2026-11-15 robots 재확인(피드 경로 허용), RSS 안내 쪽에 이 주소가 있음. 받아 봄: 응답 200, 발행 시각 파싱 정상"
+    evidence: ["https://rss.donga.com/robots.txt", "https://rss.donga.com/", "https://rss.donga.com/sports.xml"]
+    verified: 직접
+  donga_culture:
+    name: 동아일보 문화 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 금지
+    backup: 불명
+    agent_read: 허용
+    basis: "donga_economy 와 같음. 2026-11-15 robots 재확인(피드 경로 허용), RSS 안내 쪽에 이 주소가 있음. 받아 봄: 응답 200, 발행 시각 파싱 정상"
+    evidence: ["https://rss.donga.com/robots.txt", "https://rss.donga.com/", "https://rss.donga.com/culture.xml"]
+    verified: 직접
+  sportsdonga_entertainment:
+    name: 스포츠동아 연예 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 금지
+    backup: 불명
+    agent_read: 허용
+    basis: "donga_economy 와 같음. 스포츠동아 피드는 rss.donga.com 의 같은 RSS 안내 쪽(개인 비상업 사용만 허용)에 실려 있다. 2026-11-15 robots 재확인(피드 경로 허용), RSS 안내 쪽에 이 주소가 있음. 받아 봄: 응답 200, 발행 시각 파싱 정상"
+    evidence: ["https://rss.donga.com/robots.txt", "https://rss.donga.com/", "https://rss.donga.com/sportsdonga/entertainment.xml"]
+    verified: 직접
+  sportsdonga_sports:
+    name: 스포츠동아 스포츠 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 금지
+    backup: 불명
+    agent_read: 허용
+    basis: "donga_economy 와 같음. 스포츠동아 피드는 rss.donga.com 의 같은 RSS 안내 쪽(개인 비상업 사용만 허용)에 실려 있다. 2026-11-15 robots 재확인(피드 경로 허용), RSS 안내 쪽에 이 주소가 있음. 받아 봄: 응답 200, 발행 시각 파싱 정상"
+    evidence: ["https://rss.donga.com/robots.txt", "https://rss.donga.com/", "https://rss.donga.com/sportsdonga/sports.xml"]
+    verified: 직접
+  khan_politics:
+    name: 경향신문 정치 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 금지
+    backup: 불명
+    agent_read: 허용
+    basis: "khan_economy 와 같음. 2026-11-15 robots 재확인(피드 경로 허용), RSS 안내 쪽에 이 주소가 있음. 받아 봄: 응답 200, 발행 시각 파싱 정상"
+    evidence: ["https://www.khan.co.kr/robots.txt", "https://www.khan.co.kr/help/help_rss.html", "https://www.khan.co.kr/rss/rssdata/politic_news.xml"]
+    verified: 직접
+  khan_society:
+    name: 경향신문 사회 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 금지
+    backup: 불명
+    agent_read: 허용
+    basis: "khan_economy 와 같음. 2026-11-15 robots 재확인(피드 경로 허용), RSS 안내 쪽에 이 주소가 있음. 받아 봄: 응답 200, 발행 시각 파싱 정상"
+    evidence: ["https://www.khan.co.kr/robots.txt", "https://www.khan.co.kr/help/help_rss.html", "https://www.khan.co.kr/rss/rssdata/society_news.xml"]
+    verified: 직접
+  khan_culture:
+    name: 경향신문 문화 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 금지
+    backup: 불명
+    agent_read: 허용
+    basis: "khan_economy 와 같음. 2026-11-15 robots 재확인(피드 경로 허용), RSS 안내 쪽에 이 주소가 있음. 받아 봄: 응답 200, 발행 시각 파싱 정상"
+    evidence: ["https://www.khan.co.kr/robots.txt", "https://www.khan.co.kr/help/help_rss.html", "https://www.khan.co.kr/rss/rssdata/culture_news.xml"]
+    verified: 직접
+  sbs_politics:
+    name: SBS 정치 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 금지
+    backup: 불명
+    agent_read: 허용
+    basis: "sbs_economy 와 같음. 2026-11-15 robots 재확인(피드 경로 허용), RSS 안내 쪽에 이 주소가 있음. 받아 봄: 응답 200, 발행 시각 파싱 정상"
+    evidence: ["https://news.sbs.co.kr/robots.txt", "https://news.sbs.co.kr/news/rss.do", "https://news.sbs.co.kr/news/SectionRssFeed.do?sectionId=01&plink=RSSREADER"]
+    verified: 직접
+  sbs_society:
+    name: SBS 사회 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 금지
+    backup: 불명
+    agent_read: 허용
+    basis: "sbs_economy 와 같음. 2026-11-15 robots 재확인(피드 경로 허용), RSS 안내 쪽에 이 주소가 있음. 받아 봄: 응답 200, 발행 시각 파싱 정상"
+    evidence: ["https://news.sbs.co.kr/robots.txt", "https://news.sbs.co.kr/news/rss.do", "https://news.sbs.co.kr/news/SectionRssFeed.do?sectionId=03&plink=RSSREADER"]
+    verified: 직접
+  sbs_culture:
+    name: SBS 문화 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 금지
+    backup: 불명
+    agent_read: 허용
+    basis: "sbs_economy 와 같음. 2026-11-15 robots 재확인(피드 경로 허용), RSS 안내 쪽에 이 주소가 있음. 받아 봄: 응답 200, 발행 시각 파싱 정상"
+    evidence: ["https://news.sbs.co.kr/robots.txt", "https://news.sbs.co.kr/news/rss.do", "https://news.sbs.co.kr/news/SectionRssFeed.do?sectionId=08&plink=RSSREADER"]
+    verified: 직접
+  sbs_entertainment:
+    name: SBS 연예 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 금지
+    backup: 불명
+    agent_read: 허용
+    basis: "sbs_economy 와 같음. 2026-11-15 robots 재확인(피드 경로 허용), RSS 안내 쪽에 이 주소가 있음. 받아 봄: 응답 200, 발행 시각 파싱 정상"
+    evidence: ["https://news.sbs.co.kr/robots.txt", "https://news.sbs.co.kr/news/rss.do", "https://news.sbs.co.kr/news/SectionRssFeed.do?sectionId=14&plink=RSSREADER"]
+    verified: 직접
+  sbs_sports:
+    name: SBS 스포츠 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 금지
+    backup: 불명
+    agent_read: 허용
+    basis: "sbs_economy 와 같음. 2026-11-15 robots 재확인(피드 경로 허용), RSS 안내 쪽에 이 주소가 있음. 받아 봄: 응답 200, 발행 시각 파싱 정상"
+    evidence: ["https://news.sbs.co.kr/robots.txt", "https://news.sbs.co.kr/news/rss.do", "https://news.sbs.co.kr/news/SectionRssFeed.do?sectionId=09&plink=RSSREADER"]
+    verified: 직접
+  yonhaptv_politics:
+    name: 연합뉴스TV 정치 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 허용
+    basis: "yonhaptv_economy 와 같음. RSS 안내 쪽은 찾지 못했고 피드 주소는 기존 분야 주소와 같은 꼴. 2026-11-15 robots 재확인(피드 경로 허용), 받아 봄: 응답 200, 발행 시각 파싱 정상"
+    evidence: ["https://www.yonhapnewstv.co.kr/robots.txt", "https://www.yonhapnewstv.co.kr/category/news/politics/feed/"]
+    verified: 직접
+  yonhaptv_society:
+    name: 연합뉴스TV 사회 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 허용
+    basis: "yonhaptv_economy 와 같음. RSS 안내 쪽은 찾지 못했고 피드 주소는 기존 분야 주소와 같은 꼴. 2026-11-15 robots 재확인(피드 경로 허용), 받아 봄: 응답 200, 발행 시각 파싱 정상"
+    evidence: ["https://www.yonhapnewstv.co.kr/robots.txt", "https://www.yonhapnewstv.co.kr/category/news/society/feed/"]
+    verified: 직접
+  yonhaptv_culture:
+    name: 연합뉴스TV 문화 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 허용
+    basis: "yonhaptv_economy 와 같음. RSS 안내 쪽은 찾지 못했고 피드 주소는 기존 분야 주소와 같은 꼴. 2026-11-15 robots 재확인(피드 경로 허용), 받아 봄: 응답 200, 발행 시각 파싱 정상"
+    evidence: ["https://www.yonhapnewstv.co.kr/robots.txt", "https://www.yonhapnewstv.co.kr/category/news/culture/feed/"]
+    verified: 직접
+  yonhaptv_sports:
+    name: 연합뉴스TV 스포츠 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 허용
+    basis: "yonhaptv_economy 와 같음. RSS 안내 쪽은 찾지 못했고 피드 주소는 기존 분야 주소와 같은 꼴. 2026-11-15 robots 재확인(피드 경로 허용), 받아 봄: 응답 200, 발행 시각 파싱 정상"
+    evidence: ["https://www.yonhapnewstv.co.kr/robots.txt", "https://www.yonhapnewstv.co.kr/category/news/sports/feed/"]
+    verified: 직접
+  donga_show:
+    name: 동아일보 연예 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 금지
+    backup: 불명
+    agent_read: 허용
+    basis: "donga_economy 와 같음. 켜지 않음: 항목 1개(11-11) — 갱신이 거의 없어 켜지 않는다"
+    evidence: ["https://rss.donga.com/robots.txt", "https://rss.donga.com/", "https://rss.donga.com/show.xml"]
+    verified: 직접
+  khan_sports:
+    name: 경향신문 스포츠 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 금지
+    backup: 불명
+    agent_read: 허용
+    basis: "khan_economy 와 같음. 켜지 않음: 50건이 10-20 ~ 11-12 — 갱신이 느려 켜지 않는다"
+    evidence: ["https://www.khan.co.kr/robots.txt", "https://www.khan.co.kr/help/help_rss.html", "https://www.khan.co.kr/rss/rssdata/kh_sports.xml"]
+    verified: 직접
+  yonhaptv_entertainment:
+    name: 연합뉴스TV 연예 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 허용
+    basis: "yonhaptv_economy 와 같음. 켜지 않음: 200 이나 항목 0개"
+    evidence: ["https://www.yonhapnewstv.co.kr/robots.txt", "https://www.yonhapnewstv.co.kr/category/news/entertainment/feed/"]
+    verified: 직접
+  isplus_rss:
+    name: 일간스포츠 RSS
+    collect: 불명
+    score_use: 불명
+    store: 금지
+    publish: 불명
+    commercial: 금지
+    backup: 금지
+    agent_read: 허용
+    basis: "첫 화면이 /rss 를 걸고 받아 보면 RSS(100건, 기사 본문 포함). robots 는 * 에 Crawl-delay 5 와 일부 경로만 막고 GPTBot 등은 전면 차단, Claude 계열 항목 없음. 저작권 정책이 '자체데이터베이스를 구축'하는 것과 '재사용을 위한 저장'을 허가하지 않는다고 적고, 이용약관 제22조가 서면 허용 없는 영업활동을 금지한다. 보관이 금지라 켜지 않는다"
+    evidence: ["https://isplus.com/robots.txt", "https://isplus.com/rss", "https://isplus.com/event/view/creativeRenew", "https://isplus.com/event/view/licenseRenew"]
+    verified: 직접
   # ── 해외 언론 RSS
   bbc_business:
     name: BBC Business RSS
@@ -959,7 +1440,7 @@ sources:
     commercial: 불명
     backup: 불명
     agent_read: 허용
-    basis: "공식 RSS 안내에 주소가 있으나 2026-11-14 요청 때 503 '점검 중'(2회). 저작권정책은 열지 않음. robots 는 * 허용"
+    basis: "공식 RSS 안내에 주소가 있으나 2026-11-14 요청 때 503 '점검 중'(2회), 2026-11-15 01:2x 다시 받아도 503 '현재 RSS 서비스 점검 중'. 저작권정책은 열지 않음. robots 는 * 허용"
     evidence: ["https://www.fsc.go.kr/ut060101", "https://www.fsc.go.kr/about/fsc_bbs_rss/?fid=0111", "https://www.fsc.go.kr/robots.txt"]
     verified: 직접
   kostat_press:
@@ -971,7 +1452,7 @@ sources:
     commercial: 불명
     backup: 불명
     agent_read: 허용
-    basis: "robots 는 피드 경로를 막지 않음. 2026-11-14 요청 때 301 로 옮겨지고 항목 0. 저작권 조건은 찾지 않음"
+    basis: "robots 는 피드 경로를 막지 않음. 2026-11-14 요청 때 301 로 옮겨지고 항목 0. 2026-11-15 01:2x 다시 받으니 mods.go.kr 의 '경고창' HTML(항목 0, 옮겨 간 곳의 robots 는 보지 않음). 저작권 조건은 찾지 않음"
     evidence: ["https://kostat.go.kr/robots.txt"]
     verified: 직접
   ftc_press:

@@ -14,6 +14,8 @@ MAX_FALSE_MERGE = 3
 MAX_OVER_SPLIT = 9
 
 # 기본 설정(묶기 보정 둘을 켠 것 · 2026-11-14 부터)에서 잰 값.
+# 2026-11-15 같은 날 잇기(link.Linker.same_day)를 더한 뒤 다시 쟀고 목록은 그대로다. 이 재생은 pipeline.step 을
+# 급상승어 규칙 없이 부르므로 같은 날 잇기의 급상승어 갈래는 돌지 않는다.
 DEFAULT_FALSE_MERGE = ["p09"]
 DEFAULT_OVER_SPLIT = ["f09", "r02", "r03", "r05"]
 

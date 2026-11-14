@@ -5,8 +5,16 @@
 글은 어절 단위로 미리 줄을 나눠 줄바꿈을 넣고 글상자의 자동 줄바꿈은 끈다(파워포인트가 한글 낱말 가운데서 끊지 않게).
 그림은 내려받지 않는다 — 회색 자리에 '무엇을 · 어느 공식 출처에서'만 적거나, 검수 대장(사양 pictures)에 오른 로컬 그림 파일을 넣는다.
 엄격 모드 빌드는 밈 그림을 빼고(pictures.drop_memes) 뺀 것을 빌드 출력과 러닝시트 머리에 적는다.
+막는 그림(판정 '비공개 판에서만' 또는 권리 확인 대기)이 든 사양은 엄격 모드에서 두 판을 같은 타임코드로 함께 낸다(pictures.py 머리말의 「두 판과 공개 차단」):
+  private/decks/drafts/<card_id>_<ts>_비공개판/ 과 <card_id>_<ts>_바꾼판/ — 판마다 pptx · PDF · 쪽 PNG · 러닝시트 · 링크 목록(style: syuka) ·
+  그림 검수 대장(「바꾼 장」 표) · 공개_가부.json(edition · pair · swaps) · 그 판의 사양 사본(spec_<ts>_<판>.yaml).
+  한 판이라도 검사에 실패하면 어느 폴더도 만들지 않는다. 끝에 public_check 가 비공개판 1 · 바꾼판 0 이 아니면 멈춘다.
+  비공개판을 만들면 막는 그림 파일과 그 판의 pptx · PDF · 막는 그림이 든 쪽의 PNG 의 sha256 을 비공개 등록 대장(registry_file)에 덧붙인다
+  (막는 그림이 든 초안 모드의 연습용 판도 같다). pptx 를 쓰기 시작한 뒤로는 빌드가 예외로 멈춰도(내보내기 시간 초과, 도구 없음 등)
+  그때까지 만든 파일을 등록한다.
+막는 그림도 swap 도 없는 사양은 지금까지와 같은 폴더 하나, 같은 파일이 나온다.
 
-    python -m ozl.render build <사양.yaml>   # private/decks/drafts/<card_id>_<ts>/
+    python -m ozl.render build <사양.yaml> [--edition 비공개판|바꾼판]   # private/decks/drafts/<card_id>_<ts>[_<판>]/
 """
 from __future__ import annotations
 
@@ -58,6 +66,28 @@ class Para:
     bold: bool = False
     emph: list[str] = field(default_factory=list)  # 이 낱말들은 빨강 굵게
     lines: list[tuple[int, int]] = field(default_factory=list)
+    marks: dict = field(default_factory=dict)      # 글자 자리 → 그 글자 뒤에 붙일 링크 번호(작은 회색 위첨자 · style: syuka). 비면 종전 그대로
+
+
+SUP_RATIO = 0.6      # 링크 번호 위첨자 크기 = 글자 크기 × 0.6(8~16pt). 파워포인트는 위첨자를 이 크기보다 크게 그리지 않는다 — 폭 계산이 넉넉한 쪽이다
+SUP_BASELINE = "30000"
+
+
+def sup_size(size: float) -> float:
+    return min(16.0, max(8.0, round(size * SUP_RATIO)))
+
+
+def para_mask(p: Para):
+    """(줄 나눔 마스크, 폭 함수). 링크 번호가 없으면 종전 그대로(굵기 마스크와 S.measure). 있으면 번호가 붙는 글자의 폭에 위첨자 폭을 더한다
+    — 줄 나눔과 넘침 검사가 번호까지 본다."""
+    base = [m or p.bold for m in S.emphasis_mask(p.text, p.emph)]
+    if not p.marks:
+        return base, S.measure
+    mask = [(b, p.marks.get(i), i if i in p.marks else -1) for i, b in enumerate(base)]
+
+    def fn(t: str, size: float, m) -> float:
+        return S.measure(t, size, m[0]) + (S.measure(m[1], sup_size(size)) if m[1] else 0.0)
+    return mask, fn
 
 
 @dataclass
@@ -72,6 +102,7 @@ class Box:
     spacing: float = deck.LINE
     align: object = PP_ALIGN.LEFT
     max_lines: int | None = None
+    fill: RGBColor | None = None   # 글상자 바탕(full_picture 의 그림 위 한마디). None 이면 바탕 없음
 
     @property
     def line_h(self) -> float:  # pt — 파워포인트 배수 줄 간격의 기준은 글자 크기의 1.2배
@@ -86,8 +117,8 @@ class Box:
         width_pt = (self.width - 2 * PAD) * 72 * 0.98  # 2% 여유 — 폰트 힌팅 차이로 줄 끝이 넘지 않게
         n = 0
         for p in self.paras:
-            mask = [m or p.bold for m in S.emphasis_mask(p.text, p.emph)]
-            p.lines = S.wrap(p.text, width_pt, self.size, mask) or [(0, 0)]
+            mask, fn = para_mask(p)
+            p.lines = S.wrap(p.text, width_pt, self.size, mask, fn) or [(0, 0)]
             n += len(p.lines)
         return n
 
@@ -96,9 +127,9 @@ class Box:
         n = self.layout()
         width_pt = (self.width - 2 * PAD) * 72
         for p in self.paras:
-            mask = [m or p.bold for m in S.emphasis_mask(p.text, p.emph)]
+            mask, fn = para_mask(p)
             for a, b in p.lines:
-                wpt = sum(S.measure(p.text[i], self.size, mask[i]) for i in range(a, b))
+                wpt = sum(fn(p.text[i], self.size, mask[i]) for i in range(a, b))
                 if wpt > width_pt:
                     out.append(f"{self.name}: 어절 '{p.text[a:b]}' 이 줄 폭보다 길다")
         if n > self.capacity():
@@ -195,19 +226,26 @@ class Plan:
     tables: list[Table] = field(default_factory=list)
 
 
-def _body_paras(items, emph) -> list[Para]:
+def _mk(sl, *key) -> dict:
+    """그 칸의 링크 번호 표시(spec.link_plan → spec.with_links). 없으면 빈 사전(옛 규칙)."""
+    return dict((((sl or {}).get(S.LINKS_KEY) or {}).get("inline") or {}).get(tuple(key)) or {})
+
+
+def _body_paras(items, emph, sl=None) -> list[Para]:
     out = []
-    for it in items or []:
+    for k, it in enumerate(items or []):
         if isinstance(it, dict):
-            out.append(Para(str(it.get("text", "")), deck.EMPH_RGB if it.get("red") else deck.BODY_RGB, bool(it.get("bold")), list(emph or [])))
+            out.append(Para(str(it.get("text", "")), deck.EMPH_RGB if it.get("red") else deck.BODY_RGB, bool(it.get("bold")), list(emph or []),
+                            marks=_mk(sl, "body", k)))
         else:
-            out.append(Para(str(it), emph=list(emph or [])))
+            out.append(Para(str(it), emph=list(emph or []), marks=_mk(sl, "body", k)))
     return out
 
 
 def _title_box(sl) -> Box:
     left = _in(deck.TITLE_LEFT)
-    return Box("제목", left, _in(deck.TITLE_TOP), SW - left - ML, _in(deck.px(60)), [Para(str(sl["title"]), deck.TITLE_RGB)], spacing=1.0, max_lines=1)
+    return Box("제목", left, _in(deck.TITLE_TOP), SW - left - ML, _in(deck.px(60)), [Para(str(sl["title"]), deck.TITLE_RGB, marks=_mk(sl, "title"))],
+               spacing=1.0, max_lines=1)
 
 
 def _img(sl, left, top, width, height, slot: int = -1, caption: bool = True) -> Img | None:
@@ -231,18 +269,60 @@ FULL_TOP, FULL_BOTTOM = 1.45, 6.40      # capture_full: 원문 캡처 자리(아
 WIDE_TOP, WIDE_H = 1.50, 3.70           # photo_caption · image_pair: 그림 자리(아래 0.45in 는 그림 밑 표기 줄)
 CAPTION_TOP, CAPTION_H = 5.65, 1.20     # photo_caption · image_pair: 설명 글상자(두 줄까지)
 PAIR_GAP = 0.40                         # image_pair 두 자리 사이
+# 2026-11-15 새 종류(style: syuka 덱에서 쓰려고 더했다 — 옛 종류의 자리는 그대로)
+BLEED_L, BLEED_T, BLEED_B = 0.35, 0.30, 0.62     # full_picture: 그림 자리 왼쪽·위 띄움, 아래 띄움(그림 밑 표기 두 줄 자리)
+BLEED_CAP_H, BLEED_CAP_UP = 0.62, 0.22          # full_picture: 그림 안 아래 한마디 글상자 높이, 그림 자리 아래 끝에서 띄움
+STACK_TOP, STACK_H = 1.45, 2.85                 # image_stack: 넓은 그림 자리(아래 0.45in 는 그림 밑 표기 줄)
+STACK_BODY_TOP = 4.80                           # image_stack: 아래 글상자 윗변 — BODY_BOTTOM 까지 26pt 1.5줄로 3줄
+
+
+CORNER_SIZE = 11        # 그림 자리·표 귀퉁이 링크 번호(pt)
+CORNER_W, CORNER_H = 1.6, 0.20
+
+
+def _corner_box(label: str, right: float, top: float) -> Box:
+    return Box("링크 번호", right - CORNER_W, top, CORNER_W, CORNER_H, [Para(label, LIGHT)], size=CORNER_SIZE, spacing=1.0, align=PP_ALIGN.RIGHT, max_lines=1)
 
 
 def plan_slide(sl: dict) -> Plan:
+    """쪽의 배치 계획. 쪽 사본에 링크 번호(S.LINKS_KEY)가 있으면 차트·원문 캡처·회색 자리·표의 오른쪽 아래 귀퉁이에 번호 글상자를 더한다
+    (차트·캡처·표는 자리 바로 아래, 회색 자리는 자리 안쪽 — 그 아래에 캡션 글상자가 온다)."""
+    p = _plan_slide(sl)
+    corner = ((sl.get(S.LINKS_KEY) or {}).get("corner") or {})
+    if not corner:
+        return p
+    for im in p.imgs:
+        label = corner.get(im.slot)
+        if not label or im.kind == "picture":
+            continue
+        top = im.top + im.height - CORNER_H - 0.04 if im.kind == "slot" else im.top + im.height + 0.02
+        p.boxes.append(_corner_box(label, im.left + im.width - (0.06 if im.kind == "slot" else 0.0), top))
+    if corner.get("table") and p.tables:
+        t = p.tables[0]
+        p.boxes.append(_corner_box(corner["table"], t.left + t.width, t.top + sum(t.row_heights()) + 0.0))
+    return p
+
+
+def _plan_slide(sl: dict) -> Plan:
     k = sl.get("kind")
     emph = sl.get("emphasis") or []
     p = Plan()
     img_l, img_t, img_w, img_h = ML, _in(deck.IMG_TOP), _in(deck.IMG_W), _in(deck.IMG_H)
     body_top = _in(deck.BODY_TOP)
     if k == "title_hook":
-        p.boxes.append(Box("여는 제목", ML, 2.2, SW - 2 * ML, 2.0, [Para(str(sl["title"]), deck.TITLE_RGB, True, list(emph))], size=40, spacing=1.2, align=PP_ALIGN.CENTER))
+        p.boxes.append(Box("여는 제목", ML, 2.2, SW - 2 * ML, 2.0, [Para(str(sl["title"]), deck.TITLE_RGB, True, list(emph), marks=_mk(sl, "title"))], size=40, spacing=1.2, align=PP_ALIGN.CENTER))
         if sl.get("sub"):
-            p.boxes.append(Box("부제", ML, 4.35, SW - 2 * ML, 1.3, [Para(str(sl["sub"]), emph=list(emph))], align=PP_ALIGN.CENTER))
+            p.boxes.append(Box("부제", ML, 4.35, SW - 2 * ML, 1.3, [Para(str(sl["sub"]), emph=list(emph), marks=_mk(sl, "sub"))], align=PP_ALIGN.CENTER))
+        return p
+    if k == "full_picture":   # 제목 없이 그림 하나가 쪽을 채운다 — 한마디(caption)는 그림 안 아래 한 줄
+        h = SH - BLEED_T - BLEED_B
+        im = _img(sl, BLEED_L, BLEED_T, SW - 2 * BLEED_L, h, caption=False)
+        if im:
+            p.imgs.append(im)
+        if sl.get("caption") not in (None, ""):
+            cw = SW - 2 * ML
+            p.boxes.append(Box("한마디", ML, BLEED_T + h - BLEED_CAP_H - BLEED_CAP_UP, cw, BLEED_CAP_H, [Para(str(sl["caption"]), emph=list(emph), marks=_mk(sl, "caption"))],
+                               spacing=1.0, align=PP_ALIGN.CENTER, max_lines=1, fill=RGBColor(0xFF, 0xFF, 0xFF)))
         return p
     p.boxes.append(_title_box(sl))
     if k == "image_text":
@@ -252,13 +332,13 @@ def plan_slide(sl: dict) -> Plan:
             x = img_l + img_w + _in(deck.GAP)
         else:
             x = ML
-        p.boxes.append(Box("본문", x, body_top, SW - ML - x, BODY_BOTTOM - body_top, _body_paras(sl.get("body"), emph)))
+        p.boxes.append(Box("본문", x, body_top, SW - ML - x, BODY_BOTTOM - body_top, _body_paras(sl.get("body"), emph, sl)))
     elif k == "quote_translation":
         im = _img(sl, img_l, img_t, 2.6, 1.7)
         x = ML + 3.2 if im else ML
         if im:
             p.imgs.append(im)
-        paras = [Para(str(sl["en"]), emph=[])] + [Para(str(sl["ko"]), deck.EMPH_RGB, False, list(emph))] + _body_paras(sl.get("body"), emph)
+        paras = [Para(str(sl["en"]), emph=[], marks=_mk(sl, "en"))] + [Para(str(sl["ko"]), deck.EMPH_RGB, False, list(emph), marks=_mk(sl, "ko"))] + _body_paras(sl.get("body"), emph, sl)
         p.boxes.append(Box("원문·번역", x, body_top, SW - ML - x, BODY_BOTTOM - body_top, paras))
     elif k == "number":
         im = _img(sl, img_l, img_t, img_w, img_h)
@@ -270,13 +350,13 @@ def plan_slide(sl: dict) -> Plan:
             x, align, top = ML, PP_ALIGN.CENTER, 2.1
         w = SW - ML - x
         size = 44 if im else 60  # 그림 옆 글 기둥은 좁아 한 단 작게
-        p.boxes.append(Box("큰 숫자", x, top, w, 1.25, [Para(str(num["value"]), deck.EMPH_RGB, True)], size=size, spacing=1.0, align=align, max_lines=1))
+        p.boxes.append(Box("큰 숫자", x, top, w, 1.25, [Para(str(num["value"]), deck.EMPH_RGB, True, marks=_mk(sl, "number", "value"))], size=size, spacing=1.0, align=align, max_lines=1))
         y = top + 1.35
         if num.get("label"):
-            p.boxes.append(Box("숫자 설명", x, y, w, 1.0, [Para(str(num["label"]), emph=list(emph))], spacing=1.2, align=align, max_lines=2))
+            p.boxes.append(Box("숫자 설명", x, y, w, 1.0, [Para(str(num["label"]), emph=list(emph), marks=_mk(sl, "number", "label"))], spacing=1.2, align=align, max_lines=2))
             y += 1.1
         if sl.get("body"):
-            p.boxes.append(Box("본문", x, y, w, BODY_BOTTOM - y, _body_paras(sl.get("body"), emph), align=align))
+            p.boxes.append(Box("본문", x, y, w, BODY_BOTTOM - y, _body_paras(sl.get("body"), emph, sl), align=align))
     elif k == "compare_table":
         t = sl["table"]
         header = [str(x) for x in t.get("header") or []]
@@ -289,14 +369,14 @@ def plan_slide(sl: dict) -> Plan:
         if sl.get("body"):
             y = tb.top + sum(tb.row_heights()) + 0.2
             tb.max_bottom = BODY_BOTTOM - 0.6
-            p.boxes.append(Box("표 아래 글", ML, y, tw, max(0.6, BODY_BOTTOM - y), _body_paras(sl.get("body"), emph), spacing=1.2))
+            p.boxes.append(Box("표 아래 글", ML, y, tw, max(0.6, BODY_BOTTOM - y), _body_paras(sl.get("body"), emph, sl), spacing=1.2))
     elif k == "quote_line":
         q = sl["quote"]
-        p.boxes.append(Box("인용", ML + 0.5, 2.3, SW - 2 * ML - 1.0, 2.4, [Para(str(q["text"]), deck.EMPH_RGB, True, [])], size=36, spacing=1.3, align=PP_ALIGN.CENTER))
+        p.boxes.append(Box("인용", ML + 0.5, 2.3, SW - 2 * ML - 1.0, 2.4, [Para(str(q["text"]), deck.EMPH_RGB, True, [], marks=_mk(sl, "quote", "text"))], size=36, spacing=1.3, align=PP_ALIGN.CENTER))
         if q.get("by"):
-            p.boxes.append(Box("인용 출처", ML + 0.5, 4.85, SW - 2 * ML - 1.0, 0.8, [Para(str(q["by"]))], size=20, spacing=1.2, align=PP_ALIGN.CENTER))
+            p.boxes.append(Box("인용 출처", ML + 0.5, 4.85, SW - 2 * ML - 1.0, 0.8, [Para(str(q["by"]), marks=_mk(sl, "quote", "by"))], size=20, spacing=1.2, align=PP_ALIGN.CENTER))
     elif k == "closing":
-        p.boxes.append(Box("본문", ML, body_top, SW - 2 * ML, BODY_BOTTOM - body_top, _body_paras(sl.get("body"), emph)))
+        p.boxes.append(Box("본문", ML, body_top, SW - 2 * ML, BODY_BOTTOM - body_top, _body_paras(sl.get("body"), emph, sl)))
     elif k == "capture_full":
         im = _img(sl, ML, FULL_TOP, SW - 2 * ML, FULL_BOTTOM - FULL_TOP, caption=False)
         if im:
@@ -305,8 +385,13 @@ def plan_slide(sl: dict) -> Plan:
         im = _img(sl, ML, WIDE_TOP, SW - 2 * ML, WIDE_H, caption=False)
         if im:
             p.imgs.append(im)
-        p.boxes.append(Box("설명", ML, CAPTION_TOP, SW - 2 * ML, CAPTION_H, [Para(str(sl["caption"]), emph=list(emph))],
+        p.boxes.append(Box("설명", ML, CAPTION_TOP, SW - 2 * ML, CAPTION_H, [Para(str(sl["caption"]), emph=list(emph), marks=_mk(sl, "caption"))],
                            size=deck.CAPTION_SIZE, spacing=1.2, align=PP_ALIGN.CENTER, max_lines=2))
+    elif k == "image_stack":
+        im = _img(sl, ML, STACK_TOP, SW - 2 * ML, STACK_H, caption=False)
+        if im:
+            p.imgs.append(im)
+        p.boxes.append(Box("본문", ML, STACK_BODY_TOP, SW - 2 * ML, BODY_BOTTOM - STACK_BODY_TOP, _body_paras(sl.get("body"), emph, sl), max_lines=3))
     elif k == "image_pair":
         w = (SW - 2 * ML - PAIR_GAP) / 2
         for j, v in S.slot_views(sl):
@@ -315,7 +400,7 @@ def plan_slide(sl: dict) -> Plan:
             if im:
                 p.imgs.append(im)
             if v.get("caption") not in (None, ""):
-                p.boxes.append(Box(f"설명({S.SLOT_NAME[j]})", x, CAPTION_TOP, w, CAPTION_H, [Para(str(v["caption"]), emph=list(emph))],
+                p.boxes.append(Box(f"설명({S.SLOT_NAME[j]})", x, CAPTION_TOP, w, CAPTION_H, [Para(str(v["caption"]), emph=list(emph), marks=_mk(sl, "pair", j, "caption"))],
                                    size=deck.CAPTION_SIZE, spacing=1.2, align=PP_ALIGN.CENTER, max_lines=2))
     return p
 
@@ -355,12 +440,22 @@ def _write_para(para, p: Para, size: float):
         i = a
         while i < b:
             j = i
-            while j < b and emph_mask[j] == emph_mask[i]:
-                j += 1
+            while j < b and emph_mask[j] == emph_mask[i] and (j == i or (j - 1) not in p.marks):
+                j += 1   # 링크 번호가 붙는 글자에서 조각을 끊는다(번호 조각을 그 뒤에 넣는다)
             r = para.add_run()
             r.text = p.text[i:j]
             _style_run(r, size, mask[i], deck.EMPH_RGB if emph_mask[i] else p.color)
+            if (j - 1) in p.marks:
+                _sup_run(para, p.marks[j - 1], size)
             i = j
+
+
+def _sup_run(para, label: str, size: float):
+    """링크 번호 — 작은 회색 위첨자 조각. 사양의 글이 아니라 빌드가 붙이는 표시다(숫자 대조를 받지 않는다)."""
+    r = para.add_run()
+    r.text = label
+    _style_run(r, sup_size(size), False, LIGHT)
+    r._r.get_or_add_rPr().set("baseline", SUP_BASELINE)
 
 
 def draw_box(slide, b: Box):
@@ -370,6 +465,10 @@ def draw_box(slide, b: Box):
     tf = tb.text_frame
     tf.word_wrap = False  # 줄은 어절 단위로 이미 나눴다
     tf.margin_left = tf.margin_right = Inches(PAD)
+    if b.fill is not None:
+        tb.fill.solid()
+        tb.fill.fore_color.rgb = b.fill
+        tf.vertical_anchor = MSO_ANCHOR.MIDDLE
     for i, p in enumerate(b.paras):
         para = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
         para.alignment = b.align
@@ -378,7 +477,10 @@ def draw_box(slide, b: Box):
     return tb
 
 
-def draw_img(slide, im: Img):
+SOURCE_PREFIX = "출처: "   # 회색 그림 자리의 셋째 줄 머리. style: syuka 빌드는 비운다(화면에 '출처:' 를 찍지 않는다 — 링크 목록이 맡는다)
+
+
+def draw_img(slide, im: Img, prefix: str | None = None):
     box = slide.shapes.add_shape(1, Inches(im.left), Inches(im.top), Inches(im.width), Inches(im.height))
     box.name = "그림 자리"
     box.fill.solid()
@@ -387,7 +489,7 @@ def draw_img(slide, im: Img):
     tf = box.text_frame
     tf.word_wrap = True
     tf.vertical_anchor = MSO_ANCHOR.MIDDLE
-    for i, (txt, sz, bold) in enumerate([("그림 자리", 14, True), (im.what, 12, False), ("출처: " + im.source, 10, False)]):
+    for i, (txt, sz, bold) in enumerate([("그림 자리", 14, True), (im.what, 12, False), ((SOURCE_PREFIX if prefix is None else prefix) + im.source, 10, False)]):
         para = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
         para.alignment = PP_ALIGN.CENTER
         r = para.add_run()
@@ -442,11 +544,11 @@ def picture_credit_box(im: Img, e: dict, y: float) -> Box:
     return Box("그림 표기", im.left, y, im.width, PIC_CREDIT_H, paras, size=PIC_CREDIT_SIZE, spacing=1.0, align=PP_ALIGN.CENTER, max_lines=2)
 
 
-def draw_picture(slide, im: Img, e: dict | None, waiting: bool):
+def draw_picture(slide, im: Img, e: dict | None, waiting: bool, prefix: str | None = None):
     """검수 대장의 그림 파일을 자리 안쪽에 비율을 지켜 넣고 밑에 표기를 단다. 대기(초안 모드)면 회색 자리에 대기 문구."""
     from ozl.render import pictures as PIC
     if waiting or not e or PIC.file_error(e):
-        draw_img(slide, Img(im.left, im.top, im.width, im.height, f"그림 대기 — {im.ref} 검수 기록이 다 차지 않았거나 쓰지 않는 그림이다", "그림 검수 대장"))
+        draw_img(slide, Img(im.left, im.top, im.width, im.height, f"그림 대기 — {im.ref} 검수 기록이 다 차지 않았거나 쓰지 않는 그림이다", "그림 검수 대장"), prefix)
         return None
     path = PIC.resolve_path(e)
     from PIL import Image
@@ -466,10 +568,10 @@ def fit_inside(img_w: int, img_h: int, box_w: float, box_h: float) -> tuple[floa
     return (box_w - w) / 2, (box_h - h) / 2, w, h
 
 
-def draw_visual(slide, im: Img, png: pathlib.Path | None, credit: str = ""):
+def draw_visual(slide, im: Img, png: pathlib.Path | None, credit: str = "", prefix: str | None = None):
     """chart·capture 그림을 그림 자리에 넣는다. png 가 없으면(초안 모드 그림 대기) 회색 자리에 대기 문구를 적는다."""
     if png is None:
-        draw_img(slide, Img(im.left, im.top, im.width, im.height, f"그림 대기 — {im.ref.rsplit('-', 1)[-1]} 원문 화면 그림이 아직 없다", credit or "원문 캡처"))
+        draw_img(slide, Img(im.left, im.top, im.width, im.height, f"그림 대기 — {im.ref.rsplit('-', 1)[-1]} 원문 화면 그림이 아직 없다", credit or "원문 캡처"), prefix)
         return None
     if im.kind == "chart":
         pic = slide.shapes.add_picture(str(png), Inches(im.left), Inches(im.top), Inches(im.width), Inches(im.height))
@@ -846,10 +948,42 @@ def draw_pending(slide, ids: list[str]):
     _style_run(r, 14, True, deck.EMPH_RGB)
 
 
+@contextlib.contextmanager
+def _no_passage_note(K):
+    """style: syuka — 대목을 다시 그린 그림 맨 아래의 '옮겨 그린 것' 꼬리표를 찍지 않는다(research.capture 는 다른 작업의 소관이라 고치지 않고,
+    빌드 동안에만 그 글을 비운다). 꼬리표 자리는 그대로 남아 대목 배치·'다 들어가는가' 계산은 검사와 같다. 그림 종류는 링크 목록이 적는다."""
+    orig = K.PASSAGE_NOTE
+    K.PASSAGE_NOTE = ""
+    try:
+        yield
+    finally:
+        K.PASSAGE_NOTE = orig
+
+
+def trim_bottom_white(png: pathlib.Path, white: int = 245) -> bool:
+    """마지막 잉크 줄 아래 흰 띠를 위쪽 여백만큼만 남기고 줄인다(style: syuka 의 capture_full — 꼬리표가 없어 trim_passage_gap 의 기준 줄이 없다)."""
+    from PIL import Image
+    with Image.open(png) as g:
+        img = g.convert("RGB")
+    W, H = img.size
+    px = img.convert("L").load()
+    rows = [y for y in range(H) if any(px[x, y] < white for x in range(0, W, 2))]
+    if not rows:
+        return False
+    keep = max(rows[0], int(H * 0.03))
+    cut = rows[-1] + 1 + keep
+    if cut >= H - 4:
+        return False
+    img.crop((0, 0, W, cut)).save(png)
+    return True
+
+
 def render_visuals(spec: dict, claims: dict, vis_dir: pathlib.Path) -> dict:
     """(쪽 번호, 자리 번호) → (넣을 PNG | None, 출처 줄, 그림 종류). chart 와 capture 모두 vis_dir 에 그때 새로 그린다
     (capture 는 해시가 확인된 사본에서 — capture_png). 파일 이름: 한 자리면 '03_chart.png', image_pair 면 '03a_chart.png' · '03b_capture.png'."""
     from ozl.render import charts as G
+    from ozl.research import capture as K
+    syuka = spec.get("style") == "syuka"
     out: dict = {}
     for idx, whole in enumerate(spec.get("slides") or [], 1):
         views = dict(S.slot_views(whole))
@@ -864,10 +998,12 @@ def render_visuals(spec: dict, claims: dict, vis_dir: pathlib.Path) -> dict:
                 out[(idx, im.slot)] = (png, "", "chart")
             else:
                 c = claims.get(im.ref) or {}
-                png, view = capture_png(c, vis_dir / f"{stem}_capture.png", chart_png_size(im), sl.get("capture_focus"), capture_slot_in(im))
+                with (_no_passage_note(K) if syuka else contextlib.nullcontext()):
+                    png, view = capture_png(c, vis_dir / f"{stem}_capture.png", chart_png_size(im), sl.get("capture_focus"), capture_slot_in(im))
                 if png is not None and whole.get("kind") == "capture_full" and view == "text_passage":
-                    trim_passage_gap(png)
-                out[(idx, im.slot)] = (png, capture_credit(c), view)
+                    (trim_bottom_white if syuka else trim_passage_gap)(png)
+                # style: syuka 는 그림 밑 호스트 줄을 찍지 않는다(원문 주소는 링크 목록이 맡는다)
+                out[(idx, im.slot)] = (png, "" if syuka else capture_credit(c), view)
     return out
 
 
@@ -975,29 +1111,39 @@ def visual_label(sl: dict, waiting: bool = False, waits=None) -> str:
     return "없음"
 
 
-def build_pptx(spec: dict, claims: dict, card: dict, out: pathlib.Path, pending: dict[int, list[str]] | None = None) -> dict:
+def build_pptx(spec: dict, claims: dict, card: dict, out: pathlib.Path, pending: dict[int, list[str]] | None = None, appendix: bool = True,
+               edition: str | None = None) -> dict:
+    """appendix=False 면 부록 쪽을 붙이지 않는다(견본집 — 기록을 인용하지 않는 지어낸 사양).
+    edition = 판 이름(두 판 빌드) — 문서 속성 keywords 끝에 판 표시를 붙인다(pictures.keywords_value). 없으면 지금까지와 같다.
+    style: syuka 사양은 새 규칙이다: 쪽 아래 출처 줄과 부록 쪽을 두지 않고, 화면 수치 뒤에 링크 번호(spec.link_plan)를 붙인다
+    — 링크 목록 파일은 build 가 쓴다(links_<ts>.md · csv). 옛 사양은 종전 그대로."""
     from ozl.render import pictures as PIC
     prs = deck.new_deck()
     pending = pending or {}
     labels = spec.get("source_labels") or {}
     pics, _ = PIC.ledger(spec)
+    syuka = spec.get("style") == "syuka"
+    links = S.link_plan(spec, claims) if syuka else None
+    if links is not None and links.errors:   # check 가 먼저 잡는다 — 검사를 거치지 않고 불렀을 때도 번호가 빠진 덱을 내지 않는다
+        raise SystemExit("링크 번호를 정할 수 없다 — 이 덱을 만들지 않는다:\n" + "\n".join(links.errors))
+    prefix = "" if syuka else None
     visuals = render_visuals(spec, claims, out.parent / VISUALS_DIR)
     for idx, sl in enumerate(spec["slides"], 1):
         s = deck._blank(prs)
-        pl = plan_slide(sl)
+        pl = plan_slide(S.with_links(sl, links.slides[idx - 1]) if links is not None else sl)
         waits = {str(c)[len(S.WAIT_IMAGE):] for c in pending.get(idx, []) if str(c).startswith(S.WAIT_IMAGE)}
         for im in pl.imgs:
             if im.kind in ("chart", "capture") and (idx, im.slot) in visuals:
-                draw_visual(s, im, *visuals[(idx, im.slot)][:2])
+                draw_visual(s, im, *visuals[(idx, im.slot)][:2], prefix=prefix)
             elif im.kind == "picture":
-                draw_picture(s, im, pics.get(im.ref), im.ref in waits)
+                draw_picture(s, im, pics.get(im.ref), im.ref in waits, prefix)
             else:
-                draw_img(s, im)
+                draw_img(s, im, prefix)
         for b in pl.boxes:
             draw_box(s, b)
         for t in pl.tables:
             draw_table(s, t)
-        ft = footnote_text(sl, claims, card, labels)
+        ft = "" if syuka else footnote_text(sl, claims, card, labels)
         if ft:
             _footnote(s, ft)
         nt = notes_text(sl, claims, str(sl.get("stage")), pics)
@@ -1013,7 +1159,7 @@ def build_pptx(spec: dict, claims: dict, card: dict, out: pathlib.Path, pending:
     n_main = len(spec["slides"])
     appx = []
     views = {(i if j < 0 else (i, j)): v[2] for (i, j), v in visuals.items() if v[2] and v[2] != "chart"}
-    for title, header, widths, rows in appendix_tables(spec, claims, card, pending, views):
+    for title, header, widths, rows in (appendix_tables(spec, claims, card, pending, views) if appendix and not syuka else []):
         pages = paginate(header, rows, widths)
         for k, t in enumerate(pages, 1):
             s = deck._blank(prs)
@@ -1031,12 +1177,19 @@ def build_pptx(spec: dict, claims: dict, card: dict, out: pathlib.Path, pending:
                 _footnote(s, "역검색(Google Lens·TinEye) · 400% 확대 검수 · 지도 동해·독도·국경 표기는 사람이 확인하고 칸을 채운다. 공식 보도자료실·프레스킷·기관 CI·라이선스 스톡만 쓴다(방법론 5절).")
             s.notes_slide.notes_text_frame.text = f"[부록] {title} — 검증 기록(claims)과 사양의 그림 자리에서 자동으로 만들었다."
             appx.append(ttl)
+    status = PIC.public_status(spec)
+    kw = PIC.keywords_value(status, edition)
+    if kw:   # 비공개 판 전용 그림이 든 덱 — 문서 속성에 표시를 남긴다(public-check 가 읽는다). 막는 그림이 없으면 속성을 건드리지 않는다
+        prs.core_properties.keywords = kw
+    deck.clear_template_props(prs)
     out.parent.mkdir(parents=True, exist_ok=True)
     prs.save(str(out))
-    return {"main": n_main, "appendix": appx, "total": n_main + len(appx)}
+    private = PIC.PRIVATE_KEYWORD in kw.split()
+    return {"main": n_main, "appendix": appx, "total": n_main + len(appx)} | ({"public_ok": False} if private else {}) | \
+        ({"links": len(links.numbers)} if links is not None else {})
 
 
-SPEAK_CHARS_PER_MIN = 300   # 발표 시간 어림 기준: 말로 할 문장(spoken·transition)의 공백을 뺀 글자 수 ÷ 분당 300자. 실측이 아니라 어림이다
+SPEAK_CHARS_PER_MIN = 300  # 발표 시간 어림 기준: 말로 할 문장(spoken·transition)의 공백을 뺀 글자 수 ÷ 분당 300자. 실측이 아니라 어림이다
 
 
 def speech_estimate(slides: list) -> tuple[int, float]:
@@ -1045,12 +1198,25 @@ def speech_estimate(slides: list) -> tuple[int, float]:
     return n, n / SPEAK_CHARS_PER_MIN
 
 
+def edition_line(spec: dict, edition: str, swaps: list[dict] | None, pair: str = "") -> str:
+    """러닝시트 머리의 판 이름 한 줄."""
+    from ozl.render import pictures as PIC
+    pages = ", ".join(str(s["page"]) for s in swaps or [])
+    mate = f" 짝 폴더: `{pair}`." if pair else ""
+    if edition == PIC.EDITION_PRIVATE:
+        ids = ", ".join(b["id"] for b in PIC.public_status(spec)["blocking"]) or "없음"
+        return f"**판: {edition}** — 막는 그림({ids})이 든 판이다. 공개하지 않는다." + (f" 바꾼 판에서는 {pages}쪽이 바뀐다." if pages else "") + mate
+    return f"**판: {edition}** — 비공개 판의 {pages or '(없음)'}쪽을 바꾼 판이다. 바꾼 장과 까닭은 그림 검수 대장의 「바꾼 장」 표에 있다." + mate
+
+
 def running_sheet(spec: dict, card: dict, claims: dict, ts: str, pending: dict[int, list[str]] | None = None,
-                  dropped: list[str] | None = None) -> str:
-    """dropped = 엄격 모드에서 뺀 밈(pictures.drop_memes 의 글) — 머리에 적는다(조용히 빼지 않는다)."""
+                  dropped: list[str] | None = None, edition: str | None = None, swaps: list[dict] | None = None, pair: str = "") -> str:
+    """dropped = 엄격 모드에서 뺀 밈(pictures.drop_memes 의 글) — 머리에 적는다(조용히 빼지 않는다).
+    edition = 판 이름(두 판 빌드) — 머리에 판 이름 한 줄을 적는다. 없으면 지금까지와 같은 글이다."""
     from ozl.render import pictures as PIC
     pending = pending or {}
     slides = spec["slides"]
+    links = S.link_plan(spec, claims) if spec.get("style") == "syuka" else None   # 새 규칙: 근거 칸을 링크 번호로
     total = sum(int(sl.get("seconds") or 0) for sl in slides)
     why = str(spec.get("why_this") or "").strip()
     cited = {str(c) for sl in slides for c in sl.get("claim_ids") or []}
@@ -1068,10 +1234,10 @@ def running_sheet(spec: dict, card: dict, claims: dict, ts: str, pending: dict[i
         f"발표 시간 어림 {speech_estimate(slides)[1]:.1f}분(말로 할 문장 {speech_estimate(slides)[0]}자 · 기준 분당 {SPEAK_CHARS_PER_MIN}자, 공백 제외) · "
         f"인용한 검증 기록 {len(cited)}건",
         "",
-    ] + ([f"**{PIC.dropped_summary(dropped)}**", ""] if dropped else []) + [
+    ] + ([edition_line(spec, edition, swaps, pair), ""] if edition else []) + ([f"**{PIC.dropped_summary(dropped)}**", ""] if dropped else []) + [
         "## 장별 진행",
         "",
-        "| 쪽 | 단계 | 제목과 말로만 할 핵심 문장 | 넘어가는 멘트 | 초 | 근거 | 그림 |",   # 제목 칸을 따로 두면 PDF 에서 글자 단위로 세로로 끊긴다
+        "| 쪽 | 단계 | 제목과 말로만 할 핵심 문장 | 넘어가는 멘트 | 초 | " + ("근거(링크 번호)" if links is not None else "근거") + " | 그림 |",   # 제목 칸을 따로 두면 PDF 에서 글자 단위로 세로로 끊긴다
         "|---|---|---|---|---|---|---|",
     ]
 
@@ -1082,7 +1248,9 @@ def running_sheet(spec: dict, card: dict, claims: dict, ts: str, pending: dict[i
     for i, sl in enumerate(slides, 1):
         sec = int(sl.get("seconds") or 0)
         t += sec
-        ids = ", ".join(str(c).rsplit("-", 1)[-1] + (f"「{C.GRADE_MACHINE}」" if str(c) in machine else "") for c in sl.get("claim_ids") or []) + (" [검증 대기]" if any(not str(c).startswith(S.WAIT_IMAGE) for c in pending.get(i, [])) else "")
+        ids = (link_cell(sl, links) if links is not None else
+               ", ".join(str(c).rsplit("-", 1)[-1] + (f"「{C.GRADE_MACHINE}」" if str(c) in machine else "") for c in sl.get("claim_ids") or [])) + \
+            (" [검증 대기]" if any(not str(c).startswith(S.WAIT_IMAGE) for c in pending.get(i, [])) else "")
         waits = {str(c)[len(S.WAIT_IMAGE):] for c in pending.get(i, []) if str(c).startswith(S.WAIT_IMAGE)}
         head = f"**{cell(sl.get('title'))}** " if cell(sl.get('title')) else ""
         lines.append(f"| {i} | {cell(sl.get('stage'))} | {head}{cell(sl.get('spoken'))} | {cell(sl.get('transition'))} | {sec} | {ids} | {cell(visual_label(sl, waits=waits))} |")
@@ -1114,6 +1282,150 @@ def running_sheet(spec: dict, card: dict, claims: dict, ts: str, pending: dict[i
     return "\n".join(lines) + "\n"
 
 
+def link_cell(sl: dict, links) -> str:
+    """러닝시트 근거 칸(style: syuka): 이 쪽이 인용한 기록의 링크 번호 '[1] [3]'. 화면 수치를 받치지 않은 기록은 '기록 c5'(링크 목록의 따로 적은 절)."""
+    out = []
+    for c in sl.get("claim_ids") or []:
+        n = links.numbers.get(str(c))
+        out.append(f"[{n}]" if n else f"기록 {str(c).rsplit('-', 1)[-1]}")
+    return " ".join(dict.fromkeys(out))
+
+
+# ── 링크 목록(style: syuka — 쪽 아래 출처 줄과 부록 쪽 대신 덱 밖 파일) ─────────────────────
+LINK_HEADER = ["번호", "쪽", "화면 표기", "기관·문서", "원본 링크", "문서 위치", "기준 시점", "기록 번호", "등급", "받은 시각", "같은 표기가 있는 다른 기록"]
+LINK_MD_HEADER = ["번호", "쪽", "화면 표기", "기관·문서", "원본 링크", "문서 위치 · 기준 시점", "기록 · 등급", "받은 시각", "같은 표기 다른 기록"]
+
+
+def _claim_row(cid: str, c: dict, card: dict | None, labels: dict) -> dict:
+    src = c.get("source") or {}
+    chk = c.get("checks") or {}
+    ver = c.get("verification") if isinstance(c.get("verification"), dict) else {}
+    cap = ver.get("capture") or {}
+    name = S.short_source(cid, c, card, labels)
+    pub = str(src.get("publisher") or "")
+    return {"기관·문서": " · ".join(dict.fromkeys(x for x in (pub, name) if x)), "원본 링크": str(src.get("url") or ""),
+            "문서 위치": locator_text(chk.get("primary_doc_locator")), "기준 시점": S.base_period_text(chk.get("base_period")),
+            "기록 번호": cid, "등급": C.grade_label(c), "받은 시각": _fetched(cap.get("fetched_at")) or str(src.get("accessed") or "")}
+
+
+def link_rows(spec: dict, claims: dict, card: dict | None, links) -> list[dict]:
+    """링크 목록의 줄 — 번호마다 한 줄(번호 순서)."""
+    labels = spec.get("source_labels") or {}
+    rows = []
+    for cid, n in sorted(links.numbers.items(), key=lambda kv: kv[1]):
+        uses = links.uses.get(n, [])
+        row = {"번호": str(n), "쪽": ", ".join(dict.fromkeys(pg for pg, _ in uses)), "화면 표기": " / ".join(dict.fromkeys(sh for _, sh in uses))}
+        row.update(_claim_row(cid, claims.get(cid) or {}, card, labels))
+        row["같은 표기가 있는 다른 기록"] = ", ".join(links.also.get(n, []))
+        rows.append(row)
+    return rows
+
+
+def ref_rows(spec: dict, card: dict | None) -> list[dict]:
+    """숫자 없이 인용한 보도와 자료(사양 refs) — 이름, 등급, 주소, 쪽."""
+    by_name = {s.get("name"): s for s in spec.get("press_sources") or [] if isinstance(s, dict)}
+    by_name.update({s.get("name"): s for s in (card or {}).get("sources") or [] if isinstance(s, dict)})
+    pages: dict[str, list[str]] = {}
+    for i, sl in enumerate(spec.get("slides") or [], 1):
+        for ref in (sl.get("refs") or []) if isinstance(sl, dict) else []:
+            pages.setdefault(str(ref), []).append(str(i))
+    out = []
+    for ref, pg in pages.items():
+        x = by_name.get(ref) or {}
+        out.append({"이름": ref, "구분": "자료" if x.get("tier") in S.DOC_TIERS else "보도", "등급": str(x.get("tier") or ""),
+                    "주소": str(x.get("url") or ""), "쪽": ", ".join(dict.fromkeys(pg))})
+    return out
+
+
+def _md_cell(x) -> str:
+    return str(x or "").replace("|", "／").replace("\n", " ").strip()
+
+
+def links_md(spec: dict, claims: dict, card: dict | None, links, ts: str, ledger_name: str = "") -> str:
+    rows = link_rows(spec, claims, card, links)
+    cid = str(spec.get("card_id", ""))
+    out = ["---", "kicker: 덱 링크 목록", f"date: {ts[:4]}-{ts[4:6]}-{ts[6:8]}", "theme: doc", "---", "",
+           f"# 링크 목록 — {cid}", "",
+           f"덱 {ts} 판의 화면 수치 뒤 작은 번호(차트·원문 캡처·표는 그 자리 오른쪽 아래 번호)가 아래 줄의 번호다. 번호는 기록마다 하나이고 덱에서 처음 나온 순서로 매겼다. "
+           "같은 표기가 그 쪽의 다른 기록에도 있으면 사양이 지정한 기록(number_claims · conversions)이 번호를 받고, 나머지는 끝 칸에 적었다.", "",
+           "| " + " | ".join(LINK_MD_HEADER) + " |", "|" + "---|" * len(LINK_MD_HEADER)]
+    for r in rows:   # 읽는 판은 칸을 묶어 줄인다(기록 번호는 끝 번호만) — 칸마다 따로 쓰는 판은 csv
+        short = r["기록 번호"].rsplit("-", 1)[-1]
+        cells = [r["번호"], r["쪽"], r["화면 표기"], r["기관·문서"], r["원본 링크"], " · ".join(x for x in (r["문서 위치"], r["기준 시점"]) if x),
+                 f"{short} · {r['등급']}", r["받은 시각"], ", ".join(x.rsplit("-", 1)[-1] for x in r["같은 표기가 있는 다른 기록"].split(", ") if x)]
+        out.append("| " + " | ".join(_md_cell(x) for x in cells) + " |")
+    if not rows:
+        out.append("| " + " | ".join(["—"] + [""] * (len(LINK_MD_HEADER) - 1)) + " |")
+    if links.unnumbered:
+        out += ["", "## 화면 수치 없이 인용한 기록", "", "말로 할 문장이나 글의 근거로 인용했지만 화면에 그 기록의 수치가 없어 번호를 붙이지 않았다.", "",
+                "| 기록 번호 | 쪽 | 기관·문서 | 원본 링크 | 등급 |", "|---|---|---|---|---|"]
+        labels = spec.get("source_labels") or {}
+        for c, pg in links.unnumbered.items():
+            r = _claim_row(c, claims.get(c) or {}, card, labels)
+            out.append(f"| {_md_cell(c)} | {', '.join(map(str, pg))} | {_md_cell(r['기관·문서'])} | {_md_cell(r['원본 링크'])} | {_md_cell(r['등급'])} |")
+    refs = ref_rows(spec, card)
+    out += ["", "## 숫자 없이 인용한 보도", ""]
+    if refs:
+        out += ["보도와 자료는 숫자의 근거가 아니다(기계 대조는 T1·T2 원문만). 화면에는 번호를 붙이지 않았다.", "",
+                "| 이름 | 구분 | 등급 | 주소 | 쪽 |", "|---|---|---|---|---|"]
+        out += [f"| {_md_cell(r['이름'])} | {r['구분']} | {_md_cell(r['등급'])} | {_md_cell(r['주소'])} | {r['쪽']} |" for r in refs]
+    else:
+        out.append("없음.")
+    out += ["", "## 그림 출처", ""]
+    pics = picture_rows(spec)
+    if pics:
+        out.append("그림 파일마다 권리자, 라이선스, 원출처 대조, 맥락 점검, 공개 가부는 " + (f"`{ledger_name}`" if ledger_name else "그림 검수 대장") + " 에 있다.")
+        out += ["", "| 그림 | 쪽 | 종류 | 출처 주소 |", "|---|---|---|---|"]
+        out += [f"| {_md_cell(r[0])} | {_md_cell(r[1])} | {_md_cell(r[2])} | {_md_cell(r[5])} |" for r in pics]
+    else:
+        out.append("그림 파일 없음(차트와 원문 캡처는 위 번호의 기록에서 그렸다).")
+    return "\n".join(out) + "\n"
+
+
+def links_csv(spec: dict, claims: dict, card: dict | None, links) -> str:
+    import csv
+    import io
+    buf = io.StringIO()
+    w = csv.writer(buf, lineterminator="\n")
+    w.writerow(LINK_HEADER)
+    for r in link_rows(spec, claims, card, links):
+        w.writerow([r[h] for h in LINK_HEADER])
+    return buf.getvalue()
+
+
+def _labels(text: str) -> set[int]:
+    return {int(x) for x in str(text).replace(" ", "").split(",") if x.isdigit()}
+
+
+def screen_link_numbers(pptx: pathlib.Path) -> set[int]:
+    """만든 pptx 에서 읽은 화면의 링크 번호 — 위첨자 조각(baseline 이 있는 글자 조각)과 '링크 번호' 글상자. 본편 쪽만 본다(노트 제외)."""
+    from pptx import Presentation
+    out: set[int] = set()
+    for sld in Presentation(str(pptx)).slides:
+        for sh in sld.shapes:
+            if not sh.has_text_frame:
+                continue
+            if sh.name == "링크 번호":
+                out |= _labels(sh.text_frame.text)
+                continue
+            for para in sh.text_frame.paragraphs:
+                for r in para.runs:
+                    rpr = r._r.find(qn("a:rPr"))
+                    if rpr is not None and rpr.get("baseline") not in (None, "0"):
+                        out |= _labels(r.text)
+    return out
+
+
+def link_pair_errors(screen: set[int], listed: set[int]) -> list[str]:
+    """양쪽 대응: 화면의 모든 번호가 목록에 있고, 목록의 모든 줄이 화면 어딘가에서 쓰인다."""
+    out = []
+    if screen - listed:
+        out.append(f"화면에 있는 링크 번호 {sorted(screen - listed)} 가 링크 목록에 없다")
+    if listed - screen:
+        out.append(f"링크 목록의 번호 {sorted(listed - screen)} 가 화면 어느 쪽에도 없다")
+    return out
+
+
 def resolve_card(card_id) -> dict:
     """card_id 는 형식이 맞고 카드 정본이 실제로 있어야 한다(없는 카드를 빈 카드로 대신하지 않는다)."""
     if not card_id or not C.CARD_ID.match(str(card_id)):
@@ -1123,8 +1435,8 @@ def resolve_card(card_id) -> dict:
     return C.load_card(str(card_id))
 
 
-def out_paths(card_id: str, ts: str, draft: bool) -> tuple[pathlib.Path, pathlib.Path]:
-    stem = f"{card_id}_{ts}" + ("_draft" if draft else "")
+def out_paths(card_id: str, ts: str, draft: bool, edition: str | None = None) -> tuple[pathlib.Path, pathlib.Path]:
+    stem = f"{card_id}_{ts}" + (f"_{edition}" if edition else "") + ("_draft" if draft else "")
     raw = DRAFTS / stem
     outdir = raw.resolve()
     if outdir.parent != DRAFTS.resolve():
@@ -1143,35 +1455,186 @@ def safe_new_file(outdir: pathlib.Path, path: pathlib.Path) -> pathlib.Path:
     return path
 
 
-def build(spec_path: pathlib.Path, export: bool = True, draft: bool = False, claims_dirs=()) -> dict:
+PIC_PUBLIC_FILE = "공개_가부.json"   # pictures.PUBLIC_FILE 과 같다
+
+
+def write_picture_files(sp: dict, outdir: pathlib.Path, led_md: pathlib.Path, ts: str, draft: bool,
+                        edition: str | None = None, pair: str = "", swaps: list[dict] | None = None) -> dict:
+    """그림_검수대장_<ts>.md · .json 과 공개_가부.json 을 쓴다(style: syuka 빌드와 두 판 빌드). 돌려주는 값은 빌드 출력 칸.
+    edition 이 있으면 대장 머리에 판 이름과 「바꾼 장」 표를, 공개_가부.json 에 edition · pair(짝 폴더 이름) · swaps(바꾼 장 목록)를 더한다.
+    비공개판은 막는 그림 목록이 비어도 public_ok 를 거짓으로 적는다."""
+    import json
+    from ozl.render import pictures as PIC
+    status = PIC.public_status(sp)
+    if edition == PIC.EDITION_PRIVATE:
+        status = {**status, "public_ok": False}
+    rows = PIC.ledger_report(sp, draft)
+    cid = str(sp.get("card_id", ""))
+    ed = {} if edition is None else {"edition": edition, "pair": pair, "swaps": swaps or []}
+    led_md.write_text(PIC.ledger_md(rows, status, cid, ts, edition, swaps, pair), encoding="utf-8")
+    led_md.with_suffix(".json").write_text(json.dumps({"card_id": cid, "built_at": ts, "draft": draft, **ed, "pictures": rows, "public": status},
+                                                      ensure_ascii=False, indent=2), encoding="utf-8")
+    (outdir / PIC_PUBLIC_FILE).write_text(json.dumps({"card_id": cid, "built_at": ts, "draft": draft, **status,
+                                                      "keywords": PIC.keywords_value(status, edition), **ed}, ensure_ascii=False, indent=2), encoding="utf-8")
+    return {"picture_ledger": str(led_md), "public_ok": status["public_ok"],
+            "public_blocking": ", ".join(b["id"] for b in status["blocking"]) or "없음"}
+
+
+def registry_file() -> pathlib.Path:
+    """빌드가 덧붙이는 비공개 등록 대장 — 산출 폴더(DRAFTS)의 윗 폴더에 둔다. 기본 자리에서는 pictures.REGISTRY 와 같다
+    (private/decks/private_only_registry.jsonl). 시험이 DRAFTS 를 임시 폴더로 바꾸면 대장도 그 옆으로 간다(실제 대장을 건드리지 않는다)."""
+    from ozl.render import pictures as PIC
+    return DRAFTS.parent / PIC.REGISTRY_NAME
+
+
+def register_private_outputs(sp: dict, outdir: pathlib.Path, pptx: pathlib.Path, ts: str) -> int:
+    """비공개판의 막는 그림 파일과 그 판의 pptx · PDF · 막는 그림이 든 쪽의 PNG 의 sha256 을 등록 대장에 덧붙인다. 돌려주는 값 = 새로 적은 줄 수.
+    지금 폴더에 있는 파일만 적는다 — 빌드가 중간에 멈췄을 때도 그때까지 만든 것을 적을 수 있게(_build_one 이 예외가 나도 부른다).
+    쪽 PNG 는 막는 그림이 든 쪽만 적는다 — 그 밖의 쪽은 바꾼판의 같은 쪽과 그림이 같아서(바이트까지 같다) 적으면 바꾼판이 막힌다.
+    쪽과 파일은 파일 이름 끝의 쪽 번호(pdftoppm 의 slide-03.png)로 맞춘다 — 쪽 PNG 가 덜 나온 채 멈췄어도 나온 쪽은 맞출 수 있다.
+    이름에서 쪽 번호를 읽지 못하면 이름 순서로 맞추되, PNG 수가 본편 장수보다 적으면(쪽과 파일을 맞출 수 없다) 쪽 PNG 는 적지 않는다."""
+    from ozl.render import pictures as PIC
+    pics, _ = PIC.ledger(sp)
+    cid = str(sp.get("card_id", ""))
+    base = {"card_id": cid, "built_at": ts, "dir": outdir.name}
+    rows = []
+    pages: set[int] = set()
+    for b in PIC.public_status(sp)["blocking"]:
+        f = PIC.resolve_path(pics.get(b["id"]) or {})
+        if f.is_file():
+            rows.append({"sha256": PIC.file_sha256(f), "what": "막는 그림", "name": b["id"], **base})
+        pages |= {int(str(pg).split()[0]) for pg in b.get("pages") or [] if str(pg).split()[0].isdigit()}
+    for f, what in ((pptx, "pptx"), (pptx.with_suffix(".pdf"), "pdf")):
+        if f.is_file():
+            rows.append({"sha256": PIC.file_sha256(f), "what": what, "name": f.name, **base})
+    pngs = sorted((outdir / (pptx.stem + "_png")).glob("*.png"))   # pdftoppm 이 쪽 번호를 같은 자릿수로 붙인다 — 이름 순서가 쪽 순서다
+    numbered = {int(m.group(1)): f for f in pngs if (m := re.search(r"(\d+)$", f.stem))}
+    if len(numbered) == len(pngs):
+        by_page = numbered
+    else:   # 이름에 쪽 번호가 없는 파일이 섞였다 — 다 나왔을 때만 이름 순서로 맞춘다
+        by_page = dict(enumerate(pngs, 1)) if len(pngs) >= len(sp.get("slides") or []) else {}
+    for i in sorted(pages):
+        if i in by_page:
+            rows.append({"sha256": PIC.file_sha256(by_page[i]), "what": "쪽 png", "name": f"{by_page[i].name}({i}쪽)", **base})
+    return PIC.register_private(rows, registry_file())
+
+
+def spec_copy_text(sp: dict, source: pathlib.Path, ts: str, edition: str) -> str:
+    """판의 사양 사본 — swap 을 떼거나(비공개판) 적용한(바꾼판) 뒤의 사양. compare <폴더> 와 검토자가 읽는다."""
+    import hashlib
+    import yaml
+    sha = hashlib.sha256(source.read_bytes()).hexdigest()
+    head = (f"# 판의 사양 사본 — {sp.get('card_id', '')} · {ts} · {edition}\n"
+            f"# 원래 사양: {source.name} (sha256 {sha[:16]}). build 가 썼다 — 고칠 때는 원래 사양을 고친다.\n")
+    return head + yaml.safe_dump(sp, allow_unicode=True, sort_keys=False)
+
+
+def build(spec_path: pathlib.Path, export: bool = True, draft: bool = False, claims_dirs=(), edition: str | None = None) -> dict:
+    """사양 하나를 검사하고 만든다. 판을 가르지 않는 사양(막는 그림도 swap 도 없다, 또는 초안 모드)은 폴더 하나 — 돌려주는 값은 그 폴더의 출력 칸.
+    두 판 사양(엄격 모드)은 같은 타임코드로 폴더 둘 — 돌려주는 값은 {"editions": {판 이름: 출력 칸}, "dropped": …}. edition 을 주면 그 판 하나만."""
+    from ozl.render import pictures as PIC
     spec_path = pathlib.Path(spec_path).resolve()
     sp = S.load_spec(spec_path)
     dropped: list[str] = []
     if not draft:   # 완성본·공개용 판에는 밈을 넣지 않는다 — 빼고, 뺀 것을 출력과 러닝시트에 적는다
-        from ozl.render import pictures as PIC
         sp, dropped = PIC.drop_memes(sp)
     card = resolve_card(sp.get("card_id"))
     claims, staged = S.load_claims(S.cited_ids(sp), claims_dirs)
-    rep = S.check(sp, claims, S.load_template(), card, layout_problems, draft=draft, staged=staged, appendix_fn=appendix_problems)
-    if not rep.ok:
-        raise SystemExit("사양 검사 실패 — build 하지 않는다:\n" + "\n".join(rep.errors))
+    eds = S.check_editions(sp, claims, S.load_template(), card, layout_problems, draft=draft, staged=staged, appendix_fn=appendix_problems,
+                           edition=edition)
+    if not all(e.report.ok for e in eds):   # 한 판이라도 실패하면 어느 폴더도 만들지 않는다
+        lines = [(f"[{e.name}] " if e.name else "") + x for e in eds for x in e.report.errors]
+        raise SystemExit("사양 검사 실패 — build 하지 않는다:\n" + "\n".join(lines))
     ts = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
-    outdir, pptx = out_paths(str(sp["card_id"]), ts, draft)
+    if len(eds) == 1 and eds[0].name is None:
+        return _build_one(eds[0].spec, eds[0].report, card, claims, ts, export, draft, dropped)
+    cid = str(sp["card_id"])
+    dirs = {e.name: out_paths(cid, ts, draft, e.name)[0] for e in eds}   # 만들기 전에 두 폴더 자리를 다 확인한다
+    infos: dict[str, dict] = {}
+    for e in eds:
+        mate = next((d.name for n, d in dirs.items() if n != e.name), "")
+        infos[e.name] = _build_one(e.spec, e.report, card, claims, ts, export, draft, dropped, edition=e.name, pair=mate, swaps=e.swaps,
+                                   source=spec_path)
+    bad = []
+    regs = [registry_file()] + PIC.registry_paths()
+    for e in eds:   # 판의 표시와 public_check 의 판정이 어긋나면 생성기 결함이다 — 덱을 쓰지 말라고 멈춘다
+        want = 1 if e.name == PIC.EDITION_PRIVATE or not PIC.public_status(e.spec)["public_ok"] else 0
+        code, lines = PIC.public_check(dirs[e.name], registries=regs)
+        infos[e.name]["public_check"] = code
+        if code != want:
+            bad.append(f"{e.name}: public_check 종료 {code}(기대 {want}) — " + " / ".join(x.strip() for x in lines))
+    if bad:
+        raise SystemExit("공개 가부 확인이 판과 어긋난다 — 이 덱을 쓰지 않는다:\n" + "\n".join(bad))
+    out: dict = {"editions": infos}
+    if dropped:
+        out["dropped"] = dropped
+    return out
+
+
+def _build_one(sp: dict, rep, card: dict, claims: dict, ts: str, export: bool, draft: bool, dropped: list[str],
+               edition: str | None = None, pair: str = "", swaps: list[dict] | None = None, source: pathlib.Path | None = None) -> dict:
+    """검사를 통과한 판 하나를 만든다. edition 이 없으면 지금까지의 빌드와 같은 폴더, 같은 파일이다.
+    막는 그림이 든 판(비공개판, 막는 그림이 남은 초안 모드의 연습용 판)은 pptx 를 쓰기 시작한 뒤로 어디서 멈추든(내보내기의 시간 초과,
+    도구 없음, 링크 번호 대응 실패, 중단) 그때까지 만든 파일을 등록 대장에 남긴다 — 등록이 빠지면 남은 PDF · 쪽 PNG 와 keywords 를 지운 사본이
+    public_check 를 통과한다."""
+    from ozl.render import pictures as PIC
+    outdir, pptx = out_paths(str(sp["card_id"]), ts, draft, edition)
     outdir.mkdir(parents=False, exist_ok=False)
     md = outdir / f"running_sheet_{ts}{'_draft' if draft else ''}.md"
     for f in (pptx, md, pptx.with_suffix(".pdf"), md.with_suffix(".pdf"), outdir / (pptx.stem + "_png"), outdir / VISUALS_DIR):
         safe_new_file(outdir, f)
-    info = build_pptx(sp, claims, card, pptx, rep.pending if draft else None)
-    md.write_text(running_sheet(sp, card, claims, ts, rep.pending if draft else None, dropped), encoding="utf-8")
-    info.update(dir=str(outdir), pptx=str(pptx), md=str(md), warnings=rep.warnings)
-    if dropped:
-        info["dropped"] = dropped
-    if draft:
-        info["pending_slides"] = len(rep.pending)
-    if export:
-        pdf, pngs = deck.to_pdf_png(pptx)
-        info.update(pdf=str(pdf) if pdf else None, pngs=len(pngs))
-        if MD2PDF.exists():
-            r = subprocess.run(["python3", str(MD2PDF), str(md), "--theme", "doc", "--footer-title"], capture_output=True, text=True, timeout=300)
-            info["sheet_pdf"] = str(md.with_suffix(".pdf")) if md.with_suffix(".pdf").exists() else f"실패: {(r.stderr or r.stdout)[-300:]}"
+    syuka = sp.get("style") == "syuka"
+    with_pics = syuka or edition is not None   # 그림 검수 대장과 공개 가부: 새 규칙 빌드와 두 판 빌드
+    if with_pics:
+        led_md = outdir / f"그림_검수대장_{ts}.md"
+        extra = (led_md, led_md.with_suffix(".json"), led_md.with_suffix(".pdf"), outdir / PIC_PUBLIC_FILE)
+        for f in extra:
+            safe_new_file(outdir, f)
+    if syuka:   # 새 규칙: 링크 목록을 덱과 같은 폴더에 낸다
+        links_path = outdir / f"links_{ts}.md"
+        for f in (links_path, links_path.with_suffix(".csv"), links_path.with_suffix(".pdf")):
+            safe_new_file(outdir, f)
+    if edition is not None:
+        spec_copy = safe_new_file(outdir, outdir / f"spec_{ts}_{edition}.yaml")
+    # 막는 그림이 든 판(비공개판, 그리고 막는 그림이 남은 초안 모드의 연습용 판) — 그림과 이 판 산출물의 해시를 등록 대장에 남긴다
+    private = edition == PIC.EDITION_PRIVATE or not PIC.public_status(sp)["public_ok"]
+    registered = 0
+    try:
+        info = build_pptx(sp, claims, card, pptx, rep.pending if draft else None, edition=edition)
+        md.write_text(running_sheet(sp, card, claims, ts, rep.pending if draft else None, dropped, edition, swaps, pair), encoding="utf-8")
+        info.update(dir=str(outdir), pptx=str(pptx), md=str(md), warnings=rep.warnings)
+        if edition is not None:
+            spec_copy.write_text(spec_copy_text(sp, source, ts, edition) if source is not None else "", encoding="utf-8")
+            info.update(edition=edition, pair=pair, spec=str(spec_copy), swapped=len(swaps or []))
+        if with_pics:
+            info.update(write_picture_files(sp, outdir, led_md, ts, draft, edition, pair, swaps))
+        if syuka:
+            lp = S.link_plan(sp, claims)
+            links_path.write_text(links_md(sp, claims, card, lp, ts, led_md.name), encoding="utf-8")
+            links_path.with_suffix(".csv").write_text(links_csv(sp, claims, card, lp), encoding="utf-8-sig")
+            pair_errs = link_pair_errors(screen_link_numbers(pptx), set(lp.numbers.values()))
+            if pair_errs:   # 화면과 목록이 같은 계획에서 나오므로 어긋나면 생성기 결함이다 — 덱을 쓰지 말라고 멈춘다
+                raise SystemExit("링크 번호 양쪽 대응 실패 — 이 덱을 쓰지 않는다:\n" + "\n".join(pair_errs))
+            info.update(links=str(links_path), links_csv=str(links_path.with_suffix(".csv")), link_count=len(lp.numbers))
+        if dropped and edition is None:
+            info["dropped"] = dropped
+        if draft:
+            info["pending_slides"] = len(rep.pending)
+        if export:
+            pdf, pngs = deck.to_pdf_png(pptx)
+            info.update(pdf=str(pdf) if pdf else None, pngs=len(pngs))
+            if MD2PDF.exists():
+                r = subprocess.run(["python3", str(MD2PDF), str(md), "--theme", "doc", "--footer-title"], capture_output=True, text=True, timeout=300)
+                info["sheet_pdf"] = str(md.with_suffix(".pdf")) if md.with_suffix(".pdf").exists() else f"실패: {(r.stderr or r.stdout)[-300:]}"
+                if with_pics:
+                    r = subprocess.run(["python3", str(MD2PDF), str(led_md), "--theme", "doc", "--footer-title"], capture_output=True, text=True, timeout=300)
+                    info["picture_ledger_pdf"] = str(led_md.with_suffix(".pdf")) if led_md.with_suffix(".pdf").exists() else f"실패: {(r.stderr or r.stdout)[-300:]}"
+                if syuka:
+                    r = subprocess.run(["python3", str(MD2PDF), str(links_path), "--theme", "doc", "--footer-title"], capture_output=True, text=True, timeout=300)
+                    info["links_pdf"] = str(links_path.with_suffix(".pdf")) if links_path.with_suffix(".pdf").exists() else f"실패: {(r.stderr or r.stdout)[-300:]}"
+    finally:
+        if private:   # 예외로 나가는 길에서도 — 그때까지 만든 pptx · PDF · 쪽 PNG 와 막는 그림 파일을 적는다(끝까지 갔으면 PDF 와 쪽 PNG 까지)
+            registered = register_private_outputs(sp, outdir, pptx, ts)
+    if private:
+        info["registered"] = registered
     return info

@@ -56,7 +56,8 @@ def step(con: sqlite3.Connection, pulse_db, asof: datetime, mode: str = "step", 
             raise ValueError(f"보기 전용 계산의 기준 시각({config.iso_utc(asof)})이 마지막 단계({last})보다 이르다 "
                              "— 지난 판은 rebuild_board 로 본다")
     decided_at = decided_at or datetime.now(config.UTC)
-    res = pipeline.step(con, pulse_db, asof, mode, overrides_path, decided_at=decided_at, trend_rule=trends.group_hit)
+    res = pipeline.step(con, pulse_db, asof, mode, overrides_path, decided_at=decided_at, trend_rule=trends.group_hit,
+                         trend_pair_rule=trends.pair_rule)
     tg = health.targets()
     runs = health.parse_runs(source.runs_until(pulse_db, asof))
     dlist, final_now = _compute_days(con, res, asof)
@@ -72,6 +73,7 @@ def step(con: sqlite3.Connection, pulse_db, asof: datetime, mode: str = "step", 
     calc.run()
     base = config.kst_day(asof)
     meta = _meta(res, asof, mode, decided_at, statuses[base], runs, tg, calc.unmatched.get(base, []))
+    meta["merge_hints"] = list(meta["merge_hints"]) + calc.trend_hints.get(base, [])
     cid = res["calc_id"]
     keep = [r for r in calc.out_rows if r["final"] or r["_active"] or r["day"] == base]
     for r in calc.out_rows:

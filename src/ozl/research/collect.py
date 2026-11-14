@@ -10,7 +10,6 @@ private/desk/latest_uploads.json(슈카월드 최신 업로드 — 커버리지 
 """
 from __future__ import annotations
 
-import concurrent.futures as cf
 import html
 import json
 import pathlib
@@ -183,11 +182,10 @@ def collect(slot: str, date: str | None = None, hours: float = 24.0, now: dateti
     date = date or now.astimezone(KST).strftime("%Y-%m-%d")
     cfg = load_config()
     feeds = [f for f in cfg["feeds"] if f.get("enabled", True)]
-    items, statuses = [], []
-    with cf.ThreadPoolExecutor(8) as ex:
-        for got, st in ex.map(lambda f: fetch_feed(f, now), feeds):
-            items += got
-            statuses.append(st)
+    # 매시 수집과 같은 줄을 쓴다: 호스트별로 나눠 서로 다른 호스트는 동시에, 같은 호스트 안에서는 차례로 HOST_GAP 초 간격.
+    # 피드 목록을 그냥 8개씩 동시에 받으면 한 호스트(피드 8~9개)에 요청이 한꺼번에 몰린다.
+    from ..pulse import snapshot   # snapshot 이 이 모듈을 읽으므로 여기서 들여온다(순환 import)
+    items, statuses = snapshot.fetch_all(now, feeds)
     uploads, up_stats = fetch_uploads(cfg, now)
     statuses += up_stats
     DESK.mkdir(parents=True, exist_ok=True)

@@ -281,8 +281,9 @@ def test_video_download_tools_blocked_by_ledger(tmp_path, monkeypatch):
 def test_every_request_site_goes_through_ledger():
     """src 안에서 밖으로 요청을 보내는 파일은 모두 대장을 거친다. 새 요청 지점이 생기면 여기서 걸린다."""
     root = pathlib.Path(collect.__file__).resolve().parents[1]
-    pat = ("requests.get", "requests.post", "requests.Session", "urlopen(", "\"yt-dlp\"", "httpx.")
-    exempt = {"research/capture.py": "카드 원문 주소(1차 출처 문서)를 받는 경로 — 대장의 출처 단위가 아니다"}
+    pat = ("requests.get", "requests.post", "requests.Session", "urlopen(", "build_opener(", "\"yt-dlp\"", "httpx.")   # build_opener( = 요청기를 만들어 .open 으로 보내는 꼴
+    exempt = {"research/capture.py": "카드 원문 주소(1차 출처 문서)를 받는 경로 — 대장의 출처 단위가 아니다",
+              "render/shots.py": "덱에 넣을 공식 문서·통계 화면 갈무리 — 출처 대장의 매체(피드) 단위가 아니고, robots.txt 확인과 호스트 간격과 차단 시 멈춤을 자체로 한다"}
     hits, missing = [], []
     for f in sorted(root.rglob("*.py")):
         rel = f.relative_to(root).as_posix()
@@ -296,6 +297,7 @@ def test_every_request_site_goes_through_ledger():
             missing.append(rel)
     assert missing == []
     assert {"research/collect.py", "pulse/signals.py", "pulse/community.py", "collect/frames.py"} <= set(hits)   # 검색이 헛돌지 않는다
+    assert set(exempt) <= set(hits), sorted(set(exempt) - set(hits))   # 예외 줄마다 실제로 걸린 파일이 있다(패턴이 놓친 요청 꼴이 없다)
 
 
 # ── 저장분 점수 빼기: 수집 직후(fetch=True) ───────────────────────────

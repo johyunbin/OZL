@@ -29,12 +29,28 @@
      - 엄격 모드에서 image_text 쪽에 그림이 하나도 없으면 경고(글만 있는 장이 의도일 수 있어 실패는 아니다).
      - picture: <그림 번호> — 사양 맨 위 pictures(그림 검수 대장 · pictures.py)에 오른 그림 파일. 칸이 비었거나 판정이 '쓰지 않는다'거나 파일이 없으면
        엄격 모드 실패, 초안 모드는 그림 대기('그림:<그림 번호>'). 밈은 엄격 모드에서 빠진다(pictures.drop_memes — check·build 명령이 먼저 뺀다).
+       판정 '비공개 판에서만'(보도 사진 등)은 두 모드 모두 통과하지만 덱이 공개 불가가 된다(pictures.public_status). 원문 화면 갈무리는
+       그 쪽 claim_ids 기록의 원문과 같은 기관 호스트여야 한다(pictures.screen_host_errors).
   ⑤ 새 종류(2026-11-14):
      - capture_full(인용 장): title + capture(+capture_focus). 본문 글이 없고 원문 캡처가 쪽 대부분을 차지한다. 캡처 규칙은 ④와 같고,
        '다 들어가는가'는 큰 자리의 크기(capture_geom)로 계산한다.
      - photo_caption(사진과 설명): title + caption(한두 줄) + image 또는 picture 하나. caption 의 수량은 ①을 받는다.
      - image_pair(그림 두 장 비교): title + pair(자리 둘 — 각각 image·chart·capture·picture 가운데 하나와 짧은 caption). 자리마다 ④를 그대로 본다
        (chart.claims · capture 는 쪽의 claim_ids 안). 그림 칸은 쪽에 두지 않고 pair 의 각 자리에 둔다.
+  ⑥ 2026-11-15 새 종류와 style 칸:
+     - full_picture(제목 없는 꽉 찬 그림): 그림 자리 하나(+ 그림 안 아래 한마디 caption 한 줄). title·body 를 두면 실패.
+     - image_stack(그림 위 글 아래): title + 넓은 그림 자리 + body 1~3줄.
+     - 사양 맨 위 style: syuka 면 style.style_check(장당 초 · 장 체류 · 본문 줄 · 장 모양 비율)를 더한다. 없으면 옛 규칙 그대로(seconds 가 비면 경고만).
+     - style: syuka 는 쪽 아래 출처 줄과 부록 쪽을 두지 않는다. 화면 수치마다 받치는 기록(number_sources)에 덱 전체 링크 번호(link_plan)를 주고,
+       넘침 검사는 번호 위첨자까지 넣은 쪽으로 본다. 인용한 기록에 원본 링크(source.url)가 없으면 실패(link_errors).
+     - 수치 자리마다 기록 하나로 이어져야 한다. 같은 표기가 그 쪽이 인용한 기록 둘 이상에 있으면 코드가 고르지 않는다(claim_ids 의 앞 기록으로
+       잇지 않는다): 환산(conversions)이 그 표기의 기록을 지정했으면 그 기록, 장의 number_claims 칸이 자리를 지정했으면 그 기록을 따르고,
+       어느 쪽도 없으면 '정할 수 없다'로 실패한다. number_claims: [{shown: 화면 표기, claim_id: 기록, at: 칸 이름(생략하면 그 쪽의 그 표기 전부),
+       nth: 그 칸에서 몇 번째 그 표기인가(생략하면 그 칸의 그 표기 전부 — at 과 함께만 쓴다)}]. 칸 이름은 field_name 이 정한다
+       (title · sub · en · ko · caption · number.value · number.label · quote.text · quote.by · body[0] · pair[0].caption · table · image · pair[0].image).
+  ⑦ 두 판(2026-11-15): 막는 그림(pictures.edition_block — 판정 '비공개 판에서만' 또는 권리 확인 대기)이 든 사양은 장마다 swap 칸을 두고
+     check_editions 가 비공개판(swap 을 뗀 사양)과 바꾼판(swap 을 적용한 사양)을 따로 검사한다. check 는 판 하나의 사양만 받는다 —
+     swap 칸이 남은 사양이 직접 들어오면 실패로 알린다. 규칙은 pictures.py 머리말(두 판과 공개 차단)에 있다.
 
     python -m ozl.render check <사양.yaml>
 """
@@ -56,7 +72,8 @@ TEMPLATE = ROOT / "tracks" / "syuka" / "style" / "composition_template_v0.json"
 SPECS = ROOT / "private" / "decks" / "specs"
 
 KINDS = ("title_hook", "image_text", "quote_translation", "number", "compare_table", "quote_line", "closing",
-         "capture_full", "photo_caption", "image_pair")
+         "capture_full", "photo_caption", "image_pair", "full_picture", "image_stack")
+STYLES = ("syuka",)   # 사양 맨 위 style — 있으면 그 규칙의 검사를 더한다(style.style_check). 없으면 2026-11-14 까지의 규칙 그대로
 
 # 카드 어휘(cards.STAGES) → 구성 템플릿 JSON 의 단계 키
 STAGE_KEY = {
@@ -232,7 +249,9 @@ VISUAL_KEYS = ("image", "chart", "capture", "picture")
 SLOT_KEYS = {
     "image_text": VISUAL_KEYS, "number": VISUAL_KEYS, "image_pair": VISUAL_KEYS,
     "photo_caption": ("image", "picture"), "capture_full": ("capture",),
+    "full_picture": VISUAL_KEYS, "image_stack": VISUAL_KEYS,   # 2026-11-15 — 제목 없는 꽉 찬 그림 · 그림 위 글 아래
 }
+PICTURE_FIRST = ("photo_caption", "image_pair", "full_picture", "image_stack")   # 그림이 주인공인 종류 — 그림 자리가 비면 실패, 엄격 모드는 회색 자리도 실패
 VISUAL_KINDS = tuple(SLOT_KEYS)
 WAIT_IMAGE = "그림:"  # 초안 모드 pending 항목 머리 — '그림:<claim_id>' = 원문 화면 그림 대기 · '그림:<그림 번호>' = 검수 기록이 다 차지 않은 그림 파일
 
@@ -460,6 +479,15 @@ def visual_errors(sl: dict, claims: dict[str, dict], draft: bool, pics: dict | N
                 errs.append(f"{SLOT_NAME[j]}: image.caption 은 쓰지 않는다 — 자리의 caption 에 쓴다")
     elif kind == "photo_caption" and isinstance(sl.get("image"), dict) and sl["image"].get("caption"):
         errs.append("photo_caption 은 image.caption 을 쓰지 않는다 — 쪽의 caption 에 쓴다")
+    if kind == "full_picture":
+        if _present(sl.get("title")):
+            errs.append("full_picture 에는 제목(title)을 두지 않는다 — 그림 한 장이 쪽을 채우고, 한마디는 caption 한 줄에 쓴다")
+        if _present(sl.get("body")):
+            errs.append("full_picture 에는 본문 글(body)을 두지 않는다 — 한마디는 caption 한 줄에 쓴다")
+    if kind == "image_stack" and isinstance(sl.get("body"), list) and len(sl["body"]) > 3:
+        errs.append(f"image_stack 의 본문은 1~3줄이다(지금 {len(sl['body'])}줄) — 글이 많으면 image_text 로 쓴다")
+    if kind in ("full_picture", "image_stack") and isinstance(sl.get("image"), dict) and sl["image"].get("caption"):
+        errs.append(f"{kind} 는 image.caption 을 쓰지 않는다" + (" — 쪽의 caption 에 쓴다" if kind == "full_picture" else ""))
     if kind == "capture_full" and _present(sl.get("body")):
         errs.append("capture_full 에는 본문 글(body)을 두지 않는다 — 원문 캡처 한 장과 한 줄 제목뿐이다")
     for j, v in slot_views(sl):
@@ -475,12 +503,12 @@ def visual_errors(sl: dict, claims: dict[str, dict], draft: bool, pics: dict | N
                 e.append(f"'{k}' 는 {kind} 의 그림 자리에 쓰지 않는다({' · '.join(SLOT_KEYS[kind])} 가운데 하나)")
             elif kind not in SLOT_KEYS and k != "image":
                 e.append(f"'{k}' 는 그림 자리가 있는 종류({', '.join(VISUAL_KINDS)})에서만 쓴다(지금 {kind})")
-        if kind in ("photo_caption", "image_pair") and not have:
+        if kind in PICTURE_FIRST and not have:
             e.append(f"그림 자리에 {' · '.join(SLOT_KEYS[kind])} 가운데 하나가 있어야 한다")
         if e:
             errs += [tag + x for x in e]
             continue
-        if have == ["image"] and kind in ("photo_caption", "image_pair") and not draft:
+        if have == ["image"] and kind in PICTURE_FIRST and not draft:
             # 회색 자리는 그림이 아니다 — 그림이 주인공인 종류에서 회색 상자와 '그림 자리' 글이 완성본에 찍히지 않게 엄격 모드는 실패시킨다
             errs.append(tag + "그림 자리가 회색 자리(image)다 — 그림이 주인공인 장이라 엄격 모드(완성본)에서는 쓰지 않는다. "
                         "검수 대장에 오른 그림(picture)이나 차트·원문 캡처로 바꾸거나, 그림이 없으면 다른 종류의 장으로 바꾼다(초안 모드는 통과)")
@@ -492,7 +520,7 @@ def visual_errors(sl: dict, claims: dict[str, dict], draft: bool, pics: dict | N
             if wait:
                 waits.append(wait)
         elif "picture" in have:
-            pe, wait, pw = picture_errors(sl, v, j, pics or {}, draft)
+            pe, wait, pw = picture_errors(sl, v, j, pics or {}, draft, claims)
             errs += [tag + x for x in pe]
             warns += [tag + x for x in pw]
             if wait:
@@ -500,10 +528,11 @@ def visual_errors(sl: dict, claims: dict[str, dict], draft: bool, pics: dict | N
     return errs, waits, warns
 
 
-def picture_errors(sl: dict, v: dict, slot: int, pics: dict, draft: bool) -> tuple[list[str], str | None, list[str]]:
+def picture_errors(sl: dict, v: dict, slot: int, pics: dict, draft: bool, claims: dict | None = None) -> tuple[list[str], str | None, list[str]]:
     """그림 파일(picture: <그림 번호>) 검사 — (실패, 그림 대기 그림 번호 | None, 경고).
     대장(pictures)에 없으면 두 모드 모두 실패. 칸이 비었거나 판정이 '쓰지 않는다'이거나 파일이 없으면 엄격 모드 실패, 초안 모드는 그림 대기.
-    밈은 엄격 모드 검사에 오면 실패다(build · check 명령은 미리 drop_memes 로 뺀다)."""
+    밈은 엄격 모드 검사에 오면 실패다(build · check 명령은 미리 drop_memes 로 뺀다).
+    개념도가 아닌 생성 그림과 종류를 바꿔 적은 생성 그림(pictures.hard_block)은 초안 모드에서도 실패다(그림 대기로 미루지 않는다)."""
     from ozl.render import pictures as PIC
     pid = _s(v.get("picture")).strip()
     if pid not in pics:
@@ -512,9 +541,19 @@ def picture_errors(sl: dict, v: dict, slot: int, pics: dict, draft: bool) -> tup
     if not draft and PIC.is_meme(e):
         return [f"picture {pid} 는 밈이다 — 엄격 모드(완성본·공개용)에는 넣지 않는다. check·build 명령은 밈을 빼고(drop_memes) 검사한다"], None, []
     verdict, why, warns = PIC.judge(e, draft)
+    hard = PIC.hard_block(e) if draft else []   # 엄격 모드는 judge 의 까닭에 이미 들어 있다
+    if hard:
+        return [f"picture {pid}({_s(e.get('kind'))}): {w} — 초안 모드에서도 실패다" for w in hard], None, [f"picture {pid}: {w}" for w in warns]
     ferr = PIC.file_error(e)
     if ferr:
+        if _s(e.get("kind")) == PIC.AI_KIND and not PIC.resolve_path(e).is_file():
+            ferr = ("생성 그림 파일이 아직 없다 — 그림을 만든 세션이 파일을 두고 path · sha256 · generator · prompt · generated_at 과 "
+                    "concept · concept_check 를 채운다: " + ferr)
         why.append(ferr)
+    rule = PIC.rule_of(e)
+    if rule is not None and rule.screen:   # 원문 화면 갈무리: 그 쪽이 인용한 기록의 원문과 같은 기관 호스트
+        cited = [(claims or {}).get(str(c)) for c in sl.get("claim_ids") or []]
+        why += PIC.screen_host_errors(e, [c for c in cited if isinstance(c, dict)])
     warns = [f"picture {pid}: {w}" for w in warns]
     if why:
         if draft:
@@ -587,6 +626,322 @@ def footnote_text(sl: dict, claims: dict, card: dict | None, labels: dict | None
 
 
 DOC_TIERS = ("T1", "T2")   # refs 각주·부록에서 '자료'로 부르는 출처 등급
+
+
+# ── 링크 번호(style: syuka — 쪽 아래 출처 줄 대신 수치 뒤 작은 번호와 덱 밖 링크 목록) ──────────────
+# 숫자 대조가 이미 "이 수치가 어느 기록의 observed·text 에 있는가"를 본다. 그 결과를 돌려주는 것이 number_sources 이고,
+# link_plan 이 기록마다 덱 전체에서 번호 하나(처음 나온 순서)를 준다. 번호는 빌드가 붙이는 표시라 사양의 글이 아니다 —
+# visible_text 에 들어가지 않으므로 숫자 대조를 받지 않는다. 화면 글의 수치 뒤에는 작은 회색 위첨자, 차트·원문 캡처·표·회색 그림 자리는
+# 그 자리 오른쪽 아래 귀퉁이에 번호 하나(여러 기록이면 '2,3').
+LINKS_KEY = "_links"    # 검사·빌드가 쪽 사본에 넣는 칸 — {"inline": {칸: {글자 자리: 번호}}, "corner": {자리: 번호}}. 사양 파일에는 쓰지 않는다
+_MARK_TAIL = ".,;:!?)]」』\"'”’…"   # 어절 끝의 문장부호 — 번호는 그 앞에 붙인다
+_MARK_UNITS = tuple(sorted(("퍼센트포인트", "퍼센트", "포인트", "달러", "가구", "개월", "시간", "배럴", "위안", "유로", "파운드", "명", "원", "개", "회",
+                            "건", "곳", "배", "톤", "엔", "대", "척", "세", "살", "층", "장", "편", "상자", "마리", "평"), key=len, reverse=True))
+# 띄어 쓴 단위 낱말 — '5조 원이' 의 번호는 '원이' 끝에 붙인다(숫자 판독의 단위 목록과 별개 · 번호 자리에만 쓴다)
+
+
+def inline_fields(sl: dict) -> list[tuple[tuple, str]]:
+    """수치 뒤에 위첨자 번호를 붙이는 화면 글 칸(build.plan_slide 가 글상자로 그리는 칸) — (칸 이름, 글). 화면에 보이는 순서."""
+    out: list[tuple[tuple, str]] = [(("title",), _s(sl.get("title")))]
+    for k in ("sub", "en", "ko"):
+        out.append(((k,), _s(sl.get(k))))
+    num = sl.get("number")
+    if isinstance(num, dict):
+        out += [(("number", "value"), _s(num.get("value"))), (("number", "label"), _s(num.get("label")))]
+    q = sl.get("quote")
+    if isinstance(q, dict):
+        out += [(("quote", "text"), _s(q.get("text"))), (("quote", "by"), _s(q.get("by")))]
+    for k, x in enumerate(sl.get("body") or []):
+        out.append((("body", k), _s(x.get("text") if isinstance(x, dict) else x)))
+    out.append((("caption",), _s(sl.get("caption"))))
+    if sl.get("kind") == "image_pair":
+        for j, v in slot_views(sl):
+            out.append((("pair", j, "caption"), _s(v.get("caption"))))
+    return [(k, t) for k, t in out if t]
+
+
+NUMBER_CLAIMS = "number_claims"   # 장의 칸 — 화면 수치 자리마다 받치는 기록을 지정한다(같은 표기가 인용한 기록 둘 이상에 있을 때)
+
+
+def field_name(key) -> str:
+    """수치 자리의 칸 이름 — number_claims 의 at 과 오류 글에 쓴다. ('body', 1) → body[1] · ('number', 'value') → number.value ·
+    ('pair', 0, 'caption') → pair[0].caption · ('image',) → image(회색 그림 자리) · ('table',) → table."""
+    key = tuple(key)
+    if key[0] in ("body", "pair") and len(key) >= 2:
+        return f"{key[0]}[{key[1]}]" + "".join(f".{x}" for x in key[2:])
+    return ".".join(str(x) for x in key)
+
+
+def _token_claims(canon: str, ids: list[str], pools: dict[str, set[str]], conv: dict[str, list[str]]) -> list[str]:
+    """이 수치 표기를 받칠 수 있는 기록(claim_ids 순서). 환산(conversions)으로 받친 표기는 그 환산의 기록도 든다.
+    후보일 뿐이다 — 자리마다 어느 기록인지는 _resolve 가 정한다. claim_ids 에 같은 기록이 두 번 적혀도 후보는 하나다(순서를 지키며 중복 제거)."""
+    return [c for c in dict.fromkeys(ids) if canon in pools.get(c, set()) or c in conv.get(canon, [])]
+
+
+def _occurrences(sl: dict, identifiers=()) -> list[dict]:
+    """이 쪽 화면의 수치 자리(링크 번호를 붙일 수 있는 자리) — 화면 글 칸, 회색 그림 자리, 표. 나온 순서대로.
+    한 자리 = {key: 칸, kind: 'inline' | 'image' | 'table', slot, at: 글자 자리(inline), shown: 화면 표기, canon, nth: 그 칸에서 몇 번째 그 표기인가}."""
+    out: list[dict] = []
+    seen: dict[tuple, int] = {}
+
+    def add(key: tuple, kind: str, slot, at: int, shown: str, canon: str):
+        seen[(key, canon)] = seen.get((key, canon), 0) + 1
+        out.append({"key": key, "kind": kind, "slot": slot, "at": at, "shown": shown, "canon": canon, "nth": seen[(key, canon)]})
+
+    def spans(text: str):
+        return [(t, text[t.start:t.end]) for t in N.source_spans(text, identifiers) if t.needs_claim and not t.fragment]
+
+    for key, text in inline_fields(sl):
+        for t, shown in spans(text):
+            add(key, "inline", None, _mark_at(text, t.end), shown, t.canon)
+    for j, v in slot_views(sl):
+        if visual_of(v) == "image" and isinstance(v.get("image"), dict):
+            key = ("image",) if j == -1 else ("pair", j, "image")
+            for k in ("what", "source", "caption"):
+                for t, shown in spans(_s(v["image"].get(k))):
+                    add(key, "image", j, -1, shown, t.canon)
+    tbl = sl.get("table")
+    if isinstance(tbl, dict):
+        cells = [_s(x) for x in tbl.get("header") or []] + [_s(x) for row in tbl.get("rows") or [] for x in (row if isinstance(row, list) else [row])]
+        for cell in cells:
+            for t, shown in spans(cell):
+                add(("table",), "table", "table", -1, shown, t.canon)
+    return out
+
+
+def _designations(sl: dict, ids: list[str], occ: list[dict], identifiers=()) -> tuple[list[dict], list[str]]:
+    """장의 number_claims 를 읽는다 — ([{i, canon, shown, claim, at, nth}], 모양 오류). 모양이 틀린 줄은 지정으로 쓰지 않는다."""
+    raw = sl.get(NUMBER_CLAIMS)
+    if raw in (None, []):
+        return [], []
+    if not isinstance(raw, list):
+        return [], [f"{NUMBER_CLAIMS} 는 {{shown, claim_id, at, nth}} 의 목록이어야 한다"]
+    fields = {field_name(o["key"]) for o in occ}
+    out, errs = [], []
+    for i, d in enumerate(raw):
+        where = f"{NUMBER_CLAIMS}[{i}]"
+        if not isinstance(d, dict) or not (_s(d.get("shown")).strip() and _s(d.get("claim_id")).strip()):
+            errs.append(f"{where}: shown · claim_id 둘 다 있어야 한다")
+            continue
+        shown, cid = _s(d.get("shown")).strip(), _s(d.get("claim_id")).strip()
+        toks = [t for t in N.claim_tokens(shown, identifiers) if not t.fragment]
+        if len(toks) != 1:
+            errs.append(f"{where}: shown '{shown}' 는 화면 수치 표기 하나여야 한다")
+            continue
+        if cid not in ids:
+            errs.append(f"{where}: {cid} 가 이 슬라이드의 claim_ids 에 없다")
+            continue
+        at, nth = d.get("at"), d.get("nth")
+        if at is not None and _s(at).strip() not in fields:
+            errs.append(f"{where}: 칸 '{at}' 가 이 쪽에 없다(수치가 있는 칸: {', '.join(sorted(fields)) or '없음'})")
+            continue
+        if nth is not None:
+            if at is None:
+                errs.append(f"{where}: nth 는 at 과 함께 쓴다(그 칸에서 몇 번째 그 표기인가)")
+                continue
+            if isinstance(nth, bool) or not isinstance(nth, int) or nth < 1:
+                errs.append(f"{where}: nth 는 1 이상의 정수여야 한다({nth})")
+                continue
+        out.append({"i": i, "canon": toks[0].canon, "shown": shown, "claim": cid, "at": None if at is None else _s(at).strip(), "nth": nth})
+    return out, errs
+
+
+def _resolve(sl: dict, claims: dict[str, dict], identifiers=()) -> tuple[list[tuple[dict, list[str]]], list[str]]:
+    """수치 자리마다 받치는 기록을 정한다 — ([(자리, [정한 기록, 같은 표기가 있는 다른 기록…])], 실패).
+    후보 = 그 표기가 observed·text 에 있는 기록과 환산(conversions)이 그 표기에 지정한 기록(이 쪽 claim_ids 안에서).
+      1. number_claims 가 그 자리를 지정했으면 그 기록(가장 좁게 적은 지정이 이긴다: at+nth > at > 쪽 전체). 지정한 기록이 후보가 아니면 실패.
+      2. 환산이 그 표기에 기록 하나를 지정했으면 그 기록 — 같은 표기가 다른 기록에 글자 그대로 있어도 지정을 따른다.
+      3. 후보가 하나면 그 기록.
+      4. 그 밖(후보가 둘 이상인데 지정이 없다, 환산 둘이 서로 다른 기록을 가리킨다)은 정할 수 없다 — 실패로 알리고 그 자리에는 번호를 주지 않는다.
+    후보가 없는 수치는 넣지 않는다(숫자 대조가 실패시킨다)."""
+    ids = [str(x) for x in sl.get("claim_ids") or []]
+    pools = {c: source_tokens(claims[c]) for c in ids if c in claims}
+    conv: dict[str, list[str]] = {}
+    for cv in sl.get("conversions") or []:
+        if not isinstance(cv, dict):
+            continue
+        shown, cid = _s(cv.get("shown")).strip(), _s(cv.get("claim_id")).strip()
+        for t in N.claim_tokens(shown, identifiers):
+            conv.setdefault(t.canon, []).append(cid)
+    occ = _occurrences(sl, identifiers)
+    des, errs = _designations(sl, ids, occ, identifiers)
+    hit: set[int] = set()
+    per_field: dict[tuple, int] = {}
+    for o in occ:
+        per_field[(o["key"], o["canon"])] = max(per_field.get((o["key"], o["canon"]), 0), o["nth"])
+    out: list[tuple[dict, list[str]]] = []
+    for o in occ:
+        name = field_name(o["key"])
+        match = [d for d in des if d["canon"] == o["canon"] and d["at"] in (None, name) and d["nth"] in (None, o["nth"])]
+        hit |= {d["i"] for d in match}
+        cands = _token_claims(o["canon"], ids, pools, conv)
+        if not cands:
+            continue
+        via = [c for c in dict.fromkeys(conv.get(o["canon"], [])) if c in cands]
+        spot = f"'{o['shown']}'({name}" + (f" {o['nth']}번째" if per_field[(o["key"], o["canon"])] > 1 else "") + ")"
+        hint = f"{{shown: '{o['shown']}', at: {name}" + (f", nth: {o['nth']}" if per_field[(o["key"], o["canon"])] > 1 else "") + ", claim_id: …}"
+        if match:
+            rank = max((d["at"] is not None) + (d["nth"] is not None) for d in match)
+            best = [d for d in match if (d["at"] is not None) + (d["nth"] is not None) == rank]
+            picks = list(dict.fromkeys(d["claim"] for d in best))
+            lines = ", ".join(f"{NUMBER_CLAIMS}[{d['i']}]" for d in best)
+            if len(picks) > 1:
+                errs.append(f"{lines}: 화면 수치 {spot} 의 지정이 겹친다({', '.join(picks)}) — 자리마다 기록 하나만 지정한다")
+                continue
+            if picks[0] not in cands:
+                errs.append(f"{lines}: {picks[0]} 의 observed·text(또는 그 기록을 지정한 conversions)에 '{o['shown']}' 표기가 없다 — 그 수치를 받치는 기록이 아니다")
+                continue
+            pick = picks[0]
+        elif len(via) == 1:
+            pick = via[0]
+        elif len(via) > 1:
+            errs.append(f"화면 수치 {spot} 를 conversions 가 서로 다른 기록({', '.join(via)})으로 지정했다 — 링크 번호를 어느 기록에 이을지 정할 수 없다. "
+                        f"{NUMBER_CLAIMS} 에 {hint} 를 적는다")
+            continue
+        elif len(cands) == 1:
+            pick = cands[0]
+        else:
+            errs.append(f"화면 수치 {spot} 를 받치는 기록이 둘 이상이다({', '.join(cands)}) — 링크 번호를 어느 기록에 이을지 정할 수 없다. "
+                        f"{NUMBER_CLAIMS} 에 {hint} 를 적는다")
+            continue
+        out.append((o, [pick] + [c for c in cands if c != pick]))
+    for d in des:
+        if d["i"] not in hit:
+            where = ("화면에 " if d["at"] is None else f"칸 {d['at']} 에 ") + (f"{d['nth']}번째 " if d["nth"] is not None else "")
+            errs.append(f"{NUMBER_CLAIMS}[{d['i']}]: {where}'{d['shown']}' 표기가 없다 — 쓰이지 않는 지정이다")
+    return out, errs
+
+
+def _mark_at(text: str, end: int) -> int:
+    """번호를 붙일 글자 자리(그 글자 뒤에 붙인다): 수치가 든 어절의 끝 — 띄어 쓴 단위 낱말('5조 원')이면 그 낱말 끝, 끝의 문장부호는 뺀다."""
+    n = len(text)
+    k = end
+    while k < n and not text[k].isspace():
+        k += 1
+    if k == end and k < n:   # 수치 바로 뒤가 공백 — 다음 어절이 단위 낱말이면 그 어절까지
+        j = k
+        while j < n and text[j].isspace():
+            j += 1
+        if any(text.startswith(u, j) for u in _MARK_UNITS):
+            k = j
+            while k < n and not text[k].isspace():
+                k += 1
+    while k - 1 > end - 1 and text[k - 1] in _MARK_TAIL:
+        k -= 1
+    return max(k, end) - 1
+
+
+def number_sources(sl: dict, claims: dict[str, dict], identifiers=()) -> dict:
+    """이 쪽 화면 수치마다 받치는 기록. 돌려주는 값:
+    {"inline": [(칸 이름, 글자 자리, 화면 표기, [받치는 기록])], "corner": [(자리, 무엇, [기록])], "errors": [실패]}.
+    자리마다 기록 하나로 정한다(_resolve — number_claims 지정 > conversions 지정 > 후보가 하나뿐). inline 의 기록 목록은 [정한 기록, 같은 표기가 있는
+    다른 기록…] — 앞의 것이 번호를 받는다. 정할 수 없는 자리(같은 표기가 인용한 기록 둘 이상에 있는데 지정이 없다)는 넣지 않고 errors 에 적는다.
+    차트와 원문 캡처는 사양이 기록을 직접 적는다(chart.claims · capture). 받치는 기록이 없는 수치는 넣지 않는다(숫자 대조가 실패시킨다)."""
+    ids = [str(x) for x in sl.get("claim_ids") or []]
+    resolved, errors = _resolve(sl, claims, identifiers)
+    inline = [(o["key"], o["at"], o["shown"], got) for o, got in resolved if o["kind"] == "inline"]
+
+    def picked(kind: str, slot) -> list[str]:
+        return list(dict.fromkeys(got[0] for o, got in resolved if o["kind"] == kind and o["slot"] == slot))
+
+    corner = []
+    for j, v in slot_views(sl):
+        what = visual_of(v)
+        got: list[str] = []
+        if what == "chart" and isinstance(v.get("chart"), dict):
+            got = [str(c) for c in v["chart"].get("claims") or [] if str(c) in ids]
+        elif what == "capture":
+            got = [_s(v.get("capture")).strip()] if _s(v.get("capture")).strip() in ids else []
+        elif what == "image" and isinstance(v.get("image"), dict):
+            got = picked("image", j)
+        if got:
+            corner.append((j, {"chart": "차트", "capture": "원문 캡처", "image": "그림 자리"}[what], got))
+    if isinstance(sl.get("table"), dict):
+        got = picked("table", "table")
+        if got:
+            corner.append(("table", "표", got))
+    return {"inline": inline, "corner": corner, "errors": errors}
+
+
+@dataclass
+class LinkPlan:
+    numbers: dict[str, int] = field(default_factory=dict)            # claim_id → 링크 번호(덱 전체에서 처음 나온 순서)
+    slides: list[dict] = field(default_factory=list)                 # 쪽마다 LINKS_KEY 에 넣을 값
+    uses: dict[int, list[tuple[str, str]]] = field(default_factory=dict)   # 번호 → [(쪽, 화면 표기)]
+    also: dict[int, list[str]] = field(default_factory=dict)         # 번호 → 같은 표기가 있는 다른 기록
+    unnumbered: dict[str, list[int]] = field(default_factory=dict)   # 인용했지만 화면 수치를 받치지 않은 기록 → 쪽(말로 할 문장 · 글의 근거)
+    errors: list[str] = field(default_factory=list)                  # 받치는 기록을 정할 수 없는 수치 자리와 number_claims 의 모양 오류('N쪽: …')
+
+
+def _page(i: int, slot) -> str:
+    return str(i) if slot in (-1, "table") else f"{i} {'왼' if slot == 0 else '오른'}"
+
+
+def link_plan(spec: dict, claims: dict[str, dict]) -> LinkPlan:
+    """덱 전체의 링크 번호. 쪽 순서로, 한 쪽 안에서는 제목 → 그림 자리·표 귀퉁이 → 나머지 글 칸 순서로 번호를 준다.
+    받치는 기록을 정할 수 없는 자리는 번호를 주지 않고 errors 에 적는다(check 가 실패로 알리고, build_pptx 는 만들지 않는다)."""
+    lp = LinkPlan()
+    idents = [x for x in spec.get("identifiers") or [] if isinstance(x, str)]
+
+    def num(cid: str, page: str, shown: str, others: list[str]) -> int:
+        n = lp.numbers.setdefault(cid, len(lp.numbers) + 1)
+        u = lp.uses.setdefault(n, [])
+        if (page, shown) not in u:
+            u.append((page, shown))
+        for o in others:
+            if o not in lp.also.setdefault(n, []):
+                lp.also[n].append(o)
+        return n
+
+    for i, sl in enumerate(spec.get("slides") or [], 1):
+        if not isinstance(sl, dict):
+            lp.slides.append({"inline": {}, "corner": {}})
+            continue
+        src = number_sources(sl, claims, idents)
+        lp.errors += [f"{i}쪽: {e}" for e in src["errors"]]
+        inline: dict[tuple, dict[int, str]] = {}
+        corner: dict = {}
+        order = [x for x in src["inline"] if x[0] == ("title",)]
+        rest = [x for x in src["inline"] if x[0] != ("title",)]
+        for key, at, shown, got in order:
+            n = num(got[0], _page(i, -1), shown, got[1:])
+            labels = inline.setdefault(key, {})
+            labels[at] = ",".join(dict.fromkeys((labels[at].split(",") if at in labels else []) + [str(n)]))
+        for slot, what, got in src["corner"]:
+            corner[slot] = ",".join(str(num(c, _page(i, slot), what, [])) for c in got)
+        for key, at, shown, got in rest:
+            n = num(got[0], _page(i, key[1] if key[0] == "pair" else -1), shown, got[1:])
+            labels = inline.setdefault(key, {})
+            labels[at] = ",".join(dict.fromkeys((labels[at].split(",") if at in labels else []) + [str(n)]))
+        lp.slides.append({"inline": inline, "corner": corner})
+    for i, sl in enumerate(spec.get("slides") or [], 1):
+        for cid in (sl.get("claim_ids") or []) if isinstance(sl, dict) else []:
+            if str(cid) not in lp.numbers:
+                pg = lp.unnumbered.setdefault(str(cid), [])
+                if i not in pg:
+                    pg.append(i)
+    return lp
+
+
+def with_links(sl: dict, links: dict) -> dict:
+    """쪽 사본에 링크 번호 표시를 넣는다(build.plan_slide 가 읽는다). 원래 쪽은 건드리지 않는다."""
+    return {**sl, LINKS_KEY: links}
+
+
+def link_errors(spec: dict, claims: dict[str, dict]) -> list[str]:
+    """style: syuka — 인용한 기록마다 원본 링크(source.url)가 있어야 한다. 링크 목록이 출처 줄을 대신하므로 링크 없는 기록은 받지 않는다."""
+    out = []
+    seen: set[str] = set()
+    for i, sl in enumerate(spec.get("slides") or [], 1):
+        for cid in (sl.get("claim_ids") or []) if isinstance(sl, dict) else []:
+            cid = str(cid)
+            if cid in seen or cid not in claims:
+                continue
+            seen.add(cid)
+            url = _s((claims[cid].get("source") or {}).get("url")).strip()
+            if not url.startswith(("https://", "http://")):
+                out.append(f"{i}쪽: 기록 {cid} 에 원본 링크(source.url)가 없다 — style: syuka 덱은 쪽 아래 출처 줄 대신 링크 목록으로 출처를 밝힌다")
+    return out
 
 
 # ── 단계 순서 ────────────────────────────────────────────────────────────
@@ -821,6 +1176,8 @@ def load_claims(ids, claims_dirs=()) -> tuple[dict[str, dict], set[str]]:
 
 
 def cited_ids(spec: dict) -> list[str]:
+    """사양이 인용한 기록(claim_ids · conversions). 장의 swap 칸(set · slide) 안에서는 claim_ids · conversions 에 더해
+    차트의 claims 와 원문 캡처 기록까지 모은다 — 바꾼판만 인용하는 기록도 읽어야 그 판을 검사할 수 있다."""
     seen: dict[str, None] = {}
     for sl in spec.get("slides") or []:
         for cid in sl.get("claim_ids") or []:
@@ -828,7 +1185,31 @@ def cited_ids(spec: dict) -> list[str]:
         for cv in sl.get("conversions") or []:
             if cv.get("claim_id"):
                 seen[str(cv["claim_id"])] = None
+        sw = sl.get("swap") if isinstance(sl, dict) else None
+        if isinstance(sw, dict):
+            for part in (sw.get("set"), sw.get("slide")):
+                for cid in _swap_cited(part):
+                    seen[cid] = None
     return list(seen)
+
+
+def _swap_cited(part) -> list[str]:
+    """swap.set · swap.slide 한 덩어리가 인용한 기록 — 모양이 틀린 칸은 건너뛴다(모양 오류는 pictures.swap_errors 가 낸다)."""
+    if not isinstance(part, dict):
+        return []
+    out: list[str] = []
+    ids = part.get("claim_ids")
+    out += [str(c) for c in ids] if isinstance(ids, list) else []
+    cvs = part.get("conversions")
+    out += [str(cv["claim_id"]) for cv in (cvs if isinstance(cvs, list) else []) if isinstance(cv, dict) and cv.get("claim_id")]
+    pair = part.get("pair")
+    for v in [part] + [x for x in (pair if isinstance(pair, list) else []) if isinstance(x, dict)]:
+        ch = v.get("chart")
+        if isinstance(ch, dict) and isinstance(ch.get("claims"), list):
+            out += [str(c) for c in ch["claims"]]
+        if isinstance(v.get("capture"), str) and v["capture"].strip():
+            out.append(v["capture"].strip())
+    return out
 
 
 _REQUIRED = {
@@ -842,6 +1223,8 @@ _REQUIRED = {
     "capture_full": ("title", "capture"),
     "photo_caption": ("title", "caption"),
     "image_pair": ("title", "pair"),
+    "full_picture": (),
+    "image_stack": ("title", "body"),
 }
 _NESTED = {"number": ("value",), "quote": ("text",), "table": ("header", "rows"), "image": ("what", "source")}
 
@@ -851,9 +1234,11 @@ def _present(v) -> bool:
 
 
 def check(spec: dict, claims: dict[str, dict], template: dict, card: dict | None = None, layout_fn=None,
-          draft: bool = False, staged: set[str] | None = None, appendix_fn=None) -> Report:
+          draft: bool = False, staged: set[str] | None = None, appendix_fn=None, also_used=()) -> Report:
     """사양 전체 검사. layout_fn(slide) → 넘침 메시지 목록 (build.layout_problems — 글상자 크기를 아는 쪽이 준다).
-    draft=True: 사람 대조 전·대기 폴더 기록을 인용해도 실패하지 않고 r.pending 에 쪽별로 모은다(기록은 실제로 있어야 하고 숫자 대조는 그대로)."""
+    draft=True: 사람 대조 전·대기 폴더 기록을 인용해도 실패하지 않고 r.pending 에 쪽별로 모은다(기록은 실제로 있어야 하고 숫자 대조는 그대로).
+    판 하나의 사양을 받는다(swap 칸이 남아 있으면 실패 — 두 판은 check_editions 가 가른다).
+    also_used = 다른 판에서 쓰는 그림 번호 — '쓰지 않은 그림' 경고에서 뺀다."""
     r = Report()
     slides = spec.get("slides") or []
     cid = spec.get("card_id")
@@ -868,6 +1253,10 @@ def check(spec: dict, claims: dict[str, dict], template: dict, card: dict | None
     for k, v in (spec.get("source_labels") or {}).items():
         if not C.CLAIM_ID.match(str(k)) or not _present(v):
             r.errors.append(f"source_labels: '{k}' 는 claim_id 와 짧은 출처 이름의 짝이어야 한다")
+    style = spec.get("style")
+    if style is not None and style not in STYLES:
+        r.errors.append(f"style '{style}' 를 모른다({', '.join(STYLES)} — 옛 규칙이면 style 칸을 두지 않는다)")
+        style = None
     if not slides:
         r.errors.append("slides 가 비었다")
         return r
@@ -887,6 +1276,9 @@ def check(spec: dict, claims: dict[str, dict], template: dict, card: dict | None
     pics, perrs = PIC.ledger(spec)
     r.errors += perrs
     used_pics: set[str] = set()
+    links = link_plan(spec, claims) if style == "syuka" else None
+    if links is not None:
+        r.errors += link_errors(spec, claims) + links.errors   # 링크 없는 기록 · 받치는 기록을 정할 수 없는 수치 자리
     bare: list[int] = []  # 엄격 모드: 그림이 하나도 없는 image_text 쪽(경고 한 줄로 모은다)
     for i, sl in enumerate(slides, 1):
         tag = f"{i}쪽"
@@ -894,6 +1286,9 @@ def check(spec: dict, claims: dict[str, dict], template: dict, card: dict | None
             r.errors.append(f"{tag}: 슬라이드가 사전(mapping)이 아니다")
             continue
         kind = sl.get("kind")
+        if PIC.SWAP in sl:
+            r.errors.append(f"{tag}: swap 칸이 남아 있다 — 판을 가른 사양(pictures.strip_swaps · apply_swaps)을 검사한다. "
+                            "check · build 명령과 check_editions 가 가른다")
         if kind not in KINDS:
             r.errors.append(f"{tag}: 슬라이드 종류 '{kind}' 를 모른다({', '.join(KINDS)})")
             continue
@@ -921,7 +1316,8 @@ def check(spec: dict, claims: dict[str, dict], template: dict, card: dict | None
                 r.errors.append(f"{tag}: 표 widths 칸 수가 머리글과 다르다")
             elif not all(isinstance(w, (int, float)) and not isinstance(w, bool) and math.isfinite(w) and w > 0 for w in ws):
                 r.errors.append(f"{tag}: 표 widths 는 양의 유한수여야 한다({ws})")
-        foot = footnote_text(sl, claims, card, spec.get("source_labels") or {})
+        # style: syuka 덱은 쪽 아래 출처 줄을 찍지 않는다(링크 목록이 맡는다) — 화면에 없는 글이라 숫자 대조에도 넣지 않는다
+        foot = "" if style == "syuka" else footnote_text(sl, claims, card, spec.get("source_labels") or {})
         for t in visible_text(sl) + spoken_text(sl) + [foot]:
             for x in N.exempt_identifiers(t, idents):
                 if x not in r.exempt_idents:
@@ -954,13 +1350,14 @@ def check(spec: dict, claims: dict[str, dict], template: dict, card: dict | None
         used_pics |= {_s(v.get("picture")).strip() for _, v in slot_views(sl) if _s(v.get("picture")).strip()}
         if not draft and kind == "image_text" and not visual_of(sl):
             bare.append(i)
-        if sl.get("seconds") is None:
+        if sl.get("seconds") is None and style is None:   # style: syuka 는 style_check 가 실패로 본다
             r.warnings.append(f"{tag}: 예상 발화 시간(seconds)이 없다")
         if layout_fn is not None and not (kind == "image_pair" and not pair_shape_ok(sl)):
             # pair 의 모양이 틀리면 형식 실패 한 줄로 끝낸다(배치를 부르면 KeyError 같은 잡음이 한 줄 더 붙는다)
-            for e in layout_fn(sl):
+            # style: syuka 는 링크 번호(위첨자)까지 넣은 쪽으로 넘침을 본다 — 빌드와 같은 글상자
+            for e in layout_fn(with_links(sl, links.slides[i - 1]) if links is not None else sl):
                 r.errors.append(f"{tag}: {e}")
-    unused = [p for p in pics if p not in used_pics]
+    unused = [p for p in pics if p not in used_pics and p not in set(also_used or ())]
     if unused:
         r.warnings.append(f"그림 검수 대장에 있지만 어느 쪽에서도 쓰지 않은 그림: {', '.join(unused)}")
     if bare:
@@ -968,6 +1365,39 @@ def check(spec: dict, claims: dict[str, dict], template: dict, card: dict | None
     errs, warns = stage_errors([str(sl.get("stage")) if isinstance(sl, dict) else "" for sl in slides], template)
     r.errors += errs
     r.warnings += warns
-    if appendix_fn is not None and not r.errors:
+    if style == "syuka":
+        from ozl.render import style as ST
+        errs, warns = ST.style_check(spec)
+        r.errors += errs
+        r.warnings += warns
+    if appendix_fn is not None and not r.errors and style != "syuka":   # style: syuka 덱은 부록 쪽을 두지 않는다(링크 목록·그림 검수 대장이 덱 밖 파일로 나온다)
         r.errors += list(appendix_fn(spec, claims, card, r.pending))
     return r
+
+
+@dataclass
+class EditionCheck:
+    name: str | None                # 판 이름(pictures.EDITION_PRIVATE · EDITION_SWAP). None = 판을 가르지 않는 한 판
+    spec: dict                      # 그 판의 사양(swap 을 떼거나 적용한 뒤)
+    report: Report
+    swaps: list[dict] = field(default_factory=list)   # 바꾼 장 목록(pictures.apply_swaps) — 두 판이 같은 목록을 쓴다
+
+
+def check_editions(spec: dict, claims: dict[str, dict], template: dict, card: dict | None = None, layout_fn=None,
+                   draft: bool = False, staged: set[str] | None = None, appendix_fn=None, edition: str | None = None) -> list[EditionCheck]:
+    """판마다 check 를 돌린다(pictures.plan_editions 가 판을 정한다). 막는 그림도 swap 도 없는 사양은 한 판 — check 를 그대로 부른 것과 같다.
+    판 가르기 규칙의 실패(pictures.swap_errors)는 바꾼판의 실패로 적는다(바꾼판이 없으면 다루는 그 판에).
+    claims 는 cited_ids(spec) 로 읽은 것 — swap 안에서 인용한 기록까지 들어 있어야 한다."""
+    from ozl.render import pictures as PIC
+    errs, plan = PIC.plan_editions(spec, draft, edition)
+    if not plan:   # --edition 을 줄 수 없는 사양(막는 그림도 swap 도 없다) 또는 모르는 판 이름
+        r = Report()
+        r.errors += errs
+        return [EditionCheck(edition, spec, r, [])]
+    also = PIC.used_in_any_edition(spec) if PIC.has_swaps(spec) else set()
+    out = [EditionCheck(name, sp, check(sp, claims, template, card, layout_fn, draft=draft, staged=staged, appendix_fn=appendix_fn, also_used=also), rows)
+           for name, sp, rows in plan]
+    if errs:
+        target = next((x for x in out if x.name == PIC.EDITION_SWAP), out[-1])
+        target.report.errors[:0] = errs
+    return out

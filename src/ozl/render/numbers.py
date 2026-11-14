@@ -584,5 +584,25 @@ def complete_in(sub: str, hay: str, need_digits: bool, identifiers=()) -> list[T
     return None
 
 
+def source_spans(text, identifiers=()) -> list[Token]:
+    """scan 과 같은 토큰을 내되 start·end 를 **원래 글** 기준으로 옮긴다(읽기용 — 덱이 수치 뒤에 링크 번호를 붙일 자리를 찾는다).
+    정규화(공백 접기)와 크기 단위 앞 공백 붙이기(_squeeze)로 줄어든 글자 자리를 되짚는다. 판독 결과(kind · canon)는 scan 그대로다."""
+    raw = "" if text is None else str(text)
+    norm_map: list[int] = []        # 정규화한 글의 글자 → 원래 글의 자리
+    norm: list[str] = []
+    for m in re.finditer(r"\s+|\S", raw):
+        norm.append(" " if m.group(0).isspace() else m.group(0))
+        norm_map.append(m.start())
+    s = "".join(norm)
+    drop = {m.start() for m in _SQUEEZE.finditer(s)}   # _SQUEEZE 는 공백 한 칸에만 맞는다
+    sq_map = [norm_map[i] for i in range(len(s)) if i not in drop]
+    out = []
+    for t in scan(raw, identifiers):
+        a = sq_map[t.start] if t.start < len(sq_map) else len(raw)
+        b = sq_map[t.end - 1] + 1 if 0 < t.end <= len(sq_map) else len(raw)
+        out.append(Token(t.kind, t.canon, a, b, t.fragment))
+    return out
+
+
 def exempt_identifiers(text, identifiers=()) -> list[str]:
     return [t.canon for t in scan(text, identifiers) if t.kind == "ident"]
