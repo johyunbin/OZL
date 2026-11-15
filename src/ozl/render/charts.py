@@ -10,7 +10,7 @@
      "unit": "달러/배럴",                     # 세로축 단위(필수)
      "period": "2098-01 ~ 2098-12",           # 기간 또는 기준 시점(필수)
      "series": [{"name": "가상 지표", "points": [["2098-01", 12.5], ["2098-12", "20.40", "20.40"]]}],
-     "source": "가상 기관, 가상 통계",          # 그림 아래 출처 줄(필수)
+     "source": "가상 기관, 가상 통계",          # 그림 아래 출처 줄(필수 — render_chart(source_line=False) 면 그리지 않는다)
      "claims": ["2099-01-02-am-01-c1"],       # 이 차트가 쓴 검증 기록 식별자(필수, 하나 이상)
      "transform": "",                         # 선택: 환산했으면 환산식을 글로(출처 줄 옆에 적힌다)
      "highlight": ["2098-12"],                # 선택: 값 꼬리표를 붙일 가로축 칸(모든 계열에 붙는다)
@@ -339,9 +339,13 @@ def validate_chart(spec) -> list[str]:
 
 
 # ── 그림에 찍히는 글 ─────────────────────────────────────────────────────
-def _source_line(spec) -> str:
-    line = f"출처: {spec['source'].strip()}"
+def _source_line(spec, source_line: bool = True) -> str:
+    """그림 맨 아래 줄. source_line=False 면 '출처:' 를 찍지 않고 환산식이 있을 때 '환산: …' 만 남긴다(없으면 빈 문자열 — 줄을 두지 않는다).
+    style: syuka 덱이 끈다: 출처는 그림 자리 귀퉁이의 링크 번호와 덱 밖 링크 목록이 맡는다."""
     tr = (spec.get("transform") or "").strip()
+    if not source_line:
+        return f"환산: {tr}" if tr else ""
+    line = f"출처: {spec['source'].strip()}"
     if tr:
         line += f" · 환산: {tr}"
     return line
@@ -362,9 +366,10 @@ def _labels(spec) -> list[tuple[int, int, str]]:
     return out
 
 
-def _drawn_texts(spec) -> list[str]:
-    """꼬리표를 뺀, 그림에 글자로 찍히는 사양 글(눈금 숫자·고정 문구 제외)."""
-    texts = [spec["title"], _sub_line(spec), _source_line(spec)]
+def _drawn_texts(spec, source_line: bool = True) -> list[str]:
+    """꼬리표를 뺀, 그림에 글자로 찍히는 사양 글(눈금 숫자·고정 문구 제외). source_line=False 면 출처 줄 대신 환산 줄만(있을 때)."""
+    foot = _source_line(spec, source_line)
+    texts = [spec["title"], _sub_line(spec)] + ([foot] if foot else [])
     multi = len(spec["series"]) > 1
     for s in spec["series"]:
         if multi:
@@ -453,9 +458,11 @@ def _fmt_tick(x, _pos) -> str:
     return f"{x:,.6f}".rstrip("0").rstrip(".")
 
 
-def render_chart(spec, out_path, size_px: tuple[int, int] = DEFAULT_SIZE_PX, slot_width_in: float = SLOT_W_IN) -> pathlib.Path:
+def render_chart(spec, out_path, size_px: tuple[int, int] = DEFAULT_SIZE_PX, slot_width_in: float = SLOT_W_IN,
+                 source_line: bool = True) -> pathlib.Path:
     """사양을 검사하고 PNG 를 쓴다. 검사 오류나 글꼴에 없는 글자가 있으면 ValueError(그리지 않는다).
-    size_px = (가로, 세로) 픽셀. slot_width_in = 이 그림이 놓일 슬라이드 위 자리의 폭(in) — 글자 pt 의 기준."""
+    size_px = (가로, 세로) 픽셀. slot_width_in = 이 그림이 놓일 슬라이드 위 자리의 폭(in) — 글자 pt 의 기준.
+    source_line=False 면 그림 맨 아래 '출처:' 줄을 그리지 않는다(환산식이 있으면 '환산: …' 줄만). 수량 대조(chart_quantities)는 이 인자와 상관없이 같다."""
     errs = validate_chart(spec)
     if errs:
         raise ValueError("차트 사양 오류: " + " / ".join(errs))
@@ -464,7 +471,7 @@ def render_chart(spec, out_path, size_px: tuple[int, int] = DEFAULT_SIZE_PX, slo
         raise ValueError(f"그림 크기가 너무 작다({w_px}×{h_px}px)")
     font = pick_font()
     labels = _labels(spec)
-    missing = _missing_glyphs("".join(_drawn_texts(spec) + [lab for *_, lab in labels]))
+    missing = _missing_glyphs("".join(_drawn_texts(spec, source_line) + [lab for *_, lab in labels]))
     if missing:
         raise ValueError(f"글꼴에 없는 글자가 있다(네모로 찍힌다): {' '.join(missing)}")
 
@@ -476,14 +483,14 @@ def render_chart(spec, out_path, size_px: tuple[int, int] = DEFAULT_SIZE_PX, slo
     with plt.rc_context(rc):
         fig = plt.figure(figsize=(w_px / dpi, h_px / dpi), dpi=dpi)
         try:
-            _draw(fig, spec, labels, w_px, h_px)
+            _draw(fig, spec, labels, w_px, h_px, source_line)
             fig.savefig(out, dpi=dpi, facecolor="white")
         finally:
             plt.close(fig)
     return out
 
 
-def _draw(fig, spec, labels, W: int, H: int) -> None:
+def _draw(fig, spec, labels, W: int, H: int, source_line: bool = True) -> None:
     r = fig.canvas.get_renderer()
     pt2px = fig.dpi / 72
     pad = 0.035 * W                  # 좌우 바깥 여백(px)
@@ -509,8 +516,9 @@ def _draw(fig, spec, labels, W: int, H: int) -> None:
     y -= 0.6 * SUB_PT * pt2px
     axes_top = y
 
-    # 아래: 출처 줄
-    foot_lines = _wrap(fig, r, _source_line(spec), FOOT_PT, inner)
+    # 아래: 출처 줄(source_line=False 면 환산 줄만, 그것도 없으면 줄을 두지 않는다)
+    foot = _source_line(spec, source_line)
+    foot_lines = _wrap(fig, r, foot, FOOT_PT, inner) if foot else []
     yb = 0.025 * H
     for line in reversed(foot_lines):
         fig.text(pad / W, yb / H, line, fontsize=FOOT_PT, color=FOOT, va="bottom", ha="left")

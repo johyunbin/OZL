@@ -489,9 +489,8 @@ def test_syuka_ad_matches_the_sponsorship_code_as_it_is_now():
     code = sponsorship_code()
     missing = "광고 구간의 장을 검사하는 코드는 아직 없다"
     if code is None:
-        # 광고 칸 검사 코드는 덱 변경과 함께 저장소에 올라온다. 지시서는 그 코드를 전제로 적혀 있고 첫머리에 그 사실을 밝힌다.
-        assert "덱 변경과 함께 저장소에 올라온다" in body
-        pytest.skip("광고 칸 검사 코드가 이 판에 없다(덱 변경과 함께 올라온다)")
+        assert missing in body and "대조표, 민감 점검, 표시 계획까지" in body
+        return
     assert missing not in body
     step = body.split("### 4. 사양의 광고 칸", 1)[1].split("### 5.", 1)[0]
     assert f"`{code['key']}`" in step and f"`stage: {code['stage']}`" in step
@@ -981,8 +980,7 @@ def test_syuka_ad_instruction_covers_what_the_walkthrough_tripped_on():
                   "이 폴더를 빼지 않는다"):
         assert piece in ad, piece
     from ozl.render import spec
-    if hasattr(spec, "SPONSOR_MAX_SHARE"):                               # 광고 칸 검사 코드는 덱 변경과 함께 올라온다
-        assert spec.SPONSOR_MAX_SHARE == 0.20                            # 문서의 20% 가 코드의 값이다
+    assert spec.SPONSOR_MAX_SHARE == 0.20                                # 문서의 20% 가 코드의 값이다
     ignore = ROOT / "private" / ".gitignore"
     if ignore.is_file():                                                 # 비공개 사본이 있는 기기에서만: 문서의 말대로 광고주 자료 폴더는 백업에서 빠져 있지 않다
         assert "sponsor" not in ignore.read_text(encoding="utf-8")

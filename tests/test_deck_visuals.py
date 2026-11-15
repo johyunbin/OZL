@@ -336,3 +336,142 @@ def test_capture_passage_that_does_not_fit_fails_strict(desk):
     c = machine_claim(desk, image=False, body=body, observed=long, recheck_located=long)
     errs = errors(slide(capture=CID), {CID: c})
     assert any("원문 캡처를 그릴 수 없다" in e and "다 들어가지 않는다" in e for e in errs), errs
+
+
+# ── 차트 그림 안의 출처 줄(style: syuka 는 끈다) ─────────────────────────────
+def _ink_rows_from_bottom(png, band: float = 0.045) -> int:
+    """그림 아래 띠(높이의 band)에서 잉크가 있는 줄 수. 출처 줄은 아래 끝에서 높이의 약 3~6% 자리에 찍히고,
+    출처 줄을 끈 그림의 가장 아래 글(가로축 눈금)은 약 5.4% 위에서 시작한다(기본 크기 1200×1175 에서 잰 값)."""
+    from PIL import Image
+    with Image.open(png) as g:
+        im = g.convert("L")
+    W, H = im.size
+    px = im.load()
+    return sum(1 for y in range(int(H * (1 - band)), H) if any(px[x, y] < 200 for x in range(0, W, 2)))
+
+
+def test_chart_source_line_can_be_turned_off(tmp_path):
+    from ozl.render import charts as G
+    ch = line_chart()
+    assert "출처: 가상 섬 통계청" in G._drawn_texts(ch)
+    assert not any(t.startswith("출처") for t in G._drawn_texts(ch, False))
+    conv = line_chart(transform="천 원을 원으로")
+    assert "환산: 천 원을 원으로" in G._drawn_texts(conv, False) and "출처: 가상 섬 통계청 · 환산: 천 원을 원으로" in G._drawn_texts(conv)
+    assert G.chart_quantities(ch) == G.chart_quantities(dict(ch))            # 수량 대조는 인자와 상관없다(그대로)
+    on = G.render_chart(ch, tmp_path / "on.png")
+    off = G.render_chart(ch, tmp_path / "off.png", source_line=False)
+    kept = G.render_chart(conv, tmp_path / "conv.png", source_line=False)
+    assert _ink_rows_from_bottom(on) > 0                                    # 옛 그림: 아래 띠에 출처 줄
+    assert _ink_rows_from_bottom(off) == 0                                  # 끄면 아래 띠에 글이 없다
+    assert _ink_rows_from_bottom(kept) > 0                                  # 환산식이 있으면 그 줄은 남는다
+
+
+def test_syuka_build_draws_charts_without_source_line(desk):
+    c = machine_claim(desk)
+    old = spec_of([slide(chart=line_chart())])
+    new = {**spec_of([slide(chart=line_chart())]), "style": "syuka"}
+    a = B.render_visuals(old, {CID: c}, desk / "va")[(3, -1)][0]
+    b = B.render_visuals(new, {CID: c}, desk / "vb")[(3, -1)][0]
+    assert _ink_rows_from_bottom(a) > 0 and _ink_rows_from_bottom(b) == 0    # 옛 사양의 차트는 그대로, 새 규칙은 출처 줄 없음
+    rep = S.check(new | {"slides": [dict(sl, seconds=20) for sl in new["slides"]]}, {CID: c}, TEMPLATE, layout_fn=B.layout_problems)
+    assert not any("chart" in e for e in rep.errors), rep.errors              # 검사(수량 대조)는 달라지지 않는다
+
+
+# ── capture_full 의 화면 갈무리 그림, 읽힘과 채움 경고 ────────────────────────
+def _shot(tmp, name, size, **kw):
+    """지어낸 원문 화면 갈무리 대장 줄(그림은 PIL 로 그린 것). 출처 호스트는 CID 기록의 원문과 같은 기관이다."""
+    from test_deck_pictures_policy import _art, screen
+    return screen(_art(tmp / name, size), **kw)
+
+
+def _full_pic(**kw):
+    base = {"stage": "근거 수치", "kind": "capture_full", "title": "통계청 화면", "picture": "p1", "claim_ids": [CID], "seconds": 20}
+    base.update(kw)
+    return base
+
+
+def _chk_pics(sl, claims, pics, draft=False):
+    sp = spec_of([sl])
+    sp["pictures"] = pics
+    return S.check(sp, claims, TEMPLATE, draft=draft, layout_fn=B.layout_problems)
+
+
+def test_capture_full_takes_a_screen_shot_picture(desk):
+    from pptx import Presentation
+    from test_deck_kinds import entry
+    from ozl.render import style as ST
+    c = machine_claim(desk, image=False)
+    shot = _shot(desk, "wide.png", (1500, 640))
+    rep = _chk_pics(_full_pic(), {CID: c}, [shot])
+    assert rep.ok, rep.errors
+    assert not any("picture p1" in w for w in rep.warnings), rep.warnings   # 자리(11.41 × 4.95in)를 절반 넘게 채운다. shot_log 가 없어 읽힘은 어림하지 않는다
+    assert ST.layout_of(_full_pic()) == "image_full"
+    # capture 를 쓴 꼴은 그대로다(같은 종류, 같은 자리)
+    assert _chk_pics({"stage": "근거 수치", "kind": "capture_full", "title": "통계청 원문", "capture": CID, "claim_ids": [CID], "seconds": 20}, {CID: c}, []).ok
+    # 원문 화면 갈무리가 아닌 그림은 받지 않는다
+    other = _chk_pics(_full_pic(), {CID: c}, [entry(desk / "wide.png")])
+    assert any("capture_full 에는 원문 화면 갈무리 종류의 그림만 쓴다" in e for e in other.errors), other.errors
+    both = _chk_pics(_full_pic(capture=CID), {CID: c}, [shot])
+    assert any("그림 자리는 하나다" in e for e in both.errors)
+    none = _chk_pics({k: v for k, v in _full_pic().items() if k != "picture"}, {CID: c}, [shot])
+    assert any("capture_full 에는 'capture' 가 있어야 한다" in e and "picture" in e for e in none.errors), none.errors
+    grey = _chk_pics({**{k: v for k, v in _full_pic().items() if k != "picture"}, "image": {"what": "감자", "source": "가상 섬 농업청"}}, {CID: c}, [shot])
+    assert any("'image' 는 capture_full 의 그림 자리에 쓰지 않는다" in e for e in grey.errors), grey.errors
+    # 인용 기록의 원문과 기관 호스트가 다르면 지금 규칙대로 실패한다
+    far = _chk_pics(_full_pic(), {CID: c}, [_shot(desk, "far.png", (1500, 640), source_url="https://other.example.net/view")])
+    assert any("기관 호스트" in e for e in far.errors), far.errors
+    # 빌드: 큰 자리 안쪽에 비율을 지켜 놓이고 그림 밑에 호스트 표기가 붙는다
+    sp = spec_of([_full_pic()])
+    sp["pictures"] = [shot]
+    out = desk / "o" / "full.pptx"
+    B.build_pptx(sp, {CID: c}, {"card_id": CARD}, out)
+    s3 = Presentation(str(out)).slides[2]
+    pics = _pictures(s3)
+    assert len(pics) == 1 and pics[0].name == "그림 파일"
+    assert abs(pics[0].width / pics[0].height - 1500 / 640) < 0.01
+    assert pics[0].top >= B.Inches(B.FULL_TOP) - 1 and pics[0].top + pics[0].height <= B.Inches(B.FULL_BOTTOM) + 1
+    assert "원문: www.stats.example.org" in [sh.text_frame.text for sh in s3.shapes if sh.has_text_frame]
+    assert "| 그림 파일 p1 |" in B.running_sheet(sp, {"card_id": CARD}, {CID: c}, "x")
+
+
+def test_screen_readable_pt_from_shot_log(desk):
+    from test_deck_kinds import entry
+    from ozl.render import pictures as PIC
+    from ozl.render import style as ST
+    web = _shot(desk, "web.png", (900, 1000), shot_log={"window": "900x1000", "image": "900x1000"})
+    assert PIC.screen_readable_pt(web, 2.56) == pytest.approx(ST.SCREEN_WEB_BODY_PX * 2.56 / 900 * 72)        # 창 폭 900px 이 2.56in 로 줄면 약 2.9pt
+    clip = _shot(desk, "clip.png", (450, 300), shot_log={"window": "900x1000", "clip": [100, 200, 450, 300], "image": "450x300"})
+    assert PIC.screen_readable_pt(clip, 7.4) == pytest.approx(ST.SCREEN_WEB_BODY_PX * 7.4 / 450 * 72)         # 범위를 좁히면 그 폭(450px)이 기준
+    pdf = _shot(desk, "pdf.png", (1241, 1755), shot_log={"dpi": 150, "page_px": "1241x1755", "image": "1241x1755"})
+    assert PIC.screen_readable_pt(pdf, 2.91) == pytest.approx(ST.SCREEN_DOC_BODY_PT * 150 * 2.91 / 1241)      # 약 3.5pt
+    band = _shot(desk, "band.png", (1241, 527), shot_log={"dpi": 150, "page_px": "1241x1755", "band": [0.2, 0.5], "image": "1241x527"})
+    assert PIC.screen_readable_pt(band, 11.41) == pytest.approx(ST.SCREEN_DOC_BODY_PT * 150 * 11.41 / 1241)   # 구간은 높이만 자른다 — 넓은 자리면 약 13.8pt
+    old = _shot(desk, "old.png", (1241, 1755), shot_log={"dpi": 150})                                         # 그림 크기 칸이 없는 옛 줄은 파일에서 읽는다
+    assert PIC.screen_readable_pt(old, 2.91) == pytest.approx(PIC.screen_readable_pt(pdf, 2.91))
+    assert PIC.screen_readable_pt(_shot(desk, "none.png", (900, 1000)), 2.56) is None                         # shot_log 가 없으면 어림하지 않는다
+    assert PIC.screen_readable_pt(entry(desk / "web.png", shot_log={"window": "900x1000"}), 2.56) is None     # 원문 화면 갈무리가 아니면 어림하지 않는다
+    assert PIC.screen_readable_pt(_shot(desk, "bad.png", (900, 1000), shot_log={"window": "넓다"}), 2.56) is None
+
+
+def test_small_screen_shot_and_half_empty_slot_warn(desk):
+    from test_deck_kinds import entry
+    from test_deck_pictures_policy import _art
+    c = machine_claim(desk, image=False)
+    web = _shot(desk, "web.png", (900, 1000), shot_log={"window": "900x1000", "image": "900x1000"})
+    stack = {"stage": "근거 수치", "kind": "image_stack", "title": "통계청 화면", "picture": "p1", "claim_ids": [CID], "body": ["감자 값이 올랐다"], "seconds": 20}
+    rep = _chk_pics(stack, {CID: c}, [web])
+    assert rep.ok, rep.errors                                                # 경고일 뿐이다
+    mine = [w for w in rep.warnings if w.startswith("3쪽: picture p1")]
+    assert any("갈무리 글자가 약 2.9pt 로 찍힌다" in w and "찍는 범위를 좁히거나 넓은 자리를 쓴다" in w for w in mine), mine
+    assert any("자리 넓이의 22% 만 채운다" in w and "빈칸" in w for w in mine), mine
+    pdf = _shot(desk, "pdf.png", (1241, 1755), shot_log={"dpi": 150, "page_px": "1241x1755"})
+    left = _chk_pics(slide(picture="p1"), {CID: c}, [pdf])
+    got = [w for w in left.warnings if "picture p1" in w]
+    assert len(got) == 1 and "약 3.5pt" in got[0], got                         # 왼쪽 자리는 71% 를 채워 채움 경고는 없다
+    wide = _shot(desk, "band.png", (1241, 527), shot_log={"dpi": 150, "page_px": "1241x1755", "band": [0.2, 0.5], "image": "1241x527"})
+    assert not [w for w in _chk_pics(_full_pic(), {CID: c}, [wide]).warnings if "picture p1" in w]           # 구간만 큰 자리에 놓으면 경고가 없다
+    # 채움 경고는 그림 종류와 상관없다. 읽힘은 원문 화면 갈무리만 어림한다
+    tall = entry(_art(desk / "tall.png", (500, 1000)))
+    cap = _chk_pics({"stage": "배경", "kind": "photo_caption", "title": "감자밭", "picture": "p1", "caption": "가상의 섬 풍경이다", "seconds": 20}, {}, [tall])
+    got = [w for w in cap.warnings if "picture p1" in w]
+    assert len(got) == 1 and "만 채운다" in got[0] and "갈무리" not in got[0], got

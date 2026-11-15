@@ -76,6 +76,13 @@ QUESTION_MIN_SLIDES = 20             # 이 장수 이상이면 물음형 제목�
 OPEN_KIND = "full_picture"           # 첫 장의 종류
 OPEN_QUESTION_WITHIN = 5             # 이 장수 안에 물음이 선다(평가 기준 나1)
 
+# ── 그림 자리의 읽힘과 채움(정한 값 — 집계가 아니다. pictures.placement_warnings 가 쓴다) ──────────────
+SCREEN_WEB_BODY_PX = 14      # 웹 화면 갈무리의 본문 글자 크기 가정(CSS 픽셀). 정부·기관 누리집 본문은 대개 14~16px 이다 — 작은 쪽으로 잡아 경고가 먼저 나게 한다
+SCREEN_DOC_BODY_PT = 10      # PDF 문서 갈무리의 본문 글자 크기 가정(pt). 보도자료와 통계 보고서 본문은 대개 10~12pt 이고 표 안은 더 작다
+SCREEN_MIN_PT = 7.0          # 갈무리 글자가 슬라이드에서 이보다 작게 찍히면 경고. 우리 화면에서 가장 작은 글(그림 밑 표기 10pt, 링크 번호 8pt)보다
+#                              조금 작은 값이다 — 방송 화면(1080p 의 왼쪽 60%)에 놓이면 7pt 글자는 높이 약 7px 이라 그 아래는 읽지 못한다
+PICTURE_FILL_MIN = 0.5       # 그림이 자리 넓이의 이 비율을 채우지 못하면 경고(쪽 판정의 '빈칸' — 확인 기준 2절 5번). 가로세로 비가 자리와 크게 다른 그림이 걸린다
+
 LAYOUT_NAME = {
     "image_left": "좌 그림 + 우 글", "image_stack": "그림 위아래 + 글", "text_only": "글만", "image_full": "그림 위주",
     "media": "제목 없는 화면", "image_pair": "그림 2장", "image_right": "우 그림 + 좌 글",
@@ -245,6 +252,8 @@ def outline_text(o: dict) -> str:
 SAMPLES = ROOT / "private" / "decks" / "samples"
 SAMPLES_LINK = ROOT / "private" / "결과물" / "04_덱" / "견본집"
 SAMPLE_CARD = "견본"
+# 견본집의 광고 칸 — 지어낸 광고주와 지어낸 자료 이름이다(실제 회사가 아니다)
+SAMPLE_SPONSOR = {"kind": "유료 광고", "sponsor": "가상제분", "label": "유료 광고 포함", "whole": False, "materials": ["가상제분 소개 자료(지어낸 자료)"]}
 
 
 def _draw(path: pathlib.Path, shape: str, size=(1600, 900)) -> None:
@@ -296,13 +305,18 @@ def _pic(pid: str, path: pathlib.Path, at: str) -> dict:
 
 def sample_spec(pic_dir: pathlib.Path) -> dict:
     """종류마다 한 장 이상 — 지어낸 문장, 직접 그린 도형, 숫자 없음, 기록 인용 없음.
-    capture_full 은 받아들여진 기록의 원문 사본에서만 그려지므로 넣지 않는다(기록을 지어내지 않는다)."""
+    capture_full 은 받아들여진 기록의 원문 사본에서만 그려지므로 넣지 않는다(기록을 지어내지 않는다).
+    광고 구간 두 장(구간의 첫 장과 끝 장 — 지어낸 광고주)이 들어 있다: 오른쪽 위 띠와, 첫 장 · 끝 장의 화면 글과 말에 든 표시 문구를 보인다.
+    그림은 들어갈 자리의 가로세로 비에 맞춰 그린다(자리 넓이의 절반을 못 채우면 빈칸 경고 — PICTURE_FILL_MIN)."""
     at = dt.datetime.now().astimezone().isoformat(timespec="seconds")
     shapes = {"p1": "sun", "p2": "bars", "p3": "circles", "p4": "steps", "p5": "house", "p6": "wave", "p7": "circles"}
+    sizes = {"p1": (1600, 900), "p6": (1600, 900), "p7": (1600, 900),   # full_picture — 쪽을 채우는 자리
+             "p4": (2000, 520),                                        # image_stack — 넓고 낮은 자리(11.41 × 2.85in)
+             "p5": (1850, 600)}                                        # photo_caption — 넓은 자리(11.41 × 3.70in)
     pics = []
     for pid, sh in shapes.items():
         f = pic_dir / f"{pid}_{sh}.png"
-        _draw(f, sh, (1600, 900) if pid in ("p1", "p6", "p7") else (1200, 1000))
+        _draw(f, sh, sizes.get(pid, (1200, 1000)))   # 그 밖은 왼쪽 그림 자리와 두 장 비교 자리
         pics.append(_pic(pid, f, at))
     sl = [
         {"kind": "full_picture", "stage": "여는 장", "picture": "p1", "seconds": 12, "spoken": "오늘은 동네 빵집 이야기로 시작합니다."},
@@ -318,6 +332,13 @@ def sample_spec(pic_dir: pathlib.Path) -> dict:
         {"kind": "photo_caption", "stage": "전개", "title": "가게 앞 풍경", "picture": "p5", "caption": "골목 끝에서 보이는 빨간 지붕", "seconds": 20},
         {"kind": "full_picture", "stage": "여담", "picture": "p7", "caption": "지붕 색은 주인의 고집이었다", "seconds": 12,
          "spoken": "잠깐 딴 길로 새면, 저 지붕 색에도 사연이 있습니다."},
+        # 광고 구간(지어낸 광고주) — 첫 장과 끝 장: 화면 글에 표시 문구와 광고주 이름, 말로 할 문장에 표시 문구. 장마다 오른쪽 위 띠는 빌드가 그린다
+        {"kind": "image_text", "stage": S.SPONSOR_STAGE, "title": f"{SAMPLE_SPONSOR['label']}: {SAMPLE_SPONSOR['sponsor']}의 밀가루 이야기", "picture": "p2",
+         "body": [f"이 구간은 {SAMPLE_SPONSOR['sponsor']}의 유료 광고다", {"text": "밀가루는 빵집의 새벽을 연다", "red": True}], "seconds": 20,
+         "spoken": f"여기서부터는 {SAMPLE_SPONSOR['label']} 구간입니다. {SAMPLE_SPONSOR['sponsor']}이 보낸 이야기를 전합니다."},
+        {"kind": "photo_caption", "stage": S.SPONSOR_STAGE, "title": "광고 구간을 마치며", "picture": "p5",
+         "caption": f"{SAMPLE_SPONSOR['label']} · {SAMPLE_SPONSOR['sponsor']}의 광고 구간은 여기까지", "seconds": 16,
+         "spoken": f"{SAMPLE_SPONSOR['label']} 구간은 여기까지입니다. 다시 빵집 이야기로 돌아갑니다."},
         {"kind": "image_pair", "stage": "비교", "title": "봄과 가을의 진열대",
          "pair": [{"picture": "p2", "caption": "봄에는 가벼운 빵"}, {"picture": "p3", "caption": "가을에는 묵직한 빵"}], "seconds": 25},
         {"kind": "compare_table", "stage": "비교", "title": "두 가게의 하루",
@@ -325,7 +346,7 @@ def sample_spec(pic_dir: pathlib.Path) -> dict:
         {"kind": "quote_line", "stage": "반전", "title": "주인의 한마디", "quote": {"text": "빵은 결국 시간이 만든다", "by": "골목 빵집 주인(지어낸 인물)"}, "seconds": 18},
         {"kind": "closing", "stage": "닫는 장", "title": "오늘의 정리", "body": ["줄은 맛보다 시간에서 생긴다", "가게마다 바쁜 때가 다르다", "다음에는 우유 가게로 간다"], "seconds": 22},
     ]
-    return {"card_id": SAMPLE_CARD, "style": "syuka", "pictures": pics, "slides": sl}
+    return {"card_id": SAMPLE_CARD, "style": "syuka", S.SPONSOR: dict(SAMPLE_SPONSOR), "pictures": pics, "slides": sl}
 
 
 HUMOR_KINDS = ("full_picture", "photo_caption")   # caption 한마디를 둘 수 있는 종류(image_stack 은 아래 본문 한 줄)
@@ -338,24 +359,28 @@ def _note_extra(sl: dict) -> str:
         out.append("여는 장: 제목 없는 그림으로 연다")
     if _asks(sl):
         out.append("물음형 제목(또는 caption)")
-    if sl.get("stage") == "여담" or (sl.get("kind") in HUMOR_KINDS and sl.get("caption")):
+    if sl.get("stage") == S.SPONSOR_STAGE:
+        out.append("광고 구간: 장마다 오른쪽 위 띠(표시 문구와 광고주), 첫 장과 끝 장은 화면 글과 말로 할 문장에도 표시 문구(광고주는 지어낸 이름)")
+    elif sl.get("stage") == "여담" or (sl.get("kind") in HUMOR_KINDS and sl.get("caption")):
         out.append("유머 자리: caption 한마디 · 여담 단계(원본 문구를 옮기지 않고 사람·집단을 조롱하지 않는다)")
     return (" " + " · ".join(out) + ".") if out else ""
 
 
 def sample_problems(spec: dict) -> list[str]:
-    """견본 사양의 배치 넘침과 그림 검사(엄격 모드) — 카드 검사는 하지 않는다(card_id 가 견본)."""
+    """견본 사양의 배치 넘침(광고 띠 포함)과 그림 검사(엄격 모드), 광고 칸 검사 — 카드 검사는 하지 않는다(card_id 가 견본).
+    그림 경고(자리 넓이의 절반을 못 채운 그림 등)도 견본에서는 실패로 본다: 견본집에 빈 그림 자리를 두지 않는다."""
     from ozl.render import build as B
     from ozl.render import pictures as PIC
     pics, perrs = PIC.ledger(spec)
     out = list(perrs)
+    sponsor = S.sponsor_info(spec)
     for i, sl in enumerate(spec["slides"], 1):
-        out += [f"{i}쪽: {e}" for e in B.layout_problems(sl)]
-        ve, waits, _ = S.visual_errors(sl, {}, False, pics)
-        out += [f"{i}쪽: {e}" for e in ve] + [f"{i}쪽: 그림 대기 {w}" for w in waits]
+        out += [f"{i}쪽: {e}" for e in B.layout_problems(S.sponsor_view(sl, sponsor, i))]
+        ve, waits, vw = S.visual_errors(sl, {}, False, pics)
+        out += [f"{i}쪽: {e}" for e in ve] + [f"{i}쪽: 그림 대기 {w}" for w in waits] + [f"{i}쪽: {w}" for w in vw]
         out += [f"{i}쪽: 숫자를 쓰지 않는다 — '{t}'" for t in S.visible_text(sl) + S.spoken_text(sl) if re.search(r"\d", t)]
     errs, _ = style_check(spec)
-    return out + errs
+    return out + errs + S.sponsorship_errors(spec, pics)
 
 
 def samples(out_root: pathlib.Path = SAMPLES, export: bool = True, link: pathlib.Path | None = SAMPLES_LINK) -> dict:
@@ -381,6 +406,7 @@ def samples(out_root: pathlib.Path = SAMPLES, export: bool = True, link: pathlib
         sld.notes_slide.notes_text_frame.text = (f"[견본 · {sl['kind']}] 원본 장 모양 '{LAYOUT_NAME[lay]}' — 원본 {LAYOUT_SHARE.get(lay, 0) * 100:.1f}% "
                                                  f"(영상 {NORMS_VIDEOS}편 집계). 문장과 그림은 지어낸 것이다."
                                                  + _note_extra(sl))
+    deck.finish_package(prs)   # 노트를 고쳐 다시 저장하므로 문서 통계(낱말 수)를 다시 쓴다
     prs.save(str(pptx))
     _, warns = style_check(spec)
     info = {"dir": str(outdir), "pptx": str(pptx), "slides": len(spec["slides"]), "style_warnings": len(warns)}

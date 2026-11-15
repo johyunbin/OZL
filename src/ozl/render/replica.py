@@ -66,6 +66,7 @@ def build() -> pathlib.Path:
     OUT.mkdir(parents=True, exist_ok=True)
     out = OUT / f"replica_{dt.datetime.now():%Y%m%d_%H%M%S}.pptx"
     deck.clear_template_props(prs)
+    deck.finish_package(prs)
     prs.save(str(out))
     return out
 

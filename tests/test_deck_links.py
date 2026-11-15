@@ -434,3 +434,129 @@ def test_claim_cited_twice_is_one_candidate(desk):
     conv = text_slide(claim_ids=[OLD], body=["1월에는 7.5였다", "어림 9천이다"],
                       conversions=[{"shown": "9천", "claim_id": OLD}, {"shown": "9천", "claim_id": OLD}])   # 환산을 두 번 적어도 같다
     assert not any("둘 이상" in e or "서로 다른 기록" in e for e in S.number_sources(conv, cl)["errors"])
+
+
+# ── 링크 번호를 붙이지 않는 표기(분모 꼴 · 차례 꼴)와 되풀이 ─────────────────────
+BREAD = f"{CARD}-c5"    # 지어낸 빵집 기록 — 분모 꼴과 차례 꼴이 든 문장
+OVEN = f"{CARD}-c6"     # BREAD 와 같은 표기(1 · 2)를 가진 다른 지어낸 기록
+
+
+def bread_claim():
+    return {"claim_id": BREAD, "card_id": CARD, "human_verified": True, "status": "verified",
+            "text": "가상의 빵집은 가게 1곳당 빵 3개를 굽고 손님 100명당 매출이 12% 는다. 제2 공장은 3번째 가게 옆에 있고 동네 1위다.",
+            "observed": "가게 1곳당 빵 3개 · 손님 100명당 매출 12% · 제2 공장 · 3번째 가게 · 1위",
+            "source": {"url": "https://example.org/bread.html", "publisher": "가상 빵집 조합", "tier": "T1"},
+            "checks": {"base_period": "2098", "primary_doc_locator": "첫 문단"}}
+
+
+def oven_claim():
+    return {"claim_id": OVEN, "card_id": CARD, "human_verified": True, "status": "verified",
+            "text": "가상의 화덕 가게는 직원 1인당 화덕이 하나이고 2차 조사에서도 같았다.", "observed": "직원 1인당 화덕 하나 · 2차 조사",
+            "source": {"url": "https://example.org/oven.html", "publisher": "가상 화덕 조합", "tier": "T1"},
+            "checks": {"base_period": "2098", "primary_doc_locator": "둘째 문단"}}
+
+
+@pytest.mark.parametrize("text,want", [
+    # 붙는 것 — 잰 값
+    ("빵 3개", {"3": ""}), ("매출 12%", {"12%": ""}), ("1위", {"1": ""}), ("3차례 올랐다", {"3": ""}), ("2차전지 공장", {"2": ""}),
+    ("3개 당연히 팔렸다", {"3": ""}), ("2명 당선", {"2": ""}), ("3당 체제", {"3": ""}), ("문제 2개", {"2": ""}), ("10차선 도로", {"10": ""}),
+    # 붙지 않는 것 — 분모 꼴(수 뒤에 단위와 '당')
+    ("가게 1곳당", {"1": S.SKIP_PER}), ("손님 100명당", {"100": S.SKIP_PER}), ("주민 1인당의 몫", {"1": S.SKIP_PER}), ("5만 명당 가게", {"5만": S.SKIP_PER}),
+    # 붙지 않는 것 — 차례 꼴
+    ("제2 공장", {"2": S.SKIP_ORDINAL}), ("3번째 가게", {"3": S.SKIP_ORDINAL}), ("2차 조사", {"2": S.SKIP_ORDINAL}), ("2차는 다르다", {"2": S.SKIP_ORDINAL}),
+    # 한 문장에 섞인 것 — 분모의 수만 건너뛴다
+    ("가게 1곳당 빵 3개", {"1": S.SKIP_PER, "3": ""}), ("손님 100명당 매출 12%", {"100": S.SKIP_PER, "12%": ""}),
+])
+def test_link_skip_table(text, want):
+    """지어낸 문장의 표 — 분모 꼴과 차례 꼴만 건너뛰고, 닮은 꼴('3차례', '2명 당선', '3당')은 번호를 붙인다."""
+    got = {text[t.start:t.end]: S.link_skip(text, t.start, t.end) for t in N.source_spans(text) if t.needs_claim}
+    assert got == want
+
+
+def test_denominator_and_ordinal_get_no_number_but_still_need_a_record():
+    cl = {BREAD: bread_claim()}
+    sl = text_slide(title="가게 1곳당 빵 3개", claim_ids=[BREAD],
+                    body=["손님 100명당 매출 12%", "제2 공장은 3번째 가게 옆", "동네 1위"])
+    src = S.number_sources(sl, cl)
+    assert src["errors"] == []
+    assert [(S.field_name(k), shown) for k, _, shown, _ in src["inline"]] == [("title", "3"), ("body[0]", "12%"), ("body[2]", "1")]
+    lp = S.link_plan(syuka([sl]), cl)
+    assert lp.numbers == {BREAD: 1}
+    assert [sh for _, sh in lp.uses[1]] == ["3", "12%", "1"]          # 링크 목록의 화면 표기에 분모의 수와 차례의 수가 없다
+    marks = lp.slides[2]["inline"]
+    assert set(marks) == {("title",), ("body", 0), ("body", 2)}        # '제2 공장은 3번째 가게 옆' 줄에는 번호가 없다
+    title = sl["title"]
+    assert list(marks[("title",)]) == [title.index("3개") + 1]          # '1곳당' 뒤가 아니라 '3개' 뒤
+    # 숫자 대조는 그대로다: 분모의 수도 근거가 있어야 한다
+    bare = text_slide(title="가게 9곳당 빵 3개", claim_ids=[BREAD], body=["동네 1위"])
+    errs = S.number_errors(bare, cl)
+    assert any("'9'" in e and "observed·text 에 없다" in e for e in errs), errs
+    rep = S.check(syuka([sl]), cl, V.TEMPLATE, layout_fn=B.layout_problems)
+    assert not [e for e in rep.errors if e.startswith("3쪽")], rep.errors
+
+
+def test_skipped_position_is_not_ambiguous_and_goes_unnumbered():
+    """분모의 수(1)와 차례의 수(2)가 두 기록에 다 있어도 '받치는 기록이 둘 이상'으로 실패하지 않는다 — 이을 번호가 없다.
+    그 표기만 받치던 기록은 번호 없이 「화면 수치 없이 인용한 기록」으로 간다."""
+    cl = {BREAD: bread_claim(), OVEN: oven_claim()}
+    sl = text_slide(title="직원 1인당 화덕", claim_ids=[BREAD, OVEN], body=["2차 조사에서도 같았다", "빵은 3개"])
+    src = S.number_sources(sl, cl)
+    assert src["errors"] == [], src["errors"]
+    assert [(shown, got) for _, _, shown, got in src["inline"]] == [("3", [BREAD])]
+    lp = S.link_plan(syuka([sl]), cl)
+    assert lp.errors == [] and lp.numbers == {BREAD: 1} and lp.unnumbered == {OVEN: [3]}
+    # 같은 수가 잰 값으로 쓰이면(1위) 예전처럼 정하지 못한다고 알린다
+    amb = text_slide(title="동네 1위", claim_ids=[BREAD, OVEN], body=["빵은 3개"])
+    errs = S.number_sources(amb, cl)["errors"]
+    assert len(errs) == 1 and "'1'" in errs[0] and "둘 이상" in errs[0]
+    # 건너뛰는 자리를 가리킨 지정은 실패가 아니다(쓰인 것으로 친다)
+    kept = text_slide(title="직원 1인당 화덕", claim_ids=[BREAD, OVEN], body=["빵은 3개"], number_claims=[{"shown": "1", "at": "title", "claim_id": OVEN}])
+    assert S.number_sources(kept, cl)["errors"] == []
+
+
+def test_repeated_notation_with_same_number_is_marked_once_per_slide():
+    cl = {BREAD: bread_claim()}
+    sl = {"stage": "근거 수치", "kind": "number", "title": "하루에 빵 3개", "number": {"value": "3개", "label": "가게마다 굽는 빵"},
+          "body": ["빵 3개를 굽는다", "매출은 12% 는다", "다시 12%"], "claim_ids": [BREAD], "seconds": 20}
+    nxt = text_slide(title="다음 장도 빵 3개", claim_ids=[BREAD], body=["매출 12%"])
+    lp = S.link_plan(syuka([sl, nxt]), cl)
+    marks = lp.slides[2]["inline"]
+    assert set(marks) == {("title",), ("body", 1)}                     # 큰 숫자 칸과 본문의 되풀이에는 붙이지 않는다
+    assert set(lp.slides[3]["inline"]) == {("title",), ("body", 0)}    # 다음 쪽에서는 다시 처음 자리에 붙는다
+    assert lp.uses[1] == [("3", "3"), ("3", "12%"), ("4", "3"), ("4", "12%")]
+
+
+def test_same_notation_with_different_numbers_keeps_both_marks(desk):
+    """같은 표기라도 자리마다 다른 기록(다른 번호)으로 이어지면 둘 다 붙는다."""
+    cl = claims_all(desk)
+    sl = text_slide(claim_ids=[OLD, TWIN], body=["당근은 1월에 7.5였다", "무도 1월에 7.5였다"],
+                    number_claims=[{"shown": "7.5", "at": "body[0]", "claim_id": OLD}, {"shown": "7.5", "at": "body[1]", "claim_id": TWIN}])
+    lp = S.link_plan(syuka([sl]), cl)
+    marks = lp.slides[2]["inline"]
+    assert list(marks[("body", 0)].values()) == ["1"] and list(marks[("body", 1)].values()) == ["2"]
+
+
+def test_built_deck_has_no_superscript_after_denominator(tmp_path):
+    """만든 pptx 에서: '1곳당' 어절 뒤에는 위첨자 조각이 없고 '3개' 뒤에는 있다. 화면 번호 집합과 링크 목록(csv)의 번호 집합이 같다."""
+    from pptx import Presentation
+    cl = {BREAD: bread_claim()}
+    sl = text_slide(title="가게 1곳당 빵 3개", claim_ids=[BREAD], body=["손님 100명당 매출 12%", "제2 공장은 3번째 가게 옆"])
+    sp = syuka([sl])
+    out = tmp_path / "o" / "d.pptx"
+    B.build_pptx(sp, cl, card_doc(), out)
+    lp = S.link_plan(sp, cl)
+    listed = {int(r["번호"]) for r in csv.DictReader(B.links_csv(sp, cl, card_doc(), lp).splitlines())}
+    assert B.screen_link_numbers(out) == listed == {1}
+    runs = []   # (조각 글, 위첨자인가) — 3쪽
+    for sh in Presentation(str(out)).slides[2].shapes:
+        if sh.has_text_frame:
+            for para in sh.text_frame.paragraphs:
+                for r in para.runs:
+                    rpr = r._r.find(B.qn("a:rPr"))
+                    runs.append((r.text, rpr is not None and rpr.get("baseline") not in (None, "0")))
+    before_sup = [runs[k - 1][0] for k, (_, sup) in enumerate(runs) if sup]
+    assert before_sup and all(not t.rstrip().endswith("당") for t in before_sup), before_sup
+    assert any(t.endswith("3개") for t in before_sup) and any(t.endswith("12%") for t in before_sup)
+    assert not any(sup for t, sup in runs if "번째" in t)
+    row = next(csv.DictReader(B.links_csv(sp, cl, card_doc(), lp).splitlines()))
+    assert row["화면 표기"] == "3 / 12%"

@@ -5,7 +5,7 @@ python -m ozl.render progress <card_id> [--start|--resume|--mark 단계|--done -
 python -m ozl.render norms [--out <폴더>]                   # 원본 방송 슬라이드 집계(ozl.render.norms)
 python -m ozl.render compare <사양.yaml 또는 산출 폴더> [--video <영상 id>] [--out <폴더>] [--edition 비공개판|바꾼판]   # 원본 비교표(ozl.render.compare)
 python -m ozl.render outline --minutes <분>                # style: syuka 덱의 목표 장수와 종류별 배분(ozl.render.style)
-python -m ozl.render samples [--out <폴더>] [--no-export]   # 종류별 견본집(ozl.render.style)
+python -m ozl.render samples [--out <폴더>] [--no-export]   # 종류별 견본집(ozl.render.style) — 광고 구간 두 장(지어낸 광고주) 포함
 python -m ozl.render shot <url> --out <png> [--width 1280 --height 900] [--clip x,y,w,h]   # 원문 화면 갈무리와 대장 칸 초안(ozl.render.shots)
                                                            # 단계마다 robots.txt 먼저, 리다이렉트는 따라가기 전에 넘어갈 호스트의 robots.txt 를 본다
 python -m ozl.render shot --pdf <사본> --page <쪽> --source-url <원문 주소> --out <png> [--dpi 150] [--band 위,아래]
@@ -13,7 +13,9 @@ python -m ozl.render origin <덱 그림> <원 게시처에서 받은 파일> --u
 python -m ozl.render origin --survey <원본> <사본…> [--json <파일>]          # 사본마다 두 값을 잰 표(상한을 다시 정할 때)
 python -m ozl.render public-check <산출 폴더 · 파일 하나(pptx · pdf · png · jpg · zip · tar)>   # 비공개 판의 것이면 종료 코드 1(문서 속성, 공개_가부.json, 등록 대장의 해시).
                                                            # 끝까지 보지 못한 파일도 1('검사 불가'). 등록 대장이 없으면 알림 줄을 낸다
+                                                           # 폴더에서 보지 못한 것(읽지 못한 하위 폴더, 폴더 링크, 깨진 링크)도 1 — 링크는 따라가지 않는다
 python -m ozl.render register-private [<폴더 또는 덱 파일>…] [--dry-run]   # 이미 만든 비공개 판을 등록 대장에 채운다(인자가 없으면 private/decks 아래)
+                                                           # 보지 못한 폴더나 링크가 있으면 '검사 불가' 줄과 종료 코드 1(그 아래는 등록에서 빠졌다)
 
 --draft        아직 '확인'(사람 대조)도 「원문 일치」(프로그램 대조 + 독립 재대조)도 아닌 기록·대기 폴더 기록도 인용 허용.
                해당 쪽에 [검증 대기] 딱지, 산출물 이름에 _draft. 완성본은 엄격 모드(--draft 없이)로만 만든다.
@@ -21,6 +23,12 @@ python -m ozl.render register-private [<폴더 또는 덱 파일>…] [--dry-run
 --edition      막는 그림(판정 '비공개 판에서만' 또는 권리 확인 대기)이 든 사양에서 한 판만 다룬다. 주지 않으면 엄격 모드는 두 판을 함께 검사하고
                같은 타임코드의 폴더 둘(<card>_<ts>_비공개판, _바꾼판)로 만든다. 비공개판만 다룰 때는 장의 swap 이 덜 쓰였어도 된다.
                초안 모드는 판을 가르지 않는다(바꾼 판의 초안은 --draft --edition 바꾼판).
+사양의 칸     style: syuka 사양은 화면 수치 뒤에 링크 번호가 붙는다. 분모 꼴(1인당, 100명당)과 차례 꼴(제2, 3번째, 2차)에는 붙이지 않고,
+               한 쪽에서 같은 표기와 같은 번호는 처음 자리에만 붙인다. 차트 그림 안의 '출처:' 줄은 그리지 않는다(환산식이 있으면 그 줄만).
+               capture_full 은 capture 대신 원문 화면 갈무리 종류의 picture 도 받는다. 그림이 자리 넓이의 절반을 못 채우거나 갈무리 글자가
+               7pt 아래로 찍히면(대장 줄의 shot_log 로 어림) check 가 경고한다.
+               광고 회차는 사양 맨 위에 sponsorship: {kind: 유료 광고|협찬|협업, sponsor, label, whole, materials} 를 두고 구간의 장에 stage: 광고 를 쓴다.
+               check 가 표시 문구와 구간의 짜임을 보고, build 가 구간의 장마다 오른쪽 위에 띠를 그린다.
 --clip         (shot) 찍은 화면에서 남길 범위. CSS 픽셀, 창 왼쪽 위가 0,0 이다. 창 밖의 범위는 받지 않는다(긴 화면은 --height 를 늘린다).
 --band         (shot --pdf) 남길 높이 구간. 쪽 높이의 비율 둘(0~1, 예: 0.2,0.55). 범위와 구간은 대장 칸 초안의 shot_log 에 적힌다.
 """

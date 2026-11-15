@@ -48,9 +48,23 @@
        어느 쪽도 없으면 '정할 수 없다'로 실패한다. number_claims: [{shown: 화면 표기, claim_id: 기록, at: 칸 이름(생략하면 그 쪽의 그 표기 전부),
        nth: 그 칸에서 몇 번째 그 표기인가(생략하면 그 칸의 그 표기 전부 — at 과 함께만 쓴다)}]. 칸 이름은 field_name 이 정한다
        (title · sub · en · ko · caption · number.value · number.label · quote.text · quote.by · body[0] · pair[0].caption · table · image · pair[0].image).
+     - 링크 번호를 붙이지 않는 표기(link_skip): 분모 꼴(「1인당」「100명당」「1곳당」 — 수 뒤에 단위와 '당')과 차례 꼴(「제2」「3번째」「2차」).
+       숫자 대조(number_errors)는 그대로 받고 번호만 붙이지 않는다. 그 자리에서는 '받치는 기록이 둘 이상' 실패도 내지 않는다(이을 번호가 없다).
+       한 쪽에서 같은 표기와 같은 번호가 되풀이되면 처음 자리에만 붙인다(link_plan).
   ⑦ 두 판(2026-11-15): 막는 그림(pictures.edition_block — 판정 '비공개 판에서만' 또는 권리 확인 대기)이 든 사양은 장마다 swap 칸을 두고
      check_editions 가 비공개판(swap 을 뗀 사양)과 바꾼판(swap 을 적용한 사양)을 따로 검사한다. check 는 판 하나의 사양만 받는다 —
      swap 칸이 남은 사양이 직접 들어오면 실패로 알린다. 규칙은 pictures.py 머리말(두 판과 공개 차단)에 있다.
+
+  ⑧ 광고 칸(2026-11-15 — sponsorship_errors): 사양 맨 위 sponsorship{kind, sponsor, label, whole, materials} 와 장의 stage: 광고.
+     - 실패: stage: 광고 장이 있는데 칸이 없거나 그 반대(whole 이 참이면 광고 장이 없어도 된다 — 회차 전체가 구간이다). kind 가 SPONSOR_KINDS 밖.
+       sponsor · label 이 빔. label 에 한글이 없거나 '광고' · '협찬' 낱말이 없거나 그것을 부정하는 말(없음, 아님 등)이 있음. 구간이 한 덩어리가 아님(whole 제외).
+       구간 첫 장과 끝 장의 화면 글에 label 과 sponsor 가 없음, 말로 할 문장에 label 이 없음. 구간 장수가 광고 아닌 장수의 20% 를 넘음(whole 제외).
+       구간이 여는 장보다 앞에 옴(whole 제외). 권리자 칸에 sponsor 이름이 든 그림의 종류가 기업 뉴스룸이나 로고가 아님.
+     - 단계 순서(stage_errors)는 광고 장을 뺀 순서로 본다(cards.STAGES 와 구성 템플릿 JSON 은 그대로다).
+     - 구간의 장마다 빌드가 오른쪽 위에 띠(label · sponsor)를 그린다. 띠도 넘침 검사를 받는다(SPONSOR_KEY 를 넣은 쪽 사본으로 본다).
+     - 코드가 보지 않는 것: 광고주 자료에만 있는 주장이 문장에 들어갔는가, 금지 문장(경쟁사 깎아내리기, 원문 없는 최상급, 효과 보장). 문장 대조가 본다.
+  ⑨ capture_full 은 capture 대신 원문 화면 갈무리 종류의 picture 도 받는다(제목 한 줄과 큰 화면 한 장). 그림 파일은 자리 넓이의 절반을 채우지 못하면 경고,
+     원문 화면 갈무리는 shot_log 로 어림한 글자 크기가 기준보다 작으면 경고(pictures.placement_warnings — 기준은 style.py).
 
     python -m ozl.render check <사양.yaml>
 """
@@ -248,7 +262,7 @@ VISUAL_KEYS = ("image", "chart", "capture", "picture")
 #   image_text · number = 왼쪽 그림 자리(deck.IMG_W × IMG_H) · photo_caption = 큰 그림 하나 · capture_full = 쪽 대부분을 차지하는 원문 캡처
 SLOT_KEYS = {
     "image_text": VISUAL_KEYS, "number": VISUAL_KEYS, "image_pair": VISUAL_KEYS,
-    "photo_caption": ("image", "picture"), "capture_full": ("capture",),
+    "photo_caption": ("image", "picture"), "capture_full": ("capture", "picture"),   # picture 는 원문 화면 갈무리 종류만(picture_errors)
     "full_picture": VISUAL_KEYS, "image_stack": VISUAL_KEYS,   # 2026-11-15 — 제목 없는 꽉 찬 그림 · 그림 위 글 아래
 }
 PICTURE_FIRST = ("photo_caption", "image_pair", "full_picture", "image_stack")   # 그림이 주인공인 종류 — 그림 자리가 비면 실패, 엄격 모드는 회색 자리도 실패
@@ -505,6 +519,8 @@ def visual_errors(sl: dict, claims: dict[str, dict], draft: bool, pics: dict | N
                 e.append(f"'{k}' 는 그림 자리가 있는 종류({', '.join(VISUAL_KINDS)})에서만 쓴다(지금 {kind})")
         if kind in PICTURE_FIRST and not have:
             e.append(f"그림 자리에 {' · '.join(SLOT_KEYS[kind])} 가운데 하나가 있어야 한다")
+        if kind == "capture_full" and not have:
+            e.append("capture_full 에는 'capture' 가 있어야 한다 — 원문 캡처 대신 원문 화면 갈무리 종류의 그림(picture)을 써도 된다")
         if e:
             errs += [tag + x for x in e]
             continue
@@ -538,6 +554,8 @@ def picture_errors(sl: dict, v: dict, slot: int, pics: dict, draft: bool, claims
     if pid not in pics:
         return [f"picture {pid} 가 그림 검수 대장(pictures)에 없다"], None, []
     e = pics[pid]
+    if sl.get("kind") == "capture_full" and not (PIC.rule_of(e) is not None and PIC.rule_of(e).screen):
+        return [f"picture {pid}({_s(e.get('kind'))}): capture_full 에는 원문 화면 갈무리 종류의 그림만 쓴다 — 다른 그림은 photo_caption · full_picture 로 쓴다"], None, []
     if not draft and PIC.is_meme(e):
         return [f"picture {pid} 는 밈이다 — 엄격 모드(완성본·공개용)에는 넣지 않는다. check·build 명령은 밈을 빼고(drop_memes) 검사한다"], None, []
     verdict, why, warns = PIC.judge(e, draft)
@@ -569,6 +587,8 @@ def picture_errors(sl: dict, v: dict, slot: int, pics: dict, draft: bool, claims
             why.append(f"그림 밑 표기 {p}")
     if why:
         return [f"picture {pid}: {w}" for w in why], None, warns
+    if ims:   # 자리에 놓인 크기로 보는 경고 — 자리 넓이의 절반을 못 채운 그림, 글자가 작게 찍히는 화면 갈무리
+        warns += [f"picture {pid}: {w}" for w in PIC.placement_warnings(e, ims[0].width, ims[0].height)]
     return [], None, warns
 
 
@@ -660,6 +680,33 @@ def inline_fields(sl: dict) -> list[tuple[tuple, str]]:
     return [(k, t) for k, t in out if t]
 
 
+# ── 링크 번호를 붙이지 않는 표기 ──
+# 숫자 대조(number_errors)는 그대로다 — 근거는 지금처럼 요구하고 번호만 붙이지 않는다.
+#   분모 꼴: 수 뒤에 단위와 '당'이 오는 표기(「1인당」「100명당」「가게 1곳당」). 그 수는 잰 값이 아니라 나누는 기준이다.
+#   차례 꼴: 「제2」「3번째」「2차」. 그 수는 차례다.
+# 좁게 잡는다(모르면 번호를 붙인다): 단위는 아래 목록만, 단위와 '당' 사이는 붙여 쓴 것만, '당' 뒤는 낱말 끝이나 조사만 받는다
+# (「3개 당연히」「2명 당선」「3당 체제」는 분모 꼴이 아니다). 「3차례」「2차전지」「10차선」은 차례 꼴이 아니다(번호를 붙인다).
+_PER_UNITS = tuple(sorted(("킬로미터", "킬로그램", "제곱미터", "가구", "세대", "사람", "시간", "개월", "점포", "매장", "상자", "마리", "리터", "미터", "그램",
+                           "인", "명", "곳", "개", "건", "회", "대", "주", "평", "채", "호", "권", "병", "잔", "끼", "번", "장", "편", "척", "톤", "원", "달러",
+                           "일", "월", "년", "분", "초", "km", "kg", "㎡", "㎞", "㎏", "m", "g", "t", "L", "l", "%"), key=len, reverse=True))
+_WORD_END = r"(?=$|[^가-힣A-Za-z]|(?:으로|로|의|은|는|이|가|을|를|에|도|만)(?:$|[^가-힣A-Za-z]))"
+_PER_TAIL = re.compile(r"\s?(?P<unit>" + "|".join(map(re.escape, _PER_UNITS)) + r")?당" + _WORD_END)
+_ORD_HEAD = re.compile(r"(?:^|[^가-힣A-Za-z0-9])제\s?$")
+_ORD_TAIL = re.compile(r"(?:\s?번째|차(?=$|[^가-힣A-Za-z]|(?:의|는|은|가|를|을|에|에서|까지|부터|도|와|과)(?:$|[^가-힣A-Za-z])))")
+SKIP_PER, SKIP_ORDINAL = "분모 꼴", "차례 꼴"
+
+
+def link_skip(text: str, start: int, end: int) -> str:
+    """수치 표기 text[start:end] 에 링크 번호를 붙이지 않는 까닭 — SKIP_PER · SKIP_ORDINAL. 빈 문자열이면 붙인다."""
+    tok, rest = text[start:end], text[end:]
+    m = _PER_TAIL.match(rest)
+    if m and (m.group("unit") or (not m.group(0)[:1].isspace() and not tok[-1:].isdigit())):
+        return SKIP_PER   # 단위가 수치 표기 안에 든 꼴('7일당')은 바로 뒤의 '당'으로 본다
+    if _ORD_HEAD.search(text[:start]) or _ORD_TAIL.match(rest):
+        return SKIP_ORDINAL
+    return ""
+
+
 NUMBER_CLAIMS = "number_claims"   # 장의 칸 — 화면 수치 자리마다 받치는 기록을 지정한다(같은 표기가 인용한 기록 둘 이상에 있을 때)
 
 
@@ -680,32 +727,33 @@ def _token_claims(canon: str, ids: list[str], pools: dict[str, set[str]], conv: 
 
 def _occurrences(sl: dict, identifiers=()) -> list[dict]:
     """이 쪽 화면의 수치 자리(링크 번호를 붙일 수 있는 자리) — 화면 글 칸, 회색 그림 자리, 표. 나온 순서대로.
-    한 자리 = {key: 칸, kind: 'inline' | 'image' | 'table', slot, at: 글자 자리(inline), shown: 화면 표기, canon, nth: 그 칸에서 몇 번째 그 표기인가}."""
+    한 자리 = {key: 칸, kind: 'inline' | 'image' | 'table', slot, at: 글자 자리(inline), shown: 화면 표기, canon, nth: 그 칸에서 몇 번째 그 표기인가,
+    skip: 번호를 붙이지 않는 까닭(link_skip — 분모 꼴 · 차례 꼴. 빈 문자열이면 붙인다)}. nth 는 건너뛰는 자리까지 센다(사양의 지정과 같은 셈)."""
     out: list[dict] = []
     seen: dict[tuple, int] = {}
 
-    def add(key: tuple, kind: str, slot, at: int, shown: str, canon: str):
+    def add(key: tuple, kind: str, slot, at: int, shown: str, canon: str, skip: str = ""):
         seen[(key, canon)] = seen.get((key, canon), 0) + 1
-        out.append({"key": key, "kind": kind, "slot": slot, "at": at, "shown": shown, "canon": canon, "nth": seen[(key, canon)]})
+        out.append({"key": key, "kind": kind, "slot": slot, "at": at, "shown": shown, "canon": canon, "nth": seen[(key, canon)], "skip": skip})
 
     def spans(text: str):
-        return [(t, text[t.start:t.end]) for t in N.source_spans(text, identifiers) if t.needs_claim and not t.fragment]
+        return [(t, text[t.start:t.end], link_skip(text, t.start, t.end)) for t in N.source_spans(text, identifiers) if t.needs_claim and not t.fragment]
 
     for key, text in inline_fields(sl):
-        for t, shown in spans(text):
-            add(key, "inline", None, _mark_at(text, t.end), shown, t.canon)
+        for t, shown, skip in spans(text):
+            add(key, "inline", None, _mark_at(text, t.end), shown, t.canon, skip)
     for j, v in slot_views(sl):
         if visual_of(v) == "image" and isinstance(v.get("image"), dict):
             key = ("image",) if j == -1 else ("pair", j, "image")
             for k in ("what", "source", "caption"):
-                for t, shown in spans(_s(v["image"].get(k))):
-                    add(key, "image", j, -1, shown, t.canon)
+                for t, shown, skip in spans(_s(v["image"].get(k))):
+                    add(key, "image", j, -1, shown, t.canon, skip)
     tbl = sl.get("table")
     if isinstance(tbl, dict):
         cells = [_s(x) for x in tbl.get("header") or []] + [_s(x) for row in tbl.get("rows") or [] for x in (row if isinstance(row, list) else [row])]
         for cell in cells:
-            for t, shown in spans(cell):
-                add(("table",), "table", "table", -1, shown, t.canon)
+            for t, shown, skip in spans(cell):
+                add(("table",), "table", "table", -1, shown, t.canon, skip)
     return out
 
 
@@ -753,7 +801,9 @@ def _resolve(sl: dict, claims: dict[str, dict], identifiers=()) -> tuple[list[tu
       2. 환산이 그 표기에 기록 하나를 지정했으면 그 기록 — 같은 표기가 다른 기록에 글자 그대로 있어도 지정을 따른다.
       3. 후보가 하나면 그 기록.
       4. 그 밖(후보가 둘 이상인데 지정이 없다, 환산 둘이 서로 다른 기록을 가리킨다)은 정할 수 없다 — 실패로 알리고 그 자리에는 번호를 주지 않는다.
-    후보가 없는 수치는 넣지 않는다(숫자 대조가 실패시킨다)."""
+    후보가 없는 수치는 넣지 않는다(숫자 대조가 실패시킨다).
+    번호를 붙이지 않는 표기(자리의 skip — 분모 꼴 · 차례 꼴)는 넣지 않고, 기록을 정하지 못해도 실패로 알리지 않는다(이을 번호가 없다).
+    그 자리를 가리킨 number_claims 지정은 쓰인 것으로 친다(지워도 된다 — 실패는 아니다)."""
     ids = [str(x) for x in sl.get("claim_ids") or []]
     pools = {c: source_tokens(claims[c]) for c in ids if c in claims}
     conv: dict[str, list[str]] = {}
@@ -774,6 +824,8 @@ def _resolve(sl: dict, claims: dict[str, dict], identifiers=()) -> tuple[list[tu
         name = field_name(o["key"])
         match = [d for d in des if d["canon"] == o["canon"] and d["at"] in (None, name) and d["nth"] in (None, o["nth"])]
         hit |= {d["i"] for d in match}
+        if o["skip"]:
+            continue
         cands = _token_claims(o["canon"], ids, pools, conv)
         if not cands:
             continue
@@ -836,7 +888,8 @@ def number_sources(sl: dict, claims: dict[str, dict], identifiers=()) -> dict:
     {"inline": [(칸 이름, 글자 자리, 화면 표기, [받치는 기록])], "corner": [(자리, 무엇, [기록])], "errors": [실패]}.
     자리마다 기록 하나로 정한다(_resolve — number_claims 지정 > conversions 지정 > 후보가 하나뿐). inline 의 기록 목록은 [정한 기록, 같은 표기가 있는
     다른 기록…] — 앞의 것이 번호를 받는다. 정할 수 없는 자리(같은 표기가 인용한 기록 둘 이상에 있는데 지정이 없다)는 넣지 않고 errors 에 적는다.
-    차트와 원문 캡처는 사양이 기록을 직접 적는다(chart.claims · capture). 받치는 기록이 없는 수치는 넣지 않는다(숫자 대조가 실패시킨다)."""
+    차트와 원문 캡처는 사양이 기록을 직접 적는다(chart.claims · capture). 받치는 기록이 없는 수치는 넣지 않는다(숫자 대조가 실패시킨다).
+    분모 꼴과 차례 꼴(link_skip)의 자리는 넣지 않는다 — 번호를 붙이지 않는 표기다."""
     ids = [str(x) for x in sl.get("claim_ids") or []]
     resolved, errors = _resolve(sl, claims, identifiers)
     inline = [(o["key"], o["at"], o["shown"], got) for o, got in resolved if o["kind"] == "inline"]
@@ -879,7 +932,8 @@ def _page(i: int, slot) -> str:
 
 def link_plan(spec: dict, claims: dict[str, dict]) -> LinkPlan:
     """덱 전체의 링크 번호. 쪽 순서로, 한 쪽 안에서는 제목 → 그림 자리·표 귀퉁이 → 나머지 글 칸 순서로 번호를 준다.
-    받치는 기록을 정할 수 없는 자리는 번호를 주지 않고 errors 에 적는다(check 가 실패로 알리고, build_pptx 는 만들지 않는다)."""
+    받치는 기록을 정할 수 없는 자리는 번호를 주지 않고 errors 에 적는다(check 가 실패로 알리고, build_pptx 는 만들지 않는다).
+    한 쪽의 글에서 같은 표기와 같은 번호가 되풀이되면 처음 자리에만 붙인다(제목의 수치를 본문이 다시 쓰는 장에서 번호가 줄줄이 붙지 않게)."""
     lp = LinkPlan()
     idents = [x for x in spec.get("identifiers") or [] if isinstance(x, str)]
 
@@ -903,16 +957,22 @@ def link_plan(spec: dict, claims: dict[str, dict]) -> LinkPlan:
         corner: dict = {}
         order = [x for x in src["inline"] if x[0] == ("title",)]
         rest = [x for x in src["inline"] if x[0] != ("title",)]
-        for key, at, shown, got in order:
-            n = num(got[0], _page(i, -1), shown, got[1:])
+        marked: set[tuple[str, int]] = set()   # 이 쪽에서 이미 번호를 붙인 (화면 표기, 번호)
+
+        def mark(key, at, shown, got, page):
+            n = num(got[0], page, shown, got[1:])
+            if (shown, n) in marked:
+                return
+            marked.add((shown, n))
             labels = inline.setdefault(key, {})
             labels[at] = ",".join(dict.fromkeys((labels[at].split(",") if at in labels else []) + [str(n)]))
+
+        for key, at, shown, got in order:
+            mark(key, at, shown, got, _page(i, -1))
         for slot, what, got in src["corner"]:
             corner[slot] = ",".join(str(num(c, _page(i, slot), what, [])) for c in got)
         for key, at, shown, got in rest:
-            n = num(got[0], _page(i, key[1] if key[0] == "pair" else -1), shown, got[1:])
-            labels = inline.setdefault(key, {})
-            labels[at] = ",".join(dict.fromkeys((labels[at].split(",") if at in labels else []) + [str(n)]))
+            mark(key, at, shown, got, _page(i, key[1] if key[0] == "pair" else -1))
         lp.slides.append({"inline": inline, "corner": corner})
     for i, sl in enumerate(spec.get("slides") or [], 1):
         for cid in (sl.get("claim_ids") or []) if isinstance(sl, dict) else []:
@@ -959,12 +1019,17 @@ def _runs(stages: list[str]) -> list[tuple[str, int, int]]:
     return out
 
 
-def stage_errors(stages: list[str], template: dict) -> tuple[list[str], list[str]]:
-    """(실패, 경고). 실패 = 순서가 템플릿을 거스름. 경고 = 템플릿 규칙(적중률 기반)에서 벗어남."""
+def stage_errors(stages: list[str], template: dict, pages: list[int] | None = None) -> tuple[list[str], list[str]]:
+    """(실패, 경고). 실패 = 순서가 템플릿을 거스름. 경고 = 템플릿 규칙(적중률 기반)에서 벗어남.
+    pages = stages 의 원래 쪽 번호(광고 장을 뺀 순서로 볼 때 — check 가 준다). 없으면 1부터 차례로. 비율(앞 35% · 15%)은 받은 목록 안에서 센다."""
     errs, warns = [], []
     pos = {s["stage"]: s["position_median"] for s in template.get("stages", [])}
     keys = []
-    for i, s in enumerate(stages, 1):
+
+    def pg(a: int) -> int:   # 목록의 자리(0부터) → 알릴 쪽 번호
+        return pages[a] if pages else a + 1
+
+    for i, s in ((pg(a), s) for a, s in enumerate(stages)):
         k = STAGE_KEY.get(s)
         if k is None or s not in C.STAGES:
             errs.append(f"{i}쪽: 단계 '{s}' 는 구성 템플릿 어휘가 아니다({' · '.join(C.STAGES)})")
@@ -980,17 +1045,17 @@ def stage_errors(stages: list[str], template: dict) -> tuple[list[str], list[str
         errs.append(f"마지막 단계는 닫는 장 또는 시사점이어야 한다(지금 '{stages[-1]}')")
     for k, a, b in runs[1:]:
         if k == "hook":
-            errs.append(f"{a + 1}쪽: 여는 장은 맨 앞에만 둔다")
+            errs.append(f"{pg(a)}쪽: 여는 장은 맨 앞에만 둔다")
     for k, a, b in runs[:-1]:
         if k == "closing":
-            errs.append(f"{a + 1}쪽: 닫는 장은 맨 끝에만 둔다")
+            errs.append(f"{pg(a)}쪽: 닫는 장은 맨 끝에만 둔다")
     last_k, last_p = None, -1.0
     for k, a, b in runs:
         if k in REPEATABLE:
             continue
         if pos[k] < last_p:
             ko = {v: kk for kk, v in STAGE_KEY.items()}
-            errs.append(f"{a + 1}쪽: '{ko[k]}' 가 '{ko[last_k]}' 뒤에 왔다 — 템플릿 순서(위치 중앙값 {pos[k]:.2f} < {last_p:.2f})를 거스른다")
+            errs.append(f"{pg(a)}쪽: '{ko[k]}' 가 '{ko[last_k]}' 뒤에 왔다 — 템플릿 순서(위치 중앙값 {pos[k]:.2f} < {last_p:.2f})를 거스른다")
         else:
             last_k, last_p = k, pos[k]
     n = len(keys)
@@ -999,7 +1064,7 @@ def stage_errors(stages: list[str], template: dict) -> tuple[list[str], list[str
         warns.append("반전 단계가 없다(템플릿: 편당 반전 지점 3~6곳)")
     else:
         if turns[0][1] / n > 0.35:
-            warns.append(f"첫 반전이 {turns[0][1] + 1}쪽({turns[0][1] / n:.0%} 지점) — 템플릿 규칙은 앞 35% 안")
+            warns.append(f"첫 반전이 {pg(turns[0][1])}쪽({turns[0][1] / n:.0%} 지점) — 템플릿 규칙은 앞 35% 안")
         if not 3 <= len(turns) <= 6:
             warns.append(f"반전 묶음 {len(turns)}곳 — 템플릿 규칙은 3~6곳")
     if (runs[0][2] + 1) / n > 0.15:
@@ -1007,6 +1072,119 @@ def stage_errors(stages: list[str], template: dict) -> tuple[list[str], list[str
     if sum(1 for r in runs if r[0] == "development") < 2:
         warns.append("전개가 2번 미만(템플릿: 21/25편에서 2번 이상)")
     return errs, warns
+
+
+# ── 광고 칸(사양 맨 위 sponsorship 과 장의 stage: 광고) ─────────────────────────
+# 기준은 private/decks/규칙/광고_협업_절차_<타임코드>.md 2절(광고 표시)과 4절(덱 구성의 차이)이다. 20% 는 우리가 정한 값이다.
+SPONSOR = "sponsorship"
+SPONSOR_STAGE = "광고"                       # 광고 구간의 장 — cards.STAGES 밖이다(단계 순서 검사는 이 장을 빼고 본다)
+SPONSOR_KINDS = ("유료 광고", "협찬", "협업")
+SPONSOR_WORDS = ("광고", "협찬")             # 표시 문구(label)에 이 낱말 가운데 하나가 있어야 한다(경제적 이해관계가 드러나게)
+# 표시 문구에 있으면 안 되는 말 — 광고나 협찬임을 부정하는 꼴("광고 없음", "협찬 아님")이 낱말 검사를 지나가지 않게 한다
+SPONSOR_DENY = ("없음", "없는", "없습니다", "없이", "아님", "아닌", "아닙니다", "아니다", "무관", "미포함", "불포함", "제외", "않")
+SPONSOR_MAX_SHARE = 0.20                     # 광고 구간 장수 ≤ 광고 아닌 장수 × 이 값
+SPONSOR_PIC_KINDS = ("기업 뉴스룸", "로고")   # 권리자 칸에 광고주 이름이 든 그림의 종류
+SPONSOR_KEY = "_sponsor"                     # 검사·빌드가 구간의 쪽 사본에 넣는 칸 — 띠에 찍을 글. 사양 파일에는 쓰지 않는다
+SPONSOR_FIELDS = ("kind", "sponsor", "label", "whole", "materials")
+_HANGUL = re.compile(r"[가-힣]")
+
+
+def _squash(t: str) -> str:
+    return re.sub(r"\s+", "", _s(t))
+
+
+def sponsor_info(spec: dict) -> dict | None:
+    """사양의 광고 칸을 읽은 것 — {kind, sponsor, label, whole, materials, pages: 구간의 쪽(1부터), band: 띠에 찍을 글}.
+    칸도 없고 stage: 광고 장도 없으면 None(광고 회차가 아니다). 모양이 틀려도 읽을 수 있는 만큼 돌려준다(오류는 sponsorship_errors 가 낸다)."""
+    raw = spec.get(SPONSOR)
+    slides = spec.get("slides") or []
+    ad = [i for i, sl in enumerate(slides, 1) if isinstance(sl, dict) and _s(sl.get("stage")).strip() == SPONSOR_STAGE]
+    if raw is None and not ad:
+        return None
+    d = raw if isinstance(raw, dict) else {}
+    whole = d.get("whole") is True
+    label, sponsor = _s(d.get("label")).strip(), _s(d.get("sponsor")).strip()
+    mats = d.get("materials")
+    return {"kind": _s(d.get("kind")).strip(), "sponsor": sponsor, "label": label, "whole": whole,
+            "materials": [_s(m).strip() for m in mats if _s(m).strip()] if isinstance(mats, list) else [],
+            "pages": list(range(1, len(slides) + 1)) if whole else ad, "ad_pages": ad,
+            "band": " · ".join(x for x in (label, sponsor) if x)}
+
+
+def sponsor_view(sl: dict, info: dict | None, page: int) -> dict:
+    """구간의 쪽이면 띠 글(SPONSOR_KEY)을 넣은 쪽 사본, 아니면 그 쪽 그대로. 검사(넘침)와 빌드가 같은 사본을 쓴다."""
+    if info and info["band"] and page in info["pages"]:
+        return {**sl, SPONSOR_KEY: info["band"]}
+    return sl
+
+
+def sponsorship_errors(spec: dict, pics: dict | None = None) -> list[str]:
+    """광고 칸 검사(실패 목록). 광고 회차가 아니면(칸도 광고 장도 없다) 빈 목록."""
+    info = sponsor_info(spec)
+    if info is None:
+        return []
+    raw = spec.get(SPONSOR)
+    slides = spec.get("slides") or []
+    ad = info["ad_pages"]
+    if raw is None:
+        return [f"{', '.join(map(str, ad))}쪽: stage '{SPONSOR_STAGE}' 장이 있는데 사양 맨 위 {SPONSOR} 칸이 없다 — "
+                f"{{kind: {' | '.join(SPONSOR_KINDS)}, sponsor: 광고주 이름, label: 표시 문구, whole: 참/거짓, materials: [광고주 제공 자료 이름]}} 을 적는다"]
+    if not isinstance(raw, dict):
+        return [f"{SPONSOR} 는 {{kind, sponsor, label, whole, materials}} 의 사전이어야 한다"]
+    errs: list[str] = []
+    extra = [k for k in raw if k not in SPONSOR_FIELDS]
+    if extra:
+        errs.append(f"{SPONSOR} 에 모르는 칸 {extra} 가 있다({', '.join(SPONSOR_FIELDS)})")
+    if info["kind"] not in SPONSOR_KINDS:
+        errs.append(f"{SPONSOR}.kind '{info['kind']}' 는 {' · '.join(SPONSOR_KINDS)} 가운데 하나여야 한다")
+    if not info["sponsor"]:
+        errs.append(f"{SPONSOR}.sponsor(광고주 이름)가 비었다")
+    label = info["label"]
+    if not label:
+        errs.append(f"{SPONSOR}.label(표시 문구)이 비었다")
+    else:
+        if not _HANGUL.search(label):
+            errs.append(f"{SPONSOR}.label '{label}' 에 한글이 없다 — 표시 문구는 한글로 쓴다(영문 약어만 쓰지 않는다)")
+        deny = [w for w in SPONSOR_DENY if w in label]
+        if deny:
+            errs.append(f"{SPONSOR}.label '{label}' 에 광고나 협찬임을 부정하는 말({' · '.join(repr(w) for w in deny)})이 있다 — "
+                        "표시 문구는 광고나 협찬이라는 사실을 밝히는 글이다(예: 유료 광고 포함, 협찬 포함)")
+        if not any(w in label for w in SPONSOR_WORDS):
+            errs.append(f"{SPONSOR}.label '{label}' 에 {' · '.join(repr(w) for w in SPONSOR_WORDS)} 낱말이 없다 — 경제적 이해관계가 드러나게 쓴다(예: 유료 광고 포함, 협찬 포함)")
+    if "whole" in raw and not isinstance(raw.get("whole"), bool):
+        errs.append(f"{SPONSOR}.whole 은 참/거짓이어야 한다(회차 전체가 광고인가)")
+    mats = raw.get("materials")
+    if mats is not None and not (isinstance(mats, list) and all(isinstance(m, str) and m.strip() for m in mats)):
+        errs.append(f"{SPONSOR}.materials 는 광고주 제공 자료 이름(문자열)의 목록이어야 한다")
+    pages = info["pages"]
+    n_all = sum(1 for sl in slides if isinstance(sl, dict))
+    if not info["whole"]:
+        if not ad:
+            errs.append(f"{SPONSOR} 칸이 있는데 stage: {SPONSOR_STAGE} 장이 없다 — 광고 구간의 장에 stage: {SPONSOR_STAGE} 를 적는다(회차 전체가 광고면 whole: true)")
+        else:
+            if ad != list(range(ad[0], ad[-1] + 1)):
+                errs.append(f"광고 구간이 한 덩어리가 아니다({', '.join(map(str, ad))}쪽) — 본편 사이에 광고 장을 흩어 두지 않는다")
+            if ad[0] == 1:
+                errs.append("광고 구간이 여는 장보다 앞에 왔다(1쪽) — 본편을 연 뒤에 둔다")
+            rest = n_all - len(ad)
+            if len(ad) > rest * SPONSOR_MAX_SHARE:
+                errs.append(f"광고 구간 {len(ad)}장 — 광고 아닌 장 {rest}장의 {SPONSOR_MAX_SHARE * 100:.0f}%({rest * SPONSOR_MAX_SHARE:.1f}장)를 넘는다")
+    if pages and label and info["sponsor"]:
+        for where, i in [("첫 장", pages[0])] + ([("끝 장", pages[-1])] if pages[-1] != pages[0] else []):   # 한 장짜리 구간은 그 장이 첫 장이자 끝 장이다
+            sl = slides[i - 1] if isinstance(slides[i - 1], dict) else {}
+            screen, said = _squash(" ".join(visible_text(sl))), _squash(" ".join(spoken_text(sl)))
+            miss = [name for name, v in (("표시 문구", label), ("광고주 이름", info["sponsor"])) if _squash(v) not in screen]
+            if miss:
+                errs.append(f"{i}쪽: 광고 구간 {where}의 화면 글에 {' · '.join(miss)}('{label}' · '{info['sponsor']}')이 없다 — 띠와 별개로 그 장의 글에 적는다")
+            if _squash(label) not in said:
+                errs.append(f"{i}쪽: 광고 구간 {where}의 말로 할 문장(spoken · transition)에 표시 문구 '{label}' 이 없다")
+    if info["sponsor"]:
+        from ozl.render import pictures as PIC
+        for pid, e in (pics or {}).items():
+            if PIC.name_in(info["sponsor"], _s(e.get("rights_holder"))) and _s(e.get("kind")).strip() not in SPONSOR_PIC_KINDS:
+                errs.append(f"picture {pid}: 권리자 칸에 광고주 이름('{info['sponsor']}')이 든 그림의 종류가 '{_s(e.get('kind')).strip()}' 다 — "
+                            f"광고주가 준 그림은 {' · '.join(SPONSOR_PIC_KINDS)} 종류로 올린다(기업 뉴스룸은 사용 허락 기록)")
+    return errs
 
 
 # ── 글 배치(어절 줄바꿈) ─────────────────────────────────────────────────
@@ -1220,7 +1398,7 @@ _REQUIRED = {
     "compare_table": ("title", "table"),
     "quote_line": ("title", "quote"),
     "closing": ("title", "body"),
-    "capture_full": ("title", "capture"),
+    "capture_full": ("title",),   # 그림 자리는 capture 또는 picture(원문 화면 갈무리) 가운데 하나 — visual_errors 가 본다
     "photo_caption": ("title", "caption"),
     "image_pair": ("title", "pair"),
     "full_picture": (),
@@ -1279,6 +1457,7 @@ def check(spec: dict, claims: dict[str, dict], template: dict, card: dict | None
     links = link_plan(spec, claims) if style == "syuka" else None
     if links is not None:
         r.errors += link_errors(spec, claims) + links.errors   # 링크 없는 기록 · 받치는 기록을 정할 수 없는 수치 자리
+    sponsor = sponsor_info(spec)   # 광고 회차가 아니면 None — 아래 검사가 지금까지와 같다
     bare: list[int] = []  # 엄격 모드: 그림이 하나도 없는 image_text 쪽(경고 한 줄로 모은다)
     for i, sl in enumerate(slides, 1):
         tag = f"{i}쪽"
@@ -1355,14 +1534,21 @@ def check(spec: dict, claims: dict[str, dict], template: dict, card: dict | None
         if layout_fn is not None and not (kind == "image_pair" and not pair_shape_ok(sl)):
             # pair 의 모양이 틀리면 형식 실패 한 줄로 끝낸다(배치를 부르면 KeyError 같은 잡음이 한 줄 더 붙는다)
             # style: syuka 는 링크 번호(위첨자)까지 넣은 쪽으로 넘침을 본다 — 빌드와 같은 글상자
-            for e in layout_fn(with_links(sl, links.slides[i - 1]) if links is not None else sl):
+            # 광고 구간의 쪽은 오른쪽 위 띠까지 넣은 쪽으로 본다
+            for e in layout_fn(sponsor_view(with_links(sl, links.slides[i - 1]) if links is not None else sl, sponsor, i)):
                 r.errors.append(f"{tag}: {e}")
     unused = [p for p in pics if p not in used_pics and p not in set(also_used or ())]
     if unused:
         r.warnings.append(f"그림 검수 대장에 있지만 어느 쪽에서도 쓰지 않은 그림: {', '.join(unused)}")
     if bare:
         r.warnings.append(f"그림 자리가 비었다(image_text 인데 chart·capture·picture·image 가 없다): {', '.join(map(str, bare))}쪽 — 글만 있는 장이 의도면 그대로 둔다")
-    errs, warns = stage_errors([str(sl.get("stage")) if isinstance(sl, dict) else "" for sl in slides], template)
+    stages = [str(sl.get("stage")) if isinstance(sl, dict) else "" for sl in slides]
+    if sponsor is None:
+        errs, warns = stage_errors(stages, template)
+    else:   # 광고 장을 뺀 순서로 본다(알리는 쪽 번호는 원래 번호)
+        keep = [(i, s) for i, s in enumerate(stages, 1) if s.strip() != SPONSOR_STAGE]
+        errs, warns = stage_errors([s for _, s in keep], template, [i for i, _ in keep])
+        errs += sponsorship_errors(spec, pics)
     r.errors += errs
     r.warnings += warns
     if style == "syuka":

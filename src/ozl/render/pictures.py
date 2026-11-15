@@ -75,7 +75,7 @@
   - 폴더 검사는 *.pptx · *.pdf · *_png/*.png 만이 아니라 폴더 안의 모든 파일을 하위 폴더까지 본다.
   - 등록 대장이 없거나 비면 해시를 견주지 못한다. 종료 코드는 그대로이고(다른 기기에는 대장이 늘 없다) 알림 줄(NOTICE)을 낸다.
   - `python -m ozl.render register-private` 가 이미 만들어진 비공개 판(문서 속성에 표시가 있는 덱)을 대장에 채운다(backfill_rows · register_main).
-  - 여전히 못 잡는 것: 표지로 알아보지 못하는 묶음 형식(iso · dmg · cab 등), 부호화한 파일(base64 등)이나 zip 이 아닌 방식으로 암호를 건 파일 안의 것,
+  - 여전히 못 잡는 것: 표지로 알아보지 못하는 묶음 형식(iso · dmg · cab, 기본값이 아닌 속성으로 만든 .lzma 등), 부호화한 파일(base64 등)이나 zip 이 아닌 방식으로 암호를 건 파일 안의 것,
     zip 의 덧글과 항목 사이 빈틈에 넣은 내용. 문서 속성과 그림을 모두 바꾼 덱(그림을 다시 저장하고 keywords 를 지운 것)도 못 잡는다.
 
 2026-11-15 그림 검수 보강(사용자 결정 다 · R-024 · R-025 · R-245 · R-296):
@@ -96,6 +96,22 @@
     흰 문서 바탕의 흰 덧칠 포함), 밝기를 그대로 둔 색 바꿈(회색조), 밝기와 대비를 조금 고친 사본, 넓이 0.5% 보다 작은 덧칠(재지 않았다).
     자르거나 띠를 붙이거나 뒤집은 재게시 사본은 두 값 가운데 하나가 상한을 넘는다 — 원 게시처에서 받은 파일을 쓰라는 뜻이다.
   - `python -m ozl.render origin --survey <원본> <사본…>` 이 사본마다 두 값을 표로 찍는다(상한을 다시 정할 때 쓴다).
+
+2026-11-15 이월된 고침과 자리에 놓인 크기의 경고(R-244 · R-262 · 이월 2~4):
+  - 폴더 검사(walk_folder): 목록을 읽지 못한 하위 폴더, 폴더로 가는 링크, 깨진 링크, 상태를 읽지 못한 항목을 모아 돌려준다. public_check 와
+    register-private 는 그 줄마다 '검사 불가'를 내고 종료 코드 1 이다(전에는 건너뛰고 통과했다 — 그 아래의 비공개 판을 보지 못한 채로).
+    폴더 링크는 따라가지 않는다(폴더 밖을 훑게 되고 고리가 생길 수 있다). 링크만 모아 둔 폴더를 통째로 주면 '검사 불가'가 나온다 — 가리키는 폴더를 직접 준다.
+  - 묶음 판별: tar 는 머리의 표지로 종류를 먼저 가려 'r:' 또는 'r:gz' · 'r:bz2' · 'r:xz' 로만 연다(_tar_mode). 'r:*' 는 0 으로 찬 파일을 xz 풀이로
+    끝까지 읽었다(64MiB 에 5.45초 → 0.003초, 실측).
+  - 적힌 크기 먼저: zip 항목의 file_size 와 tar 항목의 size 를 풀기 전에 남은 한도와 견줘, 넘으면 풀지 않고 '검사 불가'다(_Budget.need).
+    실제로 푼 바이트를 세는 검사는 그대로 남아 있다(적힌 크기가 거짓일 수 있다). zip 의 항목 수는 항목을 읽기 전에 목록 길이로 한 번에 견준다.
+    목록 자체는 zipfile 이 파일을 열 때 다 읽는다 — 목록을 읽기 전에 막지는 못한다(표준 모듈의 공개 함수로는 되지 않는다).
+  - 풀 줄 모르는 형식에 ar('!<arch>')와 lzma-alone(.lzma — 표지가 없어 머리의 꼴을 보고 조금 풀어 본다, _lzma_alone)을 더했다.
+    lzma-alone 은 압축 도구의 기본 속성값(0x5D)으로 만든 것만 잡는다.
+  - registry_rows: 글자가 깨진 대장(UnicodeDecodeError)을 '읽지 못했다'로 돌려준다(전에는 예외로 죽었다).
+  - placement_warnings: 그림 파일이 자리 넓이의 절반(style.PICTURE_FILL_MIN)을 채우지 못하면 경고(쪽 판정의 '빈칸'). 원문 화면 갈무리는
+    대장 줄의 shot_log(창 폭 · 범위 · dpi · 그림 크기)로 본문 글자가 슬라이드에서 몇 pt 로 찍히는지 어림해(screen_readable_pt) style.SCREEN_MIN_PT
+    아래면 경고한다. shot_log 가 없는 줄은 읽힘을 어림하지 않는다. 가정한 글자 크기와 기준은 style.py 에 있다.
 
 못 하는 것: 칸이 채워졌는지, 칸끼리 맞는지만 본다. 역검색을 실제로 했는지, 라이선스 주장이 사실인지, 맥락 점검의 판단이 옳은지는 사람이 본다.
 """
@@ -242,6 +258,12 @@ MAP_HINT = re.compile(r"(지도|동해|독도)(?!\s*(?:아님|아니|없))|\bmap
 
 def _norm(s: str) -> str:
     return unicodedata.normalize("NFKC", s).casefold()
+
+
+def name_in(name: str, text: str) -> bool:
+    """이름이 글 안에 있는가 — 둘 다 _norm 으로 맞추고(전각 · 호환 글자) 대소문자를 가리지 않는다. 빈 이름은 거짓."""
+    key = _norm(name).casefold()
+    return bool(key) and key in _norm(text).casefold()
 
 
 def _words(s: str) -> list[str]:
@@ -722,6 +744,81 @@ def credit_lines(e: dict) -> list[str]:
     return out
 
 
+def _wh(v) -> tuple[int, int] | None:
+    """'900x1000' → (900, 1000). 읽지 못하면 None."""
+    m = re.fullmatch(r"\s*(\d+)\s*[x×]\s*(\d+)\s*", _s(v))
+    return (int(m.group(1)), int(m.group(2))) if m and int(m.group(1)) > 0 and int(m.group(2)) > 0 else None
+
+
+def _pixel_size(e: dict) -> tuple[int, int] | None:
+    """그림 파일의 (폭, 높이) 픽셀. 읽지 못하면 None(파일 검사 file_error 가 따로 실패시킨다)."""
+    try:
+        from PIL import Image
+        with Image.open(resolve_path(e)) as g:
+            pw, ph = g.size
+    except Exception:  # noqa: BLE001
+        return None
+    return (pw, ph) if pw > 0 and ph > 0 else None
+
+
+def placed_size(e: dict, slot_w: float, slot_h: float) -> tuple[float, float] | None:
+    """그림 파일이 자리(in) 안에 비율을 지켜 놓일 때의 (폭, 높이) in — build.fit_inside 와 같은 계산. 파일을 읽지 못하면 None."""
+    px = _pixel_size(e)
+    if px is None or slot_w <= 0 or slot_h <= 0:
+        return None
+    k = min(slot_w / px[0], slot_h / px[1])
+    return px[0] * k, px[1] * k
+
+
+def screen_readable_pt(e: dict, placed_w: float) -> float | None:
+    """원문 화면 갈무리의 본문 글자가 슬라이드에서 몇 pt 로 찍히는지 어림한 값. placed_w = 그림이 슬라이드에 놓인 폭(in).
+    대장 줄의 shot_log(shots.py 가 적는다)로 잰다. 재지 못하면 None(shot_log 가 없는 줄, 원문 화면 갈무리가 아닌 줄, 칸을 읽지 못한 줄).
+      - 웹 화면(window: '창 폭x높이' CSS 픽셀, clip: [x, y, w, h]): 그림의 폭이 CSS 픽셀로 얼마인가 = clip 의 w, 없으면 창 폭.
+        본문 글자를 style.SCREEN_WEB_BODY_PX(CSS 픽셀)로 가정하면 슬라이드 위 크기 = 가정 px × 놓인 폭 ÷ 그 CSS 폭 × 72.
+      - PDF 쪽(dpi, band 는 높이만 자르므로 폭은 쪽 전체): 본문 글자를 style.SCREEN_DOC_BODY_PT(pt)로 가정하면 그림 안에서 가정 pt ÷ 72 × dpi 픽셀,
+        슬라이드 위 크기 = 가정 pt × dpi × 놓인 폭 ÷ 그림 폭(픽셀). 그림 폭은 shot_log.image(없으면 page_px, 그것도 없으면 그림 파일)에서 읽는다.
+    어림이다: 실제 글자 크기는 화면마다 다르다(가정한 값과 기준은 style.py 에 있다)."""
+    from ozl.render import style as ST
+    rule = rule_of(e)
+    log = e.get("shot_log")
+    if rule is None or not rule.screen or not isinstance(log, dict) or placed_w <= 0:
+        return None
+    dpi = log.get("dpi")
+    if isinstance(dpi, (int, float)) and not isinstance(dpi, bool) and dpi > 0:   # PDF 쪽을 그린 그림
+        size = _wh(log.get("image")) or _wh(log.get("page_px")) or _pixel_size(e)
+        if size is None:
+            return None
+        return ST.SCREEN_DOC_BODY_PT * dpi * placed_w / size[0]
+    win = _wh(log.get("window"))
+    if win is None:
+        return None
+    css_w = float(win[0])
+    clip = log.get("clip")
+    if isinstance(clip, (list, tuple)) and len(clip) == 4 and all(isinstance(x, (int, float)) and not isinstance(x, bool) for x in clip) and clip[2] > 0:
+        css_w = float(clip[2])
+    return ST.SCREEN_WEB_BODY_PX * placed_w / css_w * 72
+
+
+def placement_warnings(e: dict, slot_w: float, slot_h: float) -> list[str]:
+    """그림 파일을 자리(in)에 놓았을 때의 경고 — 자리 넓이의 style.PICTURE_FILL_MIN 을 채우지 못한다(빈칸으로 센다),
+    원문 화면 갈무리의 글자가 style.SCREEN_MIN_PT 아래로 찍힌다(screen_readable_pt)."""
+    from ozl.render import style as ST
+    got = placed_size(e, slot_w, slot_h)
+    if got is None:
+        return []
+    w, h = got
+    out = []
+    fill = (w * h) / (slot_w * slot_h)
+    if fill < ST.PICTURE_FILL_MIN:
+        out.append(f"그림이 자리 넓이의 {fill * 100:.0f}% 만 채운다(자리 {slot_w:.2f}×{slot_h:.2f}in 에 그림 {w:.2f}×{h:.2f}in) — "
+                   f"{ST.PICTURE_FILL_MIN * 100:.0f}% 를 채우지 못하면 빈칸으로 센다. 자리 모양에 맞게 찍거나 다른 종류의 장으로 옮긴다")
+    pt = screen_readable_pt(e, w)
+    if pt is not None and pt < ST.SCREEN_MIN_PT:
+        out.append(f"갈무리 글자가 약 {pt:.1f}pt 로 찍힌다 — 찍는 범위를 좁히거나 넓은 자리를 쓴다(기준 {ST.SCREEN_MIN_PT:g}pt · 웹 본문 {ST.SCREEN_WEB_BODY_PX:g}px, "
+                   f"문서 본문 {ST.SCREEN_DOC_BODY_PT:g}pt 로 어림)")
+    return out
+
+
 def file_error(e: dict) -> str:
     """그림 파일을 열 수 있는가. 빈 문자열이면 연다."""
     p = resolve_path(e)
@@ -1197,7 +1294,7 @@ def registry_rows(paths=None) -> tuple[dict[str, dict], list[str]]:
             continue
         try:
             text = q.read_text(encoding="utf-8")
-        except OSError as x:
+        except (OSError, UnicodeDecodeError) as x:   # 글자가 깨진 대장도 '읽지 못했다'다 — 예외로 죽지 않고 통과시키지도 않는다
             problems.append(f"비공개 등록 대장을 읽지 못했다({type(x).__name__}): {q}")
             continue
         for n, line in enumerate(text.splitlines(), 1):
@@ -1271,7 +1368,9 @@ ARCHIVE_MAX_MEMBERS = 10_000             # 파일 하나에서 풀어 보는 항
 FILE_DECK, FILE_ZIP, FILE_TAR, FILE_PACKED, FILE_PLAIN = "deck", "zip", "tar", "packed", "plain"
 PACKED_NAME = "(압축을 푼 것)"           # 압축 한 겹을 푼 내용의 이름(출력 글에 쓴다)
 NOTICE = "[public-check] 알림:"          # 종료 코드에 영향이 없는 알림 줄의 머리(공개 게이트는 이 줄을 오류로 세지 않는다)
-_UNPACKABLE = ((b"7z\xbc\xaf\x27\x1c", "7z"), (b"Rar!\x1a\x07", "rar"), (b"\x28\xb5\x2f\xfd", "zstd"), (b"\x04\x22\x4d\x18", "lz4"))
+_UNPACKABLE = ((b"7z\xbc\xaf\x27\x1c", "7z"), (b"Rar!\x1a\x07", "rar"), (b"\x28\xb5\x2f\xfd", "zstd"), (b"\x04\x22\x4d\x18", "lz4"),
+               (b"!<arch>\n", "ar"))
+LZMA_ALONE_PROBE = 4096                  # lzma-alone(.lzma)인지 보려고 풀어 보는 머리 바이트 수
 _ZIP_END = b"PK\x05\x06"                 # zip 끝 표지 — 끝 65,557 바이트(표지 22 + 덧글 최대 65,535) 안에 있다
 
 
@@ -1302,10 +1401,16 @@ class _Budget:
         if self.bytes > ARCHIVE_MAX_BYTES:
             raise Unscannable(f"{label}: 풀린 크기의 합이 상한({ARCHIVE_MAX_BYTES:,} 바이트)을 넘는다 — 안을 다 보지 못했다(풀어서 파일마다 검사한다)")
 
-    def count(self, label: str):
-        self.members += 1
+    def count(self, label: str, n: int = 1):
+        self.members += n
         if self.members > ARCHIVE_MAX_MEMBERS:
             raise Unscannable(f"{label}: 항목 수가 상한({ARCHIVE_MAX_MEMBERS:,}개)을 넘는다 — 안을 다 보지 못했다(풀어서 파일마다 검사한다)")
+
+    def need(self, n: int, label: str, name: str = ""):
+        """풀기 전에 적힌 크기(zip 의 file_size · tar 의 size)를 남은 한도와 견준다 — 넘으면 풀지 않는다. 세지는 않는다(푼 바이트는 add 가 센다)."""
+        if self.bytes + n > ARCHIVE_MAX_BYTES:
+            what = f" 항목 {_clean(name)} 의" if name else ""
+            raise Unscannable(f"{label}:{what} 적힌 크기({n:,} 바이트)까지 풀면 상한({ARCHIVE_MAX_BYTES:,} 바이트)을 넘는다 — 풀지 않았다(풀어서 파일마다 검사한다)")
 
 
 def _clean(name) -> str:
@@ -1382,15 +1487,43 @@ def _zip_view(f) -> tuple[str, int] | None:
         raise Unscannable(f"zip 꼴인데 읽지 못했다({type(x).__name__}: {x})") from x
 
 
+def _tar_mode(head: bytes) -> str:
+    """tarfile 을 열 방식 — 압축 표지(_packed_kind)가 있으면 그 압축으로만('r:gz' · 'r:bz2' · 'r:xz'), 없으면 압축 없는 tar 로만('r:').
+    'r:*' 는 쓰지 않는다: 압축 방식을 하나씩 다 열어 보는데, 그 가운데 xz 풀이가 0 으로 찬 파일을 끝까지 읽는다(64MiB 에 5초 넘게 — 실측)."""
+    kind = _packed_kind(head)
+    return f"r:{kind}" if kind else "r:"
+
+
 def _tar_view(f) -> bool:
     """tar(압축된 것 포함)로 읽히고 첫 항목이 있으면 참. 0 으로 찬 구역으로 시작하는 파일은 tar 로 보지 않는다 —
-    tarfile 은 그것을 빈 tar 로 읽고 뒤의 내용을 보지 않는다(뒤에 내용이 있으면 압축 한 겹이나 그 밖의 파일로 본다)."""
+    tarfile 은 그것을 빈 tar 로 읽고 뒤의 내용을 보지 않는다(뒤에 내용이 있으면 압축 한 겹이나 그 밖의 파일로 본다).
+    종류는 머리의 표지로 먼저 가린다(_tar_mode)."""
     import tarfile
     f.seek(0)
+    mode = _tar_mode(f.read(16))
+    f.seek(0)
     try:
-        with tarfile.open(fileobj=f, mode="r:*") as t:
+        with tarfile.open(fileobj=f, mode=mode) as t:
             return t.next() is not None
     except tarfile.TarError:
+        return False
+
+
+def _lzma_alone(f) -> bool:
+    """lzma-alone(.lzma — 표지가 없는 옛 형식)으로 풀리는가. 머리 13바이트의 꼴이 맞을 때만 머리 LZMA_ALONE_PROBE 바이트를 그 형식으로 풀어 본다.
+    꼴: 속성 바이트 0x5D(lc=3 · lp=0 · pb=2 — 압축 도구들의 기본값), 사전 크기가 2^n 또는 2^n + 2^(n-1)(4KiB 이상), 압축 흐름의 첫 바이트 0.
+    글 파일과 0 으로 찬 파일은 이 꼴이 아니다(시험이 본다). 다른 속성값으로 만든 .lzma 는 못 잡는다."""
+    import lzma
+    f.seek(0)
+    head = f.read(LZMA_ALONE_PROBE)
+    if len(head) < 14 or head[0] != 0x5D or head[13] != 0:
+        return False
+    d = int.from_bytes(head[1:5], "little")
+    if d < 4096 or not any(d == (1 << n) or d == (1 << n) + (1 << (n - 1)) for n in range(12, 32)):
+        return False
+    try:
+        return bool(lzma.LZMADecompressor(format=lzma.FORMAT_ALONE).decompress(head, 1))   # 한 바이트라도 풀리면 그 형식이다(빈 내용의 .lzma 는 볼 것이 없다)
+    except lzma.LZMAError:
         return False
 
 
@@ -1425,6 +1558,8 @@ def _views(src) -> list[str]:
                 for magic, name in _UNPACKABLE:
                     if head.startswith(magic):
                         raise Unscannable(f"풀 줄 모르는 묶음 형식이다({name}) — 풀어서 파일마다 검사한다")
+                if _lzma_alone(f):
+                    raise Unscannable("풀 줄 모르는 묶음 형식이다(lzma) — 풀어서 파일마다 검사한다")
             return views
     except OSError as x:
         raise Unscannable(f"읽지 못했다({type(x).__name__}: {x})") from x
@@ -1478,10 +1613,12 @@ def _members(src, views, label: str, budget: _Budget):
             with _open_src(src) as f:
                 if view in (FILE_DECK, FILE_ZIP):
                     with zipfile.ZipFile(f) as z:
-                        for info in z.infolist():   # 이름이 겹치는 항목도 하나씩 본다(이름이 아니라 항목으로 연다)
-                            budget.count(label)
+                        infos = z.infolist()
+                        budget.count(label, len(infos))   # 항목을 읽기 전에 목록 길이를 한 번에 견준다(목록 자체는 zipfile 이 열 때 다 읽는다)
+                        for info in infos:   # 이름이 겹치는 항목도 하나씩 본다(이름이 아니라 항목으로 연다)
                             if info.is_dir():
                                 continue
+                            budget.need(info.file_size, label, info.filename)   # 적힌 크기가 남은 한도를 넘으면 풀지 않는다
                             with z.open(info) as m:
                                 data = _read_all(m, budget, label)
                             yield info.filename, data
@@ -1497,6 +1634,8 @@ def _members(src, views, label: str, budget: _Budget):
                             budget.count(label)
                             if not (m.isreg() or m.type not in tarfile.SUPPORTED_TYPES):   # 폴더 · 링크 · 장치는 내용이 없다. 모르는 종류는 tar 가 파일로 푼다
                                 continue
+                            if inner is not None or m.issparse():   # 적힌 크기가 남은 한도를 넘으면 풀지 않는다(압축된 tar 는 흐름을 풀 때 이미 셌다)
+                                budget.need(m.size, label, m.name)
                             # 구멍 난(sparse) 항목은 풀면 흐름보다 커진다 — 압축된 tar 에서도 센다
                             data = _read_all(t.extractfile(m), budget if m.issparse() else inner, label)
                             yield m.name, data
@@ -1554,14 +1693,61 @@ def scan(path: pathlib.Path, label: str | None = None):
         yield from _inside(top, 0 if views == [FILE_DECK] else 1, _Budget())
 
 
-def _files_under(folder: pathlib.Path) -> list[pathlib.Path]:
-    """폴더 안의 모든 파일(하위 폴더 포함, 이름 순서). 폴더로 가는 링크는 따라가지 않는다."""
+def walk_folder(folder: pathlib.Path) -> tuple[list[pathlib.Path], list[tuple[pathlib.Path, str]]]:
+    """(폴더 안의 모든 파일 — 하위 폴더 포함, 이름 순서 · 보지 못한 것 [(경로, 까닭)]).
+    보지 못한 것: 목록을 읽지 못한 폴더(권한), 폴더로 가는 링크(따라가지 않는다 — 폴더 밖을 훑게 되고 고리가 생길 수 있다), 깨진 링크,
+    상태를 읽지 못한 항목(목록은 읽히는데 안으로 들어갈 권한이 없는 폴더의 항목), 보통 파일이 아닌 항목(소켓 · 이름 붙은 파이프 · 장치).
+    파일로 가는 링크는 가리키는 파일의 내용을 본다. 부르는 쪽은 보지 못한 것이 있으면 통과시키지 않는다('검사 불가')."""
     import os
-    out = []
-    for base, dirs, names in os.walk(folder, followlinks=False):
+    import stat
+    files: list[pathlib.Path] = []
+    gaps: list[tuple[pathlib.Path, str]] = []
+
+    def unreadable(x: OSError):
+        gaps.append((pathlib.Path(x.filename or folder), f"폴더의 목록을 읽지 못했다({type(x).__name__}) — 그 아래를 보지 못했다"))
+
+    def is_link(q: pathlib.Path) -> bool:   # 링크 자체의 상태도 읽지 못하면(들어갈 권한이 없는 폴더의 항목) 링크가 아닌 것으로 본다
+        try:
+            return stat.S_ISLNK(os.lstat(q).st_mode)
+        except OSError:
+            return False
+
+    for base, dirs, names in os.walk(folder, followlinks=False, onerror=unreadable):
         dirs.sort()
-        out += [pathlib.Path(base) / n for n in sorted(names) if (pathlib.Path(base) / n).is_file()]
-    return out
+        for d in dirs:
+            q = pathlib.Path(base) / d
+            if is_link(q):
+                gaps.append((q, "폴더로 가는 링크다 — 따라가지 않았다. 가리키는 폴더를 직접 검사한다"))
+        for n in sorted(names):
+            q = pathlib.Path(base) / n
+            try:
+                mode = os.stat(q).st_mode
+            except OSError as x:
+                if is_link(q):
+                    gaps.append((q, f"깨진 링크다({type(x).__name__}) — 가리키는 것을 보지 못했다"))
+                else:
+                    gaps.append((q, f"상태를 읽지 못했다({type(x).__name__}) — 파일인지 폴더인지 알 수 없다"))
+                continue
+            if stat.S_ISREG(mode):
+                files.append(q)
+            elif stat.S_ISDIR(mode):   # 목록을 읽은 뒤에 폴더로 바뀌었거나 os.walk 가 폴더로 보지 못한 항목
+                gaps.append((q, "폴더인데 안을 보지 못했다"))
+            else:
+                gaps.append((q, "보통 파일이 아니다(소켓 · 파이프 · 장치) — 읽지 않았다"))
+    gaps.sort(key=lambda g: str(g[0]))
+    return files, gaps
+
+
+def _files_under(folder: pathlib.Path) -> list[pathlib.Path]:
+    """폴더 안의 모든 파일(하위 폴더 포함, 이름 순서). 보지 못한 것까지 알아야 하면 walk_folder 를 쓴다."""
+    return walk_folder(folder)[0]
+
+
+def _gap_label(q: pathlib.Path, root: pathlib.Path) -> str:
+    try:
+        return _clean(pathlib.Path(q).relative_to(root).as_posix() or ".")
+    except ValueError:
+        return _clean(q)
 
 
 def private_marks(keywords: str) -> tuple[bool, list[str]]:
@@ -1580,7 +1766,8 @@ def public_check(path: pathlib.Path, registries=None) -> tuple[int, list[str]]:
       - 덱의 문서 속성 keywords: ozl:private-only(와 ozl:block=번호들), ozl:edition=private
       - 파일의 sha256 과 덱 · 묶음 안에 든 파일마다의 sha256 이 비공개 등록 대장에 있는가(keywords 를 지운 사본을 안에 든 그림으로 잡는다)
       - 묶음 안의 덱도 덱으로 연다(문서 속성, 안에 든 그림). 겹친 묶음은 ARCHIVE_MAX_DEPTH 겹까지 풀어 본다
-    폴더는 그 안의 모든 파일을 하위 폴더까지 이렇게 본다(하나라도 막으면 막는다).
+    폴더는 그 안의 모든 파일을 하위 폴더까지 이렇게 본다(하나라도 막으면 막는다). 폴더에서 보지 못한 것(walk_folder — 목록을 읽지 못한
+    하위 폴더, 폴더로 가는 링크, 깨진 링크, 상태를 읽지 못한 항목)이 있으면 '검사 불가' 줄과 종료 코드 1 이다. 폴더 링크는 따라가지 않는다.
     끝까지 보지 못한 파일은 통과시키지 않는다 — 종료 코드 1 과 '검사 불가' 줄: 덱 꼴인데 프레젠테이션으로 열리지 않는 파일, 이름이 .pptx 인데
     덱이 아닌 파일, 가리지 못한 파일, ARCHIVE_MAX_DEPTH 겹보다 깊은 묶음, 풀린 크기나 항목 수가 상한을 넘는 묶음, 풀 수 없는 묶음,
     묶음 목록에 나오지 않는 내용이 붙은 파일(zip 의 첫 항목 앞, tar 의 마지막 항목 뒤, 압축 흐름 뒤).
@@ -1609,13 +1796,16 @@ def public_check(path: pathlib.Path, registries=None) -> tuple[int, list[str]]:
                 other.append(f"{PUBLIC_FILE} 의 판이 {EDITION_PRIVATE}이다")
             elif st.get("public_ok") is False and not st.get("blocking"):
                 blocked["?"] = "공개_가부.json 이 공개 불가라고 적었다"
-        files = [(f, f.relative_to(path).as_posix()) for f in _files_under(path)]
+        found, gaps = walk_folder(path)
+        files = [(f, f.relative_to(path).as_posix()) for f in found]
+        # 읽지 못한 하위 폴더, 폴더 링크, 깨진 링크 — 그 아래를 보지 못했으므로 통과시키지 않는다
+        other += [f"검사 불가 — {_gap_label(q, path)}: {why}" for q, why in gaps]
     elif path.is_file():
         files = [(path, path.name)]
         seen.append(_clean(path.name))
     else:
         return 2, [f"[public-check] 파일이나 산출 폴더가 아니다: {path}"]
-    if not files and not seen:
+    if not files and not seen and not other:
         return 2, [f"[public-check] {path} 에 볼 파일이 없다"]
     reg, problems = registry_rows(registries)
     other += problems
@@ -1665,7 +1855,7 @@ def public_check(path: pathlib.Path, registries=None) -> tuple[int, list[str]]:
     if blocked or other:
         head = "[public-check] 공개 불가" + (f" · 막는 그림 {len(blocked)}장: {', '.join(blocked)}" if blocked else "") + \
             (f" · 그 밖 {len(other)}건" if other else "")
-        return 1, [head] + [f"  {k}: {v}" for k, v in blocked.items()] + [f"  {x}" for x in other] + [f"  본 것: {', '.join(seen)}"] + notes
+        return 1, [head] + [f"  {k}: {v}" for k, v in blocked.items()] + [f"  {x}" for x in other] + [f"  본 것: {', '.join(seen) or '없음'}"] + notes
     return 0, [f"[public-check] 공개 가능(막는 그림 없음) · 본 것: {', '.join(seen)}"] + notes
 
 
@@ -1775,7 +1965,8 @@ def register_main(argv: list[str]) -> int:
     이미 만들어진 비공개 판을 비공개 등록 대장(REGISTRY)에 채운다. 인자가 없으면 대장이 있는 폴더(private/decks) 아래를 다 본다.
     덱은 파일 안을 보고 찾고(확장자와 무관), 문서 속성 keywords 에 비공개 판 표시(ozl:private-only · ozl:edition=private)가 있는 것만 적는다.
     적는 것은 backfill_rows 의 줄이다. 대장에 이미 있는 해시는 건너뛴다. 파일을 지우거나 옮기지 않는다. --dry-run 은 적지 않고 세기만 한다.
-    종료 코드: 0 = 끝까지 봤다, 1 = 가리지 못했거나 열지 못한 덱이 있다(그 덱은 적지 못했다), 2 = 인자가 틀렸다."""
+    종료 코드: 0 = 끝까지 봤다, 1 = 가리지 못했거나 열지 못한 덱이 있다(그 덱은 적지 못했다) 또는 보지 못한 폴더 · 링크가 있다
+    (walk_folder — 읽지 못한 하위 폴더, 폴더 링크, 깨진 링크. 그 아래의 판은 등록에서 빠졌다), 2 = 인자가 틀렸다."""
     dry = "--dry-run" in argv
     args = [a for a in argv if a != "--dry-run"]
     if any(a in ("-h", "--help") for a in args):
@@ -1800,7 +1991,11 @@ def register_main(argv: list[str]) -> int:
     word = "새로 적을" if dry else "새로 적은"
     decks = bad = n_rows = n_new = 0
     for r in roots:
-        for f in ([r] if r.is_file() else _files_under(r)):
+        found, gaps = ([r], []) if r.is_file() else walk_folder(r)
+        for q, why in gaps:   # 그 아래의 비공개 판을 적지 못했을 수 있다 — 끝에 종료 코드 1 로 알린다
+            bad += 1
+            print(f"[register-private] 검사 불가 — {_rel_root(q)}: {why}")
+        for f in found:
             try:
                 if not is_deck_file(f):
                     continue

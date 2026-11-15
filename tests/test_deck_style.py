@@ -426,3 +426,26 @@ def test_samples_show_opening_question_and_caption_slots(tmp_path):
     assert ST.title_warnings(sl) == []
     assert ST.sample_problems(sp) == []
     assert "유머 자리" in ST._note_extra(next(s for s in sl if s.get("stage") == "여담"))
+
+
+# ── 그림 자리의 읽힘과 채움 기준, 견본집의 그림 ─────────────────────────────────
+
+def test_placement_constants_are_the_documented_values():
+    """기준값은 style.py 한 곳에 둔다(가정한 본문 글자 크기, 읽힘 하한, 자리 채움 하한) — pictures.placement_warnings 가 읽는다."""
+    assert (ST.SCREEN_WEB_BODY_PX, ST.SCREEN_DOC_BODY_PT, ST.SCREEN_MIN_PT, ST.PICTURE_FILL_MIN) == (14, 10, 7.0, 0.5)
+
+
+def test_sample_pictures_fill_their_slots(tmp_path):
+    """견본집의 그림은 들어갈 자리의 가로세로 비에 맞춰 그린다 — 자리 넓이의 절반을 못 채우는 그림 자리(빈칸)가 없다."""
+    sp = ST.sample_spec(tmp_path / "그림")
+    pics, _ = PIC.ledger(sp)
+    assert len(sp["slides"]) == 15                                           # 종류별 13장 + 광고 구간 두 장
+    seen = 0
+    for i, sl in enumerate(sp["slides"], 1):
+        for im in B.plan_slide(sl).imgs:
+            assert im.kind == "picture", (i, im.kind)                         # 회색 자리도 [그림 대기]도 없다
+            w, h = PIC.placed_size(pics[im.ref], im.width, im.height)
+            assert (w * h) / (im.width * im.height) >= ST.PICTURE_FILL_MIN, (i, im.ref, w, h)
+            assert PIC.placement_warnings(pics[im.ref], im.width, im.height) == []
+            seen += 1
+    assert seen >= 11

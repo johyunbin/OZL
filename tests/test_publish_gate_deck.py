@@ -473,3 +473,135 @@ def test_gate_says_once_when_there_is_no_registry(tmp_path, capsys):
     assert pg.main([str(a), str(b)]) == 1
     got = capsys.readouterr()
     assert "비공개 등록 대장에 있다(pdf" in got.out and "알림" not in got.out and got.err == ""
+
+
+# ── 폴더에서 보지 못한 것, 묶음 판별(표지 먼저), 적힌 크기와 항목 수를 풀기 전에 ─────────────────
+def test_gate_fails_when_the_deck_folder_has_a_folder_link(built, tmp_path, capsys):
+    """같은 폴더에 공개_가부.json 이 있으면 게이트는 폴더도 본다 — 그 폴더에 폴더 링크가 있으면 '검사 불가'가 오류로 세어진다."""
+    b = pathlib.Path(built[SWAP]["pptx"])
+    clean = strip(b, tmp_path / "후보" / "swap.pptx")
+    (clean.parent / PIC.PUBLIC_FILE).write_text(json.dumps({"public_ok": True, "blocking": []}), encoding="utf-8")
+    assert pg.main([str(clean)]) == 0
+    capsys.readouterr()
+    (clean.parent / "모음").symlink_to(pathlib.Path(built[PRIV]["dir"]), target_is_directory=True)
+    assert pg.main([str(clean)]) == 1
+    msg = capsys.readouterr().out
+    assert "검사 불가 — 모음: 폴더로 가는 링크다" in msg
+
+
+class _Counting:
+    """읽은 바이트를 세는 파일 객체(시험용)."""
+    def __init__(self, f, log):
+        self._f, self._log = f, log
+
+    def read(self, n=-1):
+        data = self._f.read(n)
+        self._log.append(len(data))
+        return data
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        self._f.close()
+
+    def __getattr__(self, name):
+        return getattr(self._f, name)
+
+
+def test_zero_filled_file_is_judged_from_its_head(tmp_path, monkeypatch):
+    """0 으로 찬 큰 파일을 끝까지 읽지 않는다 — tarfile 을 'r:*' 로 열면 xz 풀이가 파일 전체를 읽었다(64MiB 에 5초 넘게).
+    시간이 아니라 읽은 바이트 수로 본다."""
+    import tarfile
+    size = 8 * 1024 * 1024
+    z = tmp_path / "zeros.bin"
+    with open(z, "wb") as f:
+        f.truncate(size)
+    read: list[int] = []
+    modes: list[str] = []
+    real_open, real_tar = PIC._open_src, tarfile.open
+    monkeypatch.setattr(PIC, "_open_src", lambda src: _Counting(real_open(src), read))
+    monkeypatch.setattr(tarfile, "open", lambda *a, **k: modes.append(k.get("mode", a[1] if len(a) > 1 else "r")) or real_tar(*a, **k))
+    assert PIC.content_kind(z) == PIC.FILE_PLAIN
+    assert sum(read) < size // 16, sum(read)                              # 머리와 끝 표지 자리만 읽는다
+    assert modes == ["r:"]                                                # 표지가 없으면 압축 없는 tar 로만 열어 본다
+    for name, mode in (("a.tar.gz", "w:gz"), ("a.tar.bz2", "w:bz2"), ("a.tar.xz", "w:xz"), ("a.tar", "w")):
+        made = _tar(tmp_path / name, {"글.txt": "지어낸 글".encode()}, mode)
+        modes.clear()                                                     # 시험 파일을 만들 때 연 것은 세지 않는다
+        assert PIC.content_kind(made) == PIC.FILE_TAR
+        assert modes == [{"w:gz": "r:gz", "w:bz2": "r:bz2", "w:xz": "r:xz", "w": "r:"}[mode]] and "r:*" not in modes
+
+
+@pytest.mark.parametrize("kind", ["gz", "bz2", "xz"])
+def test_compressed_stream_over_the_size_limit_fails_closed(tmp_path, monkeypatch, capsys, kind):
+    """압축 한 겹(gz · bz2 · xz)을 푼 크기가 상한을 넘으면 '검사 불가' — 작은 파일이 크게 풀리는 압축 흐름을 끝까지 풀지 않는다."""
+    import bz2
+    import gzip
+    import lzma
+    packed = tmp_path / f"큰 흐름.{kind}"
+    packed.write_bytes({"gz": gzip.compress, "bz2": bz2.compress, "xz": lzma.compress}[kind](b"\0" * 4_000_000))
+    assert packed.stat().st_size < 20_000
+    assert pg.main([str(packed)]) == 0
+    capsys.readouterr()
+    monkeypatch.setattr(PIC, "ARCHIVE_MAX_BYTES", 1_000_000)
+    assert pg.main([str(packed)]) == 1
+    msg = capsys.readouterr().out
+    assert "검사 불가" in msg and "1,000,000" in msg
+
+
+def test_declared_size_is_checked_before_unpacking(tmp_path, monkeypatch):
+    """zip 항목과 tar 항목의 적힌 크기가 남은 한도를 넘으면 그 항목을 풀지 않는다(푼 뒤에 세는 검사는 그대로 남아 있다)."""
+    big_zip = _zip(tmp_path / "큰 항목.zip", {"작은.bin": b"\1" * 100, "큰.bin": b"\0" * 50_000})
+    big_tar = _tar(tmp_path / "큰 항목.tar", {"작은.bin": b"\1" * 100, "큰.bin": b"\0" * 50_000}, "w")
+    assert [f.name for f in PIC.scan(big_zip)][1:] == ["작은.bin", "큰.bin"]
+    monkeypatch.setattr(PIC, "ARCHIVE_MAX_BYTES", 10_000)
+    read: list[int] = []
+    real = PIC._read_all
+    monkeypatch.setattr(PIC, "_read_all", lambda f, budget, label: read.append(1) or real(f, budget, label))
+    for path in (big_zip, big_tar):
+        read.clear()
+        with pytest.raises(PIC.Unscannable, match="적힌 크기\\(50,000 바이트\\)"):
+            list(PIC.scan(path))
+        assert len(read) == 1, (path.name, read)                           # 작은 항목만 풀었다 — 큰 항목은 열지 않았다
+    code, lines = PIC.public_check(big_zip)
+    assert code == 1 and any("검사 불가" in x and "큰.bin" in x and "풀지 않았다" in x for x in lines), lines
+
+
+def test_zip_member_count_is_checked_before_reading_any_member(tmp_path, monkeypatch):
+    many = _zip(tmp_path / "많은 항목.zip", {f"{k}.txt": b"x" for k in range(5)})
+    monkeypatch.setattr(PIC, "ARCHIVE_MAX_MEMBERS", 3)
+    read: list[int] = []
+    real = PIC._read_all
+    monkeypatch.setattr(PIC, "_read_all", lambda f, budget, label: read.append(1) or real(f, budget, label))
+    with pytest.raises(PIC.Unscannable, match="항목 수가 상한"):
+        list(PIC.scan(many))
+    assert read == []                                                     # 항목을 하나도 읽기 전에 목록 길이로 막았다
+
+
+def test_ar_and_lzma_alone_fail_closed_and_plain_files_pass(tmp_path, capsys):
+    """형식 목록 밖이던 것: ar(정적 라이브러리 · deb 의 겉)와 표지 없는 lzma-alone(.lzma)은 풀 줄 모르는 묶음이다 — '검사 불가'.
+    글 파일과 0 으로 찬 파일은 그 꼴로 잘못 읽히지 않는다."""
+    import lzma
+    ar = tmp_path / "묶음.a"
+    ar.write_bytes(b"!<arch>\n" + b"note.txt/       0           0     0     644     6         `\nhello\n")
+    alone = tmp_path / "묶음.lzma"
+    alone.write_bytes(lzma.compress("지어낸 글 ".encode() * 500, format=lzma.FORMAT_ALONE))
+    tar_alone = tmp_path / "묶음.tar.lzma"
+    tar_alone.write_bytes(lzma.compress(_tar(tmp_path / "속.tar", {"글.txt": "지어낸 글".encode()}, "w").read_bytes(), format=lzma.FORMAT_ALONE))
+    for f, name in ((ar, "ar"), (alone, "lzma"), (tar_alone, "lzma")):
+        with pytest.raises(PIC.Unscannable, match=f"풀 줄 모르는 묶음 형식이다\\({name}\\)"):
+            PIC.content_kind(f)
+        assert pg.main([str(f)]) == 1, f.name
+        assert "검사 불가" in capsys.readouterr().out, f.name
+    texts = {
+        "꺾쇠로 시작.txt": ("]" + "지어낸 글이다. " * 400).encode(),                                   # 첫 바이트가 lzma 속성값(0x5D)과 같은 글
+        "꺾쇠와 0.bin": b"]\x00\x00\x80\x00" + b"\xff" * 8 + "지어낸 글이다. ".encode() * 300,       # 머리 꼴은 같지만 그 형식으로 풀리지 않는다
+        "빈 것.lzma": lzma.compress(b"", format=lzma.FORMAT_ALONE),                                 # 내용이 없는 .lzma 는 볼 것이 없다
+        "영.bin": b"\0" * 20_000,
+        "글.md": "빵집 이야기다. ".encode() * 500,
+    }
+    for name, data in texts.items():
+        p = tmp_path / name
+        p.write_bytes(data)
+        assert PIC.content_kind(p) == PIC.FILE_PLAIN, name
+        assert pg.main([str(p)]) == 0, name

@@ -827,3 +827,107 @@ def test_public_check_command_reports_unreadable_files_instead_of_a_traceback(tm
     assert render_main(["public-check", str(broken)]) == 1
     assert "검사 불가" in capsys.readouterr().out
     assert PIC.public_check(odd)[0] == 1 and PIC.public_check(odd.parent)[0] == 1
+
+
+# ── 폴더에서 보지 못한 것(읽지 못한 하위 폴더, 폴더 링크, 깨진 링크) ─────────────────
+def _private_deck(path: pathlib.Path, arts) -> pathlib.Path:
+    """문서 속성에 비공개 판 표시가 있는 지어낸 덱."""
+    from pptx import Presentation
+    sp = V.spec_of([photo("p2")]) | {"pictures": [entry(arts["ok"], pid="p2")]}
+    B.build_pptx(sp, {}, {"card_id": CARD}, path.parent / "tmp_clean.pptx")
+    prs = Presentation(str(path.parent / "tmp_clean.pptx"))
+    prs.core_properties.keywords = "ozl:private-only ozl:block=p9"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    prs.save(str(path))
+    (path.parent / "tmp_clean.pptx").unlink()
+    return path
+
+
+def _is_root() -> bool:
+    import os
+    return hasattr(os, "geteuid") and os.geteuid() == 0
+
+
+def test_folder_link_and_broken_link_are_reported_not_skipped(arts, tmp_path, capsys):
+    """폴더로 가는 링크 아래의 비공개 판은 보지 못한다 — 건너뛰고 통과시키지 않고 '검사 불가'(종료 1)로 알린다. 링크는 따라가지 않는다."""
+    hidden = tmp_path / "다른 곳"
+    _private_deck(hidden / "비공개.pptx", arts)
+    d = tmp_path / "산출"
+    d.mkdir()
+    (d / "읽어 보기.txt").write_text("지어낸 글", encoding="utf-8")
+    assert PIC.public_check(d)[0] == 0
+    (d / "모음").symlink_to(hidden, target_is_directory=True)
+    files, gaps = PIC.walk_folder(d)
+    assert [f.name for f in files] == ["읽어 보기.txt"] and [(q.name, "폴더로 가는 링크" in why) for q, why in gaps] == [("모음", True)]
+    code, lines = PIC.public_check(d)
+    assert code == 1 and any("검사 불가 — 모음: 폴더로 가는 링크다" in x and "가리키는 폴더를 직접 검사한다" in x for x in lines), lines
+    assert not any("ozl:private-only" in x for x in lines)                 # 링크 너머는 열지 않았다
+    assert render_main(["public-check", str(d)]) == 1 and "검사 불가" in capsys.readouterr().out
+    assert PIC.public_check(hidden)[0] == 1                                # 가리키는 폴더를 직접 주면 그 안의 판이 잡힌다
+    (d / "모음").unlink()
+    (d / "끊긴 링크").symlink_to(tmp_path / "없는 파일.pptx")
+    code, lines = PIC.public_check(d)
+    assert code == 1 and any("검사 불가 — 끊긴 링크: 깨진 링크다" in x for x in lines), lines
+    (d / "끊긴 링크").unlink()
+    (d / "파일 링크.pptx").symlink_to(hidden / "비공개.pptx")              # 파일로 가는 링크는 가리키는 파일의 내용을 본다
+    code, lines = PIC.public_check(d)
+    assert code == 1 and any("파일 링크.pptx 문서 속성에 ozl:private-only" in x for x in lines), lines
+    only = tmp_path / "링크만"
+    only.mkdir()
+    (only / "모음").symlink_to(hidden, target_is_directory=True)
+    assert PIC.public_check(only)[0] == 1                                  # 링크만 든 폴더도 '볼 파일이 없다'(2)가 아니라 검사 불가(1)다
+
+
+@pytest.mark.skipif(_is_root(), reason="관리자 권한으로 돌면 권한 0 폴더도 읽힌다")
+def test_unreadable_subfolders_are_reported_not_skipped(arts, tmp_path, capsys):
+    """권한 0 인 하위 폴더(목록을 읽지 못한다)와 권한 r 만 있는 하위 폴더(목록은 읽히는데 안의 상태를 읽지 못한다) 아래의 비공개 판."""
+    d = tmp_path / "산출"
+    (d / "잠긴").mkdir(parents=True)
+    (d / "이름만").mkdir()
+    _private_deck(d / "잠긴" / "비공개.pptx", arts)
+    _private_deck(d / "이름만" / "비공개.pptx", arts)
+    (d / "읽어 보기.txt").write_text("지어낸 글", encoding="utf-8")
+    assert PIC.public_check(d)[0] == 1                                     # 읽을 수 있을 때는 문서 속성으로 잡힌다
+    (d / "잠긴").chmod(0o000)
+    (d / "이름만").chmod(0o444)
+    try:
+        files, gaps = PIC.walk_folder(d)
+        assert [f.name for f in files] == ["읽어 보기.txt"]
+        why = {q.relative_to(d).as_posix(): w for q, w in gaps}
+        assert "폴더의 목록을 읽지 못했다" in why["잠긴"] and "상태를 읽지 못했다" in why["이름만/비공개.pptx"], why
+        code, lines = PIC.public_check(d)
+        assert code == 1 and any("검사 불가 — 잠긴: 폴더의 목록을 읽지 못했다" in x for x in lines), lines
+        assert any("검사 불가 — 이름만/비공개.pptx: 상태를 읽지 못했다" in x for x in lines), lines
+        assert not any("ozl:private-only" in x for x in lines)             # 안을 보지 못했다 — 그래서 통과시키지 않는다
+        assert render_main(["public-check", str(d)]) == 1 and "검사 불가" in capsys.readouterr().out
+        assert render_main(["register-private", str(d), "--dry-run"]) == 1  # 등록에서 빠진 폴더가 있다
+        msg = capsys.readouterr().out
+        assert "검사 불가" in msg and "잠긴" in msg and "검사 불가 2개" in msg
+    finally:
+        (d / "잠긴").chmod(0o755)
+        (d / "이름만").chmod(0o755)
+    assert render_main(["register-private", str(d), "--dry-run"]) == 0 and "비공개 판 2개" in capsys.readouterr().out
+
+
+def test_register_private_reports_folder_links(arts, tmp_path, capsys):
+    hidden = tmp_path / "다른 곳"
+    _private_deck(hidden / "비공개.pptx", arts)
+    d = tmp_path / "판 모음"
+    d.mkdir()
+    (d / "모음").symlink_to(hidden, target_is_directory=True)
+    assert render_main(["register-private", str(d), "--dry-run"]) == 1
+    msg = capsys.readouterr().out
+    assert "검사 불가" in msg and "폴더로 가는 링크다" in msg and "비공개 판 0개" in msg
+
+
+def test_registry_with_broken_bytes_is_unreadable_not_a_crash(tmp_path, capsys):
+    """글자가 깨진 등록 대장은 예외로 죽지 않고 '읽지 못했다'로 돌아온다 — public_check 는 통과시키지 않고 register-private 는 덧붙이지 않는다."""
+    PIC.REGISTRY.write_bytes(b'{"sha256": "\xff\xfe\x80 broken"}\n')
+    rows, problems = PIC.registry_rows([PIC.REGISTRY])
+    assert rows == {} and len(problems) == 1 and "읽지 못했다(UnicodeDecodeError)" in problems[0]
+    f = tmp_path / "글.txt"
+    f.write_text("지어낸 글", encoding="utf-8")
+    code, lines = PIC.public_check(f)
+    assert code == 1 and any("비공개 등록 대장을 읽지 못했다" in x for x in lines), lines
+    assert render_main(["register-private", str(tmp_path)]) == 1 and "읽지 못했다" in capsys.readouterr().out
+    assert PIC.REGISTRY.read_bytes().startswith(b'{"sha256": "\xff')        # 깨진 대장에 덧붙이지 않았다

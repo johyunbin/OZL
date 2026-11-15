@@ -13,6 +13,10 @@
   (막는 그림이 든 초안 모드의 연습용 판도 같다). pptx 를 쓰기 시작한 뒤로는 빌드가 예외로 멈춰도(내보내기 시간 초과, 도구 없음 등)
   그때까지 만든 파일을 등록한다.
 막는 그림도 swap 도 없는 사양은 지금까지와 같은 폴더 하나, 같은 파일이 나온다.
+pptx 는 저장 직전에 deck.finish_package 를 거친다(문서 통계를 실제 값으로, 틀의 축소 그림과 인쇄 설정 파일을 뗀다). 그 뒤로는 pptx 를 다시 쓰지 않는다.
+style: syuka 빌드는 차트 그림 안의 '출처:' 줄을 그리지 않는다(환산식이 있으면 '환산: …' 줄만 — charts.render_chart 의 source_line).
+광고 회차(사양 맨 위 sponsorship)는 구간의 장마다 오른쪽 위에 띠(표시 문구 · 광고주)를 그리고, 러닝시트 머리에 광고 구간 줄을,
+링크 목록에 「광고주 제공 자료」 절을 둔다(검사는 spec.sponsorship_errors).
 
     python -m ozl.render build <사양.yaml> [--edition 비공개판|바꾼판]   # private/decks/drafts/<card_id>_<ts>[_<판>]/
 """
@@ -284,10 +288,30 @@ def _corner_box(label: str, right: float, top: float) -> Box:
     return Box("링크 번호", right - CORNER_W, top, CORNER_W, CORNER_H, [Para(label, LIGHT)], size=CORNER_SIZE, spacing=1.0, align=PP_ALIGN.RIGHT, max_lines=1)
 
 
+# 광고 구간의 띠 — 구간의 장마다 오른쪽 위에 '표시 문구 · 광고주'(어두운 바탕에 흰 글씨). 제목 줄(윗변 0.68in) 위의 빈 띠에 둔다.
+BAND_NAME = "광고 띠"
+BAND_TOP, BAND_H = 0.14, 0.38
+BAND_SIZE = 14
+BAND_MAX_W = 6.0                                  # 이보다 긴 글은 두 줄이 되어 넘침 검사에 걸린다(표시 문구나 광고주 이름을 줄인다)
+BAND_FILL = RGBColor(0x33, 0x33, 0x33)
+BAND_TEXT = RGBColor(0xFF, 0xFF, 0xFF)
+
+
+def sponsor_band_box(label: str) -> Box:
+    """광고 띠 글상자. 폭은 글 폭에 맞추고(BAND_MAX_W 까지) 오른쪽 여백에 붙인다. 한 줄 — 넘치면 Box.problems 가 알린다."""
+    need = S.measure(label, BAND_SIZE, True) / 72 / 0.98 + 2 * PAD + 0.24
+    w = min(BAND_MAX_W, need)
+    return Box(BAND_NAME, SW - ML - w, BAND_TOP, w, BAND_H, [Para(label, BAND_TEXT, True)], size=BAND_SIZE, spacing=1.0, align=PP_ALIGN.CENTER,
+               max_lines=1, fill=BAND_FILL)
+
+
 def plan_slide(sl: dict) -> Plan:
     """쪽의 배치 계획. 쪽 사본에 링크 번호(S.LINKS_KEY)가 있으면 차트·원문 캡처·회색 자리·표의 오른쪽 아래 귀퉁이에 번호 글상자를 더한다
-    (차트·캡처·표는 자리 바로 아래, 회색 자리는 자리 안쪽 — 그 아래에 캡션 글상자가 온다)."""
+    (차트·캡처·표는 자리 바로 아래, 회색 자리는 자리 안쪽 — 그 아래에 캡션 글상자가 온다).
+    쪽 사본에 광고 띠 글(S.SPONSOR_KEY — 광고 구간의 쪽)이 있으면 오른쪽 위에 띠 글상자를 더한다. 검사와 빌드가 같은 계획을 쓰므로 띠도 넘침 검사를 받는다."""
     p = _plan_slide(sl)
+    if sl.get(S.SPONSOR_KEY):
+        p.boxes.append(sponsor_band_box(str(sl[S.SPONSOR_KEY])))
     corner = ((sl.get(S.LINKS_KEY) or {}).get("corner") or {})
     if not corner:
         return p
@@ -923,8 +947,9 @@ def appendix_problems(spec: dict, claims: dict, card: dict | None, pending=None)
 
 # ── 덱 ──────────────────────────────────────────────────────────────────
 
-def draw_pending(slide, ids: list[str]):
-    """아직 '확인'도 「원문 일치」도 아닌 기록을 인용한 슬라이드 — 오른쪽 위에 빨간 테두리 딱지(초안 모드 전용)."""
+def draw_pending(slide, ids: list[str], right: float | None = None):
+    """아직 '확인'도 「원문 일치」도 아닌 기록을 인용한 슬라이드 — 오른쪽 위에 빨간 테두리 딱지(초안 모드 전용).
+    right = 딱지의 오른쪽 끝(in). 없으면 오른쪽 여백. 광고 띠가 있는 쪽은 띠의 왼쪽에 둔다(겹치지 않게)."""
     waits = [str(c)[len(S.WAIT_IMAGE):] for c in ids if str(c).startswith(S.WAIT_IMAGE)]  # 원문 화면 그림 대기(capture)
     ids = list(dict.fromkeys("보도" if str(c).startswith("보도:") else str(c).split(" ")[0] for c in ids if not str(c).startswith(S.WAIT_IMAGE)))  # 'c13 교차' → 'c13' · 사양 보도 → '보도' · 중복 제거
     parts = [PENDING_MARK + " " + ", ".join(c.rsplit("-", 1)[-1] for c in ids)] if ids else []
@@ -932,7 +957,7 @@ def draw_pending(slide, ids: list[str]):
         parts.append(WAIT_MARK + " " + ", ".join(c.rsplit("-", 1)[-1] for c in dict.fromkeys(waits)))
     label = " · ".join(parts)
     w = min(SW - 2 * ML, max(3.3, S.measure(label, 14, True) / 72 + 0.4))  # 글이 딱지 밖으로 나가지 않게 폭을 맞춘다
-    box = slide.shapes.add_shape(1, Inches(SW - ML - w), Inches(0.12), Inches(w), Inches(0.42))
+    box = slide.shapes.add_shape(1, Inches(max(ML, (SW - ML if right is None else right) - w)), Inches(0.12), Inches(w), Inches(0.42))
     box.name = "검증 대기"
     box.fill.solid()
     box.fill.fore_color.rgb = RGBColor(0xFF, 0xF2, 0xCC)
@@ -994,7 +1019,9 @@ def render_visuals(spec: dict, claims: dict, vis_dir: pathlib.Path) -> dict:
             stem = f"{idx:02d}" + ("" if im.slot < 0 else "ab"[im.slot])
             if im.kind == "chart":
                 vis_dir.mkdir(parents=True, exist_ok=True)
-                png = G.render_chart(sl["chart"], vis_dir / f"{stem}_chart.png", size_px=chart_png_size(im), slot_width_in=im.width)
+                # style: syuka 는 차트 그림 안에 '출처:' 줄을 그리지 않는다(귀퉁이 번호와 링크 목록이 맡는다). 환산식이 있으면 그 줄만 남는다
+                png = G.render_chart(sl["chart"], vis_dir / f"{stem}_chart.png", size_px=chart_png_size(im), slot_width_in=im.width,
+                                     source_line=not syuka)
                 out[(idx, im.slot)] = (png, "", "chart")
             else:
                 c = claims.get(im.ref) or {}
@@ -1127,10 +1154,11 @@ def build_pptx(spec: dict, claims: dict, card: dict, out: pathlib.Path, pending:
     if links is not None and links.errors:   # check 가 먼저 잡는다 — 검사를 거치지 않고 불렀을 때도 번호가 빠진 덱을 내지 않는다
         raise SystemExit("링크 번호를 정할 수 없다 — 이 덱을 만들지 않는다:\n" + "\n".join(links.errors))
     prefix = "" if syuka else None
+    sponsor = S.sponsor_info(spec)   # 광고 회차면 구간의 쪽마다 오른쪽 위 띠
     visuals = render_visuals(spec, claims, out.parent / VISUALS_DIR)
     for idx, sl in enumerate(spec["slides"], 1):
         s = deck._blank(prs)
-        pl = plan_slide(S.with_links(sl, links.slides[idx - 1]) if links is not None else sl)
+        pl = plan_slide(S.sponsor_view(S.with_links(sl, links.slides[idx - 1]) if links is not None else sl, sponsor, idx))
         waits = {str(c)[len(S.WAIT_IMAGE):] for c in pending.get(idx, []) if str(c).startswith(S.WAIT_IMAGE)}
         for im in pl.imgs:
             if im.kind in ("chart", "capture") and (idx, im.slot) in visuals:
@@ -1148,7 +1176,8 @@ def build_pptx(spec: dict, claims: dict, card: dict, out: pathlib.Path, pending:
             _footnote(s, ft)
         nt = notes_text(sl, claims, str(sl.get("stage")), pics)
         if idx in pending:
-            draw_pending(s, pending[idx])
+            band = [b.left for b in pl.boxes if b.name == BAND_NAME]
+            draw_pending(s, pending[idx], right=band[0] - 0.12 if band else None)
             recs = [c for c in pending[idx] if not str(c).startswith(S.WAIT_IMAGE)]
             cap_waits = [c for c in waits if C.CLAIM_ID.match(c)]
             pic_waits = [c for c in waits if not C.CLAIM_ID.match(c)]
@@ -1182,6 +1211,7 @@ def build_pptx(spec: dict, claims: dict, card: dict, out: pathlib.Path, pending:
     if kw:   # 비공개 판 전용 그림이 든 덱 — 문서 속성에 표시를 남긴다(public-check 가 읽는다). 막는 그림이 없으면 속성을 건드리지 않는다
         prs.core_properties.keywords = kw
     deck.clear_template_props(prs)
+    deck.finish_package(prs)   # 문서 통계를 실제 값으로, 틀의 축소 그림과 인쇄 설정 파일을 뗀다 — 이 뒤로는 pptx 를 다시 쓰지 않는다(등록 대장의 해시)
     out.parent.mkdir(parents=True, exist_ok=True)
     prs.save(str(out))
     private = PIC.PRIVATE_KEYWORD in kw.split()
@@ -1196,6 +1226,19 @@ def speech_estimate(slides: list) -> tuple[int, float]:
     """(말로 할 문장의 글자 수 — 공백 제외, 어림 발표 시간 분)."""
     n = sum(len(re.sub(r"\s+", "", t)) for sl in slides if isinstance(sl, dict) for t in S.spoken_text(sl))
     return n, n / SPEAK_CHARS_PER_MIN
+
+
+def sponsor_line(spec: dict) -> str:
+    """러닝시트 머리의 광고 구간 줄 — 구간의 쪽, 광고주, 종류, 표시 문구, 광고주 제공 자료. 광고 회차가 아니면 빈 문자열."""
+    info = S.sponsor_info(spec)
+    if info is None:
+        return ""
+    pg = info["pages"]
+    span = "없음" if not pg else (f"{pg[0]}쪽" if len(pg) == 1 else f"{pg[0]}쪽~{pg[-1]}쪽") + f"({len(pg)}장" + (", 회차 전체" if info["whole"] else "") + ")"
+    mats = info["materials"]
+    return (f"**광고 구간: {span}** · 광고주: {info['sponsor']} · 종류: {info['kind']} · 표시 문구: {info['label']}. "
+            f"구간의 장마다 오른쪽 위에 띠({info['band']})가 찍히고, 첫 장과 끝 장은 화면 글과 말로 할 문장에 표시 문구가 있다. "
+            + (f"광고주 제공 자료 {len(mats)}건: {' / '.join(mats)}(링크 목록의 「광고주 제공 자료」 절 — 숫자의 근거가 아니다)." if mats else "광고주 제공 자료: 없음."))
 
 
 def edition_line(spec: dict, edition: str, swaps: list[dict] | None, pair: str = "") -> str:
@@ -1234,7 +1277,8 @@ def running_sheet(spec: dict, card: dict, claims: dict, ts: str, pending: dict[i
         f"발표 시간 어림 {speech_estimate(slides)[1]:.1f}분(말로 할 문장 {speech_estimate(slides)[0]}자 · 기준 분당 {SPEAK_CHARS_PER_MIN}자, 공백 제외) · "
         f"인용한 검증 기록 {len(cited)}건",
         "",
-    ] + ([edition_line(spec, edition, swaps, pair), ""] if edition else []) + ([f"**{PIC.dropped_summary(dropped)}**", ""] if dropped else []) + [
+    ] + ([edition_line(spec, edition, swaps, pair), ""] if edition else []) + ([sponsor_line(spec), ""] if sponsor_line(spec) else []) + \
+        ([f"**{PIC.dropped_summary(dropped)}**", ""] if dropped else []) + [
         "## 장별 진행",
         "",
         "| 쪽 | 단계 | 제목과 말로만 할 핵심 문장 | 넘어가는 멘트 | 초 | " + ("근거(링크 번호)" if links is not None else "근거") + " | 그림 |",   # 제목 칸을 따로 두면 PDF 에서 글자 단위로 세로로 끊긴다
@@ -1371,6 +1415,12 @@ def links_md(spec: dict, claims: dict, card: dict | None, links, ts: str, ledger
         out += [f"| {_md_cell(r['이름'])} | {r['구분']} | {_md_cell(r['등급'])} | {_md_cell(r['주소'])} | {r['쪽']} |" for r in refs]
     else:
         out.append("없음.")
+    sponsor = S.sponsor_info(spec)
+    if sponsor is not None:   # 광고 회차 — 광고주가 준 자료는 번호 줄과 섞지 않고 따로 적는다
+        out += ["", "## 광고주 제공 자료", "",
+                f"광고주({sponsor['sponsor']})가 준 자료다. 숫자의 근거가 아니다 — 화면과 말의 수치는 위 번호의 기록(원문)으로만 받쳤다. "
+                "원문으로 받치지 못한 주장은 수치 없이 \"광고주 제공 자료에 따르면\"으로만 소개한다.", ""]
+        out += [f"- {_md_cell(m)}" for m in sponsor["materials"]] or ["없음(광고주가 준 자료를 쓰지 않았다)."]
     out += ["", "## 그림 출처", ""]
     pics = picture_rows(spec)
     if pics:

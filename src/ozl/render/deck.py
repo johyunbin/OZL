@@ -50,6 +50,127 @@ def clear_template_props(prs, now: dt.datetime | None = None) -> None:
     cp.revision = 1
 
 
+# ── 저장 직전의 틀 값 정리 ────────────────────────────────────────────────
+# python-pptx 기본 틀은 2011년 판 파워포인트로 저장한 4:3 빈 파일이다. 그 틀의 문서 통계(docProps/app.xml: Slides 0 · Notes 0 · Words 0 ·
+# 'On-screen Show (4:3)' · AppVersion 14.0000), 축소 그림(docProps/thumbnail.jpeg — 틀의 빈 쪽 그림), 인쇄 설정(ppt/printerSettings/*.bin)이
+# 만든 덱에 그대로 실린다. finish_package 가 저장 직전에 통계를 실제 값으로 쓰고 두 파일을 뗀다.
+APP_VERSION = "16.0000"            # 16:9 가 기본 화면 형식인 판의 값(틀이 남긴 14.0000 을 지금 파일의 형식과 맞춘다)
+SCREEN_FORMAT = "Widescreen"       # 13.333 × 7.5in 화면의 PresentationFormat
+SLIDE_TITLES = "Slide Titles"      # HeadingPairs 의 쪽 제목 묶음 이름
+SLIDE_TITLE = "PowerPoint Presentation"   # 제목 틀이 없는 쪽에 파워포인트가 적는 이름(우리 쪽은 빈 레이아웃에 글상자를 얹는다). 쪽의 글을 여기에 옮기지 않는다.
+#   틀의 묶음 이름(Theme · Slide Titles)과 화면 형식(Widescreen)이 영문판 표기라 이것도 영문판 표기로 맞춘다. 한글판 파워포인트로 다시 저장하면
+#   '와이드스크린' · '테마' · '슬라이드 제목' · 'PowerPoint 프레젠테이션' 과 '사용한 글꼴' 묶음이 적힌다(2026-11-15 견본집으로 확인).
+_EP = "http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"
+_VT = "http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes"
+_REL_THUMB = "http://schemas.openxmlformats.org/package/2006/relationships/metadata/thumbnail"
+_REL_PRINTER = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/printerSettings"
+_REL_APP = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties"
+
+
+def _para_texts(el) -> list[str]:
+    """요소 아래 문단(a:p)마다의 글(글상자 · 표 · 묶음 도형 안까지). 줄바꿈(a:br)은 공백으로 센다 — 어절 단위로 미리 나눈 줄의 앞뒤 낱말이 붙지 않게."""
+    out = []
+    for p in el.iter(qn("a:p")):
+        parts = []
+        for node in p.iter(qn("a:t"), qn("a:br")):
+            parts.append(" " if node.tag == qn("a:br") else (node.text or ""))
+        out.append("".join(parts))
+    return out
+
+
+def deck_stats(prs) -> dict:
+    """문서 통계에 적을 실제 값 — 장수, 노트가 있는 장수, 숨긴 장수, 낱말 수, 문단 수.
+    낱말과 문단은 쪽의 글과 발표자 노트 글에서 센다(공백으로 나뉜 낱말, 글이 있는 문단).
+    실제 파워포인트와 견준 것(2026-11-15, 견본집 15장을 파워포인트로 다시 저장): 장수 · 노트 수 · 문단 수(71)는 같고, 낱말 수는 파워포인트 812 · 이 함수 602 로
+    다르다(파워포인트가 낱말을 나누는 규칙은 알지 못한다 — 여기서는 공백으로 나눈다)."""
+    slides = list(prs.slides)
+    texts: list[str] = []
+    notes = 0
+    for s in slides:
+        texts += _para_texts(s._element)
+        if s.has_notes_slide:
+            notes += 1
+            tf = s.notes_slide.notes_text_frame
+            if tf is not None:
+                texts += _para_texts(tf._txBody)
+    texts = [t for t in texts if t.strip()]
+    return {"slides": len(slides), "notes": notes, "hidden": sum(1 for s in slides if s._element.get("show") == "0"),
+            "words": sum(len(t.split()) for t in texts), "paragraphs": len(texts)}
+
+
+def _vector(parent, tag: str, base: str, items: list) -> None:
+    """parent 아래 tag(HeadingPairs · TitlesOfParts)의 vt:vector 를 items 로 다시 쓴다. items = [(vt 종류, 값)]."""
+    el = parent.find(f"{{{_EP}}}{tag}")
+    if el is None:
+        el = etree.SubElement(parent, f"{{{_EP}}}{tag}")
+    for ch in list(el):
+        el.remove(ch)
+    vec = etree.SubElement(el, f"{{{_VT}}}vector", size=str(len(items)), baseType=base)
+    for kind, value in items:
+        holder = etree.SubElement(vec, f"{{{_VT}}}variant") if base == "variant" else vec
+        etree.SubElement(holder, f"{{{_VT}}}{kind}").text = str(value)
+
+
+def _app_xml(blob: bytes, st: dict) -> bytes:
+    """틀의 app.xml 을 실제 값으로 고친 바이트. Application 같은 그 밖의 칸은 그대로 둔다."""
+    root = etree.fromstring(blob)
+
+    def put(tag: str, value) -> None:
+        el = root.find(f"{{{_EP}}}{tag}")
+        if el is None:
+            el = etree.SubElement(root, f"{{{_EP}}}{tag}")
+        el.text = str(value)
+
+    for tag, key in (("Words", "words"), ("Paragraphs", "paragraphs"), ("Slides", "slides"), ("Notes", "notes"), ("HiddenSlides", "hidden")):
+        put(tag, st[key])
+    put("PresentationFormat", SCREEN_FORMAT)
+    put("AppVersion", APP_VERSION)
+    # HeadingPairs = (묶음 이름, 개수)의 짝들 · TitlesOfParts = 묶음 순서대로 늘어놓은 이름들. 쪽 제목 묶음만 실제 장수로 바꾸고 나머지(테마)는 둔다
+    hp = root.find(f"{{{_EP}}}HeadingPairs")
+    cells = [v[0] for v in hp.iter(f"{{{_VT}}}variant") if len(v)] if hp is not None else []
+    pairs = [(cells[k].text or "", int(cells[k + 1].text or 0)) for k in range(0, len(cells) - 1, 2)]
+    tp = root.find(f"{{{_EP}}}TitlesOfParts")
+    names = [x.text or "" for x in tp.iter(f"{{{_VT}}}lpstr")] if tp is not None else []
+    if sum(n for _, n in pairs) != len(names):   # 짝이 맞지 않는 틀 — 테마 한 줄로 다시 쓴다
+        pairs, names = [("Theme", 1)], ["Office Theme"]
+    kept_pairs, kept_names, at = [], [], 0
+    for name, n in pairs:
+        if name != SLIDE_TITLES:
+            kept_pairs.append((name, n))
+            kept_names += names[at:at + n]
+        at += n
+    kept_pairs.append((SLIDE_TITLES, st["slides"]))
+    kept_names += [SLIDE_TITLE] * st["slides"]
+    _vector(root, "HeadingPairs", "variant", [x for name, n in kept_pairs for x in (("lpstr", name), ("i4", n))])
+    _vector(root, "TitlesOfParts", "lpstr", [("lpstr", x) for x in kept_names])
+    return etree.tostring(root, xml_declaration=True, encoding="UTF-8", standalone=True)
+
+
+def finish_package(prs) -> dict:
+    """pptx 를 저장하기 직전에 부른다(저장하는 자리마다 — build.build_pptx · build_prototype · replica.build · style.samples 의 다시 저장).
+      - docProps/app.xml 을 실제 값으로 쓴다: 장수, 노트 수, 숨긴 장수, 낱말 수, 문단 수, 화면 형식 Widescreen, AppVersion 16.0000,
+        쪽 제목 개수(HeadingPairs 와 TitlesOfParts 의 개수가 서로 맞게). Application 칸은 틀 값 그대로 둔다.
+      - 틀의 축소 그림(thumbnail)과 인쇄 설정 파일을 관계에서 뗀다. python-pptx 는 관계로 닿는 부품만 쓰고 [Content_Types].xml 의 기본 줄도
+        쓰는 부품의 확장자로만 만들므로, 떼면 파일과 관계 줄과 종류 줄(bin · jpeg)이 함께 빠진다(jpeg 그림을 쓴 덱이면 jpeg 줄은 남는다).
+      - 축소 그림은 첫 쪽 그림으로 바꾸지 않고 빼기만 한다: 그러려면 내보내기 뒤에 pptx 를 다시 써야 하는데, 비공개판은 pptx 의 sha256 을
+        등록 대장에 적으므로 적은 뒤에 바이트가 바뀌면 안 된다. 비공개판 첫 쪽의 막는 그림을 줄인 사본을 파일 안에 하나 더 두지도 않는다.
+    건드리지 않는 것: 안에 든 그림 파일의 바이트(등록 대장의 그림 해시와 같아야 한다), core 속성(keywords 포함 — clear_template_props 가 따로 맡는다).
+    이 함수 뒤에는 prs 를 고치지 않고 바로 저장한다. 돌려주는 값 = deck_stats 의 값에 뗀 부품 이름(dropped)을 더한 것."""
+    st = deck_stats(prs)
+    pkg = prs.part.package
+    dropped: list[str] = []
+    for rels, reltype in ((pkg._rels, _REL_THUMB), (prs.part.rels, _REL_PRINTER)):
+        for rid in [r.rId for r in rels.values() if r.reltype == reltype]:
+            rel = rels.pop(rid)
+            if not rel.is_external:
+                dropped.append(str(rel.target_part.partname))
+    for rel in pkg._rels.values():
+        if rel.reltype == _REL_APP and not rel.is_external:
+            part = rel.target_part
+            part._blob = _app_xml(part.blob, st)
+    return {**st, "dropped": dropped}
+
+
 def set_run_font(run, name: str) -> None:
     """라틴(a:latin)뿐 아니라 동아시아(a:ea)·복합(a:cs) 서체까지 지정 — 빠뜨리면 LibreOffice/PowerPoint가 한글을 다른 폰트로 대체하거나 비운다."""
     rPr = run._r.get_or_add_rPr()
@@ -233,6 +354,7 @@ def build_prototype() -> pathlib.Path:
     ts = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
     out = DRAFTS / f"prototype_sample_{ts}.pptx"
     clear_template_props(prs)
+    finish_package(prs)
     prs.save(str(out))
     return out
 
