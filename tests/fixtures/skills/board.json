@@ -1,0 +1,735 @@
+{
+ "schema": "ozl.board/1",
+ "asof": "2099-01-01T09:05:06+09:00",
+ "base_day": "2099-01-01",
+ "base_day_partial": true,
+ "decided_at": "2099-01-01T09:05:40+09:00",
+ "calc_id": 7,
+ "mode": "step",
+ "versions": {
+  "rules": "r1",
+  "formula": "s1",
+  "dict": "fixture",
+  "ledger": "fixture",
+  "feeds": "fixture",
+  "overrides": "없음"
+ },
+ "basis": "출처 3종 기준(언론, 검색, 공공 원문 · 위키백과 수집 없음)",
+ "formula_note": [
+  "지어낸 후보 판이다. 수치는 시험용이다."
+ ],
+ "sources": [
+  {
+   "kind": "언론",
+   "status": "성공",
+   "last_ok": "2099-01-01T09:05:00+09:00",
+   "feeds_ok": 3,
+   "feeds_total": 3,
+   "failed": [],
+   "feeds": []
+  },
+  {
+   "kind": "검색",
+   "status": "성공",
+   "last_ok": "2099-01-01T09:05:00+09:00",
+   "feeds_ok": 1,
+   "feeds_total": 1,
+   "failed": [],
+   "feeds": []
+  },
+  {
+   "kind": "위키백과",
+   "status": "꺼짐",
+   "last_ok": "",
+   "feeds_ok": 0,
+   "feeds_total": 0,
+   "failed": [],
+   "feeds": [],
+   "reason": "수집 없음"
+  },
+  {
+   "kind": "공공 원문",
+   "status": "성공",
+   "last_ok": "2099-01-01T09:05:00+09:00",
+   "feeds_ok": 2,
+   "feeds_total": 2,
+   "failed": [],
+   "feeds": []
+  }
+ ],
+ "missing": [],
+ "zones": {
+  "new": {
+   "rows": [
+    "t20990101-002",
+    "t20990101-003"
+   ],
+   "empty_reason": null,
+   "capped": []
+  },
+  "ongoing": {
+   "rows": [
+    "t20990101-001",
+    "t20990101-004",
+    "t20990101-006"
+   ],
+   "empty_reason": null,
+   "capped": []
+  }
+ },
+ "candidates": [
+  {
+   "issue_id": "t20990101-005",
+   "aliases": [],
+   "lang": "ko",
+   "title": "솔빛 축구단, 창단 12년 만에 1부 승격 확정",
+   "score": 41,
+   "score_raw": 41.2,
+   "state": "새로 뜸",
+   "day_n": 1,
+   "first_day": "2099-01-01",
+   "status_line": "1일째 · 새로 뜸",
+   "new_thing": "",
+   "parts": {
+    "v": 0.4,
+    "H": 1.2,
+    "B": 0.33,
+    "P": 0.5,
+    "D": 0.0,
+    "A": 9,
+    "g": 0.0,
+    "w": null
+   },
+   "outlets_n": 6,
+   "articles_n": 9,
+   "copies_n": 0,
+   "kinds": [
+    "언론"
+   ],
+   "kinds_ok": [
+    "언론"
+   ],
+   "missing": [],
+   "category": "스포츠",
+   "sensitivity": {
+    "level": "GREEN",
+    "reason": ""
+   },
+   "person": false,
+   "indirect": null,
+   "links": [
+    {
+     "title": "솔빛 축구단, 창단 12년 만에 1부 승격 확정 (지어낸 기사 1)",
+     "url": "https://news.example/t20990101-005/1",
+     "outlet": "지어낸일보1",
+     "at": "2099-01-01T08:00:00+09:00",
+     "kind": "news"
+    },
+    {
+     "title": "솔빛 축구단, 창단 12년 만에 1부 승격 확정 (지어낸 기사 2)",
+     "url": "https://news.example/t20990101-005/2",
+     "outlet": "지어낸일보2",
+     "at": "2099-01-01T08:00:00+09:00",
+     "kind": "news"
+    }
+   ],
+   "prev_day": null,
+   "zone": null,
+   "deck_blocked": false,
+   "story": {
+    "value": 0.75,
+    "H": 1.2,
+    "families_3d": 6,
+    "families_by_day": [
+     6
+    ],
+    "grade_max_3d": 0.0
+   },
+   "story_rank": 5
+  },
+  {
+   "issue_id": "t20990101-002",
+   "aliases": [],
+   "lang": "ko",
+   "title": "가람은행, 정기예금 금리 0.3%포인트 인하",
+   "score": 63,
+   "score_raw": 62.8,
+   "state": "새로 뜸",
+   "day_n": 1,
+   "first_day": "2099-01-01",
+   "status_line": "1일째 · 새로 뜸",
+   "new_thing": "",
+   "parts": {
+    "v": 0.4,
+    "H": 1.2,
+    "B": 0.33,
+    "P": 0.5,
+    "D": 0.0,
+    "A": 15,
+    "g": 0.0,
+    "w": null
+   },
+   "outlets_n": 9,
+   "articles_n": 15,
+   "copies_n": 0,
+   "kinds": [
+    "언론"
+   ],
+   "kinds_ok": [
+    "언론"
+   ],
+   "missing": [],
+   "category": "경제",
+   "sensitivity": {
+    "level": "GREEN",
+    "reason": ""
+   },
+   "person": false,
+   "indirect": null,
+   "links": [
+    {
+     "title": "가람은행, 정기예금 금리 0.3%포인트 인하 (지어낸 기사 1)",
+     "url": "https://news.example/t20990101-002/1",
+     "outlet": "지어낸일보1",
+     "at": "2099-01-01T08:00:00+09:00",
+     "kind": "news"
+    },
+    {
+     "title": "가람은행, 정기예금 금리 0.3%포인트 인하 (지어낸 기사 2)",
+     "url": "https://news.example/t20990101-002/2",
+     "outlet": "지어낸일보2",
+     "at": "2099-01-01T08:00:00+09:00",
+     "kind": "news"
+    }
+   ],
+   "prev_day": null,
+   "zone": "new",
+   "deck_blocked": false,
+   "story": {
+    "value": 0.9,
+    "H": 1.2,
+    "families_3d": 9,
+    "families_by_day": [
+     9
+    ],
+    "grade_max_3d": 0.0
+   },
+   "story_rank": 2,
+   "summary": "가람은행이 1월 2일부터 정기예금 금리를 0.3%포인트 내린다고 공지했다.",
+   "why_now": "다른 은행 두 곳이 같은 주에 금리 조정을 예고했다."
+  },
+  {
+   "issue_id": "t20990101-001",
+   "aliases": [],
+   "lang": "ko",
+   "title": "한빛시, 시내버스 요금 400원 인상안 발표",
+   "score": 77,
+   "score_raw": 76.9,
+   "state": "커지는 중",
+   "day_n": 3,
+   "first_day": "2099-01-01",
+   "status_line": "3일째 · 커지는 중",
+   "new_thing": "",
+   "parts": {
+    "v": 0.4,
+    "H": 1.2,
+    "B": 0.33,
+    "P": 0.5,
+    "D": 0.0,
+    "A": 31,
+    "g": 0.0,
+    "w": null
+   },
+   "outlets_n": 14,
+   "articles_n": 31,
+   "copies_n": 0,
+   "kinds": [
+    "언론"
+   ],
+   "kinds_ok": [
+    "언론"
+   ],
+   "missing": [],
+   "category": "사회",
+   "sensitivity": {
+    "level": "GREEN",
+    "reason": ""
+   },
+   "person": false,
+   "indirect": null,
+   "links": [
+    {
+     "title": "한빛시, 시내버스 요금 400원 인상안 발표 (지어낸 기사 1)",
+     "url": "https://news.example/t20990101-001/1",
+     "outlet": "지어낸일보1",
+     "at": "2099-01-01T08:00:00+09:00",
+     "kind": "news"
+    },
+    {
+     "title": "한빛시, 시내버스 요금 400원 인상안 발표 (지어낸 기사 2)",
+     "url": "https://news.example/t20990101-001/2",
+     "outlet": "지어낸일보2",
+     "at": "2099-01-01T08:00:00+09:00",
+     "kind": "news"
+    }
+   ],
+   "prev_day": {
+    "day": "2098-12-31",
+    "outlets_n": 11,
+    "articles_n": 20,
+    "kinds": [
+     "언론"
+    ],
+    "kinds_ok": [
+     "언론"
+    ],
+    "score": 60,
+    "state": "커지는 중"
+   },
+   "zone": "ongoing",
+   "deck_blocked": false,
+   "story": {
+    "value": 0.95,
+    "H": 1.2,
+    "families_3d": 14,
+    "families_by_day": [
+     14
+    ],
+    "grade_max_3d": 0.0
+   },
+   "story_rank": 1
+  },
+  {
+   "issue_id": "t20990101-004",
+   "aliases": [],
+   "lang": "ko",
+   "title": "다온당 대표 경선, 후보 3명 판세",
+   "score": 70,
+   "score_raw": 70.1,
+   "state": "정점",
+   "day_n": 4,
+   "first_day": "2099-01-01",
+   "status_line": "4일째 · 정점",
+   "new_thing": "",
+   "parts": {
+    "v": 0.4,
+    "H": 1.2,
+    "B": 0.33,
+    "P": 0.5,
+    "D": 0.0,
+    "A": 22,
+    "g": 0.0,
+    "w": null
+   },
+   "outlets_n": 11,
+   "articles_n": 22,
+   "copies_n": 0,
+   "kinds": [
+    "언론"
+   ],
+   "kinds_ok": [
+    "언론"
+   ],
+   "missing": [],
+   "category": "정치",
+   "sensitivity": {
+    "level": "RED",
+    "reason": "선거·판세 — 다루지 않는 소재(정치)"
+   },
+   "person": false,
+   "indirect": null,
+   "links": [
+    {
+     "title": "다온당 대표 경선, 후보 3명 판세 (지어낸 기사 1)",
+     "url": "https://news.example/t20990101-004/1",
+     "outlet": "지어낸일보1",
+     "at": "2099-01-01T08:00:00+09:00",
+     "kind": "news"
+    },
+    {
+     "title": "다온당 대표 경선, 후보 3명 판세 (지어낸 기사 2)",
+     "url": "https://news.example/t20990101-004/2",
+     "outlet": "지어낸일보2",
+     "at": "2099-01-01T08:00:00+09:00",
+     "kind": "news"
+    }
+   ],
+   "prev_day": null,
+   "zone": "ongoing",
+   "deck_blocked": true,
+   "story": {
+    "value": 0.8,
+    "H": 1.2,
+    "families_3d": 11,
+    "families_by_day": [
+     11
+    ],
+    "grade_max_3d": 0.0
+   },
+   "story_rank": 4
+  },
+  {
+   "issue_id": "t20990101-008",
+   "lang": "ko",
+   "title": "새벽 배송 요금 개편안, 3개 회사가 같은 날 공지",
+   "score": 28,
+   "score_raw": 27.7,
+   "day_n": 2,
+   "outlets_n": 3,
+   "articles_n": 4,
+   "category": "경제",
+   "story_rank": 8
+  },
+  {
+   "issue_id": "t20990101-003",
+   "aliases": [],
+   "lang": "ko",
+   "title": "누리전자 접는 태블릿 화면 결함, 회수 명령",
+   "score": 58,
+   "score_raw": 58.3,
+   "state": "새로 뜸",
+   "day_n": 2,
+   "first_day": "2099-01-01",
+   "status_line": "2일째 · 새로 뜸",
+   "new_thing": "",
+   "parts": {
+    "v": 0.4,
+    "H": 1.2,
+    "B": 0.33,
+    "P": 0.5,
+    "D": 0.0,
+    "A": 12,
+    "g": 0.0,
+    "w": null
+   },
+   "outlets_n": 7,
+   "articles_n": 12,
+   "copies_n": 0,
+   "kinds": [
+    "언론"
+   ],
+   "kinds_ok": [
+    "언론"
+   ],
+   "missing": [],
+   "category": "과학기술",
+   "sensitivity": {
+    "level": "YELLOW",
+    "reason": "기업 비위 주장 포함"
+   },
+   "person": false,
+   "indirect": null,
+   "links": [
+    {
+     "title": "누리전자 접는 태블릿 화면 결함, 회수 명령 (지어낸 기사 1)",
+     "url": "https://news.example/t20990101-003/1",
+     "outlet": "지어낸일보1",
+     "at": "2099-01-01T08:00:00+09:00",
+     "kind": "news"
+    },
+    {
+     "title": "누리전자 접는 태블릿 화면 결함, 회수 명령 (지어낸 기사 2)",
+     "url": "https://news.example/t20990101-003/2",
+     "outlet": "지어낸일보2",
+     "at": "2099-01-01T08:00:00+09:00",
+     "kind": "news"
+    }
+   ],
+   "prev_day": null,
+   "zone": "new",
+   "deck_blocked": false,
+   "story": {
+    "value": 0.85,
+    "H": 1.2,
+    "families_3d": 7,
+    "families_by_day": [
+     7
+    ],
+    "grade_max_3d": 0.0
+   },
+   "story_rank": 3,
+   "summary": "소비자 안전 기관이 누리전자 접는 태블릿 1개 기종에 회수 명령을 냈다.",
+   "why_now": ""
+  },
+  {
+   "issue_id": "t20990101-006",
+   "aliases": [],
+   "lang": "ko",
+   "title": "마루국 항만 파업 2주째, 수출 물량 묶여",
+   "score": 45,
+   "score_raw": 44.6,
+   "state": "식는 중",
+   "day_n": 14,
+   "first_day": "2099-01-01",
+   "status_line": "14일째 · 식는 중",
+   "new_thing": "",
+   "parts": {
+    "v": 0.4,
+    "H": 1.2,
+    "B": 0.33,
+    "P": 0.5,
+    "D": 0.0,
+    "A": 40,
+    "g": 0.0,
+    "w": null
+   },
+   "outlets_n": 8,
+   "articles_n": 40,
+   "copies_n": 0,
+   "kinds": [
+    "언론"
+   ],
+   "kinds_ok": [
+    "언론"
+   ],
+   "missing": [],
+   "category": "국제",
+   "sensitivity": {
+    "level": "GREEN",
+    "reason": ""
+   },
+   "person": false,
+   "indirect": null,
+   "links": [
+    {
+     "title": "마루국 항만 파업 2주째, 수출 물량 묶여 (지어낸 기사 1)",
+     "url": "https://news.example/t20990101-006/1",
+     "outlet": "지어낸일보1",
+     "at": "2099-01-01T08:00:00+09:00",
+     "kind": "news"
+    },
+    {
+     "title": "마루국 항만 파업 2주째, 수출 물량 묶여 (지어낸 기사 2)",
+     "url": "https://news.example/t20990101-006/2",
+     "outlet": "지어낸일보2",
+     "at": "2099-01-01T08:00:00+09:00",
+     "kind": "news"
+    }
+   ],
+   "prev_day": null,
+   "zone": "ongoing",
+   "deck_blocked": false,
+   "story": {
+    "value": 0.7,
+    "H": 1.2,
+    "families_3d": 8,
+    "families_by_day": [
+     8
+    ],
+    "grade_max_3d": 0.0
+   },
+   "story_rank": 6
+  },
+  {
+   "issue_id": "t20990101-007",
+   "aliases": [],
+   "lang": "ko",
+   "title": "드라마 '별내 이야기' 최종회 시청률 18%",
+   "score": 33,
+   "score_raw": 33.0,
+   "state": "새로 뜸",
+   "day_n": 1,
+   "first_day": "2099-01-01",
+   "status_line": "1일째 · 새로 뜸",
+   "new_thing": "",
+   "parts": {
+    "v": 0.4,
+    "H": 1.2,
+    "B": 0.33,
+    "P": 0.5,
+    "D": 0.0,
+    "A": 7,
+    "g": 0.0,
+    "w": null
+   },
+   "outlets_n": 5,
+   "articles_n": 7,
+   "copies_n": 0,
+   "kinds": [
+    "언론"
+   ],
+   "kinds_ok": [
+    "언론"
+   ],
+   "missing": [],
+   "category": "연예",
+   "sensitivity": {
+    "level": "GREEN",
+    "reason": ""
+   },
+   "person": false,
+   "indirect": null,
+   "links": [
+    {
+     "title": "드라마 '별내 이야기' 최종회 시청률 18% (지어낸 기사 1)",
+     "url": "https://news.example/t20990101-007/1",
+     "outlet": "지어낸일보1",
+     "at": "2099-01-01T08:00:00+09:00",
+     "kind": "news"
+    },
+    {
+     "title": "드라마 '별내 이야기' 최종회 시청률 18% (지어낸 기사 2)",
+     "url": "https://news.example/t20990101-007/2",
+     "outlet": "지어낸일보2",
+     "at": "2099-01-01T08:00:00+09:00",
+     "kind": "news"
+    }
+   ],
+   "prev_day": null,
+   "zone": null,
+   "deck_blocked": false,
+   "story": {
+    "value": 0.65,
+    "H": 1.2,
+    "families_3d": 5,
+    "families_by_day": [
+     5
+    ],
+    "grade_max_3d": 0.0
+   },
+   "story_rank": 7
+  },
+  {
+   "issue_id": "t20990101-009",
+   "aliases": [],
+   "lang": "ko",
+   "title": "지어낸 급상승어로만 잡힌 이야기",
+   "score": 12,
+   "score_raw": 12.4,
+   "state": null,
+   "day_n": 1,
+   "first_day": "2099-01-01",
+   "status_line": "1일째",
+   "new_thing": "",
+   "parts": {
+    "v": 0.4,
+    "H": 1.2,
+    "B": 0.33,
+    "P": 0.5,
+    "D": 0.0,
+    "A": 2,
+    "g": 0.0,
+    "w": null
+   },
+   "outlets_n": 2,
+   "articles_n": 2,
+   "copies_n": 0,
+   "kinds": [
+    "언론"
+   ],
+   "kinds_ok": [
+    "언론"
+   ],
+   "missing": [],
+   "category": "기타",
+   "sensitivity": {
+    "level": "GREEN",
+    "reason": ""
+   },
+   "person": false,
+   "indirect": null,
+   "links": [
+    {
+     "title": "지어낸 급상승어로만 잡힌 이야기 (지어낸 기사 1)",
+     "url": "https://news.example/t20990101-009/1",
+     "outlet": "지어낸일보1",
+     "at": "2099-01-01T08:00:00+09:00",
+     "kind": "news"
+    }
+   ],
+   "prev_day": null,
+   "zone": null,
+   "deck_blocked": false,
+   "story": {
+    "value": 0.55,
+    "H": 1.2,
+    "families_3d": 2,
+    "families_by_day": [
+     2
+    ],
+    "grade_max_3d": 0.0
+   },
+   "story_rank": 9
+  },
+  {
+   "issue_id": "t20990101-010",
+   "aliases": [],
+   "lang": "en",
+   "title": "Maru port strike enters second week",
+   "score": 20,
+   "score_raw": 20.2,
+   "state": null,
+   "day_n": 14,
+   "first_day": "2099-01-01",
+   "status_line": "14일째",
+   "new_thing": "",
+   "parts": {
+    "v": 0.4,
+    "H": 1.2,
+    "B": 0.33,
+    "P": 0.5,
+    "D": 0.0,
+    "A": 6,
+    "g": 0.0,
+    "w": null
+   },
+   "outlets_n": 4,
+   "articles_n": 6,
+   "copies_n": 0,
+   "kinds": [
+    "언론"
+   ],
+   "kinds_ok": [
+    "언론"
+   ],
+   "missing": [],
+   "category": "국제",
+   "sensitivity": {
+    "level": "GREEN",
+    "reason": ""
+   },
+   "person": false,
+   "indirect": null,
+   "links": [
+    {
+     "title": "Maru port strike enters second week (지어낸 기사 1)",
+     "url": "https://news.example/t20990101-010/1",
+     "outlet": "지어낸일보1",
+     "at": "2099-01-01T08:00:00+09:00",
+     "kind": "news"
+    }
+   ],
+   "prev_day": null,
+   "zone": null,
+   "deck_blocked": false,
+   "story": {
+    "value": 0.95,
+    "H": 1.2,
+    "families_3d": 4,
+    "families_by_day": [
+     4
+    ],
+    "grade_max_3d": 0.0
+   },
+   "story_rank": 1
+  }
+ ],
+ "searches_unmatched": [
+  {
+   "keyword": "한빛시 불꽃축제",
+   "grade": 0.4,
+   "day": "2099-01-01",
+   "traffic_raw": "2000+",
+   "news_title": "한빛시 불꽃축제 일정 공지(지어낸 제목)"
+  },
+  {
+   "keyword": "솔빛 마라톤 접수",
+   "grade": 0.7,
+   "day": "2099-01-01",
+   "traffic_raw": "5000+",
+   "news_title": "솔빛 마라톤 접수 시작(지어낸 제목)"
+  }
+ ],
+ "merge_hints": [],
+ "note": "검증 전 신호다. 화제 점수는 얼마나 화제인가만 잰다. 사실 여부와 중요성과 무관하다."
+}

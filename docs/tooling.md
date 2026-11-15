@@ -6,7 +6,7 @@
 
 | 도구 | 하는 일 |
 |---|---|
-| Claude Code | 후보 발굴과 완성 절차를 돌립니다. 예약 실행은 2026년 11월 13일부터 멈춰 두었습니다. 절차서는 저장소의 `skills/ozl/SKILL.md` 입니다 |
+| Claude Code | 후보 목록 보기와 고르기, 이슈 글 만들기, 슬라이드 완성 절차를 돌립니다. 제가 대화에서 명령(`/ozl find`, `/ozl make`, `/syuka deck`)을 손으로 부를 때만 돌고, 예약 실행은 두지 않습니다. 절차서는 저장소의 `.claude/skills/` 와 `skills/ozl/SKILL.md` 입니다 |
 | feedparser, requests | 피드를 읽습니다 |
 | PyYAML | 카드와 검증 기록을 YAML 파일로 읽고 씁니다 |
 | MkDocs Material, GitHub Pages | 이 사이트를 만들고 올립니다 |
@@ -26,7 +26,7 @@
 ## 직접 만든 것
 
 - 공개본 검사(`scripts/publish_gate.py`): 비공개 자료의 문장이 공개 파일에 섞였는지 커밋 전에 찾습니다.
-- 범위 제한 푸시(`scripts/push_delegated.sh`): 예약 작업이 보고서와 검증 기록만 올리고 코드는 올리지 못하게 합니다.
+- 범위 제한 푸시(`scripts/push_delegated.sh`): 공개를 승인한 카드의 보고서와 검증 기록만 올리고, 코드는 함께 올라가지 않게 합니다.
 - 카드 검사와 공개 판정(`src/ozl/research/cards.py`): 승인이 있고, 배지가 기준을 넘고, 승인 때의 내용과 지금 내용이 같을 때만 공개로 봅니다.
 
 예전에 이 자리에 있던 오픈소스 조사 표는 쓰지 않는 도구가 대부분이어서 내렸습니다.

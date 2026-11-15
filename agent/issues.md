@@ -4,7 +4,8 @@
 
 ## 정본
 - 독자에게 설명한 형식, 판정 기준, 검토의 짜임, 게시 가부: `docs/issue-brief.md`. 일이 도는 순서: `docs/how-it-works.md` 의 「이슈 기록의 흐름」.
-- 절차: `.claude/skills/ozl/SKILL.md`(`/ozl make [job_id]`, `/ozl status`)와 단계별 지시서 `.claude/skills/ozl/make/`.
+- 절차: `.claude/skills/ozl/SKILL.md`(`/ozl find`, `/ozl make`, `/ozl status`)와 지시서 `.claude/skills/ozl/find/find.md`, 단계별 지시서 `.claude/skills/ozl/make/`. 사용자가 부를 때만 돈다.
+- 고르는 길은 둘이다: 대화의 `/ozl find`(후보 판을 표로 보고 고르기, 버리기, 직접 넣기. 고르기 기록은 `<자료 루트>/find/`)와 운영 화면 `/pick` 의 [만들기](만들기 대기열에 쌓이고 인자 없는 `/ozl make` 가 꺼낸다). 만들 건이 정해졌으면 `/ozl make "<제목>"` 으로 바로 만든다.
 - 판정과 문장의 원칙 20가지: `.claude/skills/ozl/make/principles.md`. 쓰기, 재대조와 문장 대조, 고치기가 모두 이 파일을 쓴다.
 - 기록의 형식과 판정 규칙의 정본은 코드다: `src/ozl/issues/`(판정과 근거 조건의 조합표는 `rules.py`). 설계 문서는 `private/plan/issues_spec_20261114.md` 3절.
 - 명령은 `.venv/bin/python -m ozl.issues --help` 에 있는 것만 쓴다: `new`, `ids`, `capture`, `machine-verify`, `check`, `review add`, `snapshot`, `hash`, `status`, `links`, `export`, `approve`, `withdraw`, `article-check`, `article-new`.
@@ -62,4 +63,4 @@
 - 올리지 않는 것: 본문(확인된 사실, 주장의 문장, 흐름, 입장), 근거 사본, 공개하지 않는 주장의 내용, 개인 정보. 이슈 전체가 공개 제외면 제목도 올리지 않는다.
 
 ## 옛 이슈 브리핑
-2026-11-11 에 시험한 '판정 도장 스와이프 덱' 형식(절차 `skills/ozl-news/SKILL.md`, 형식 예시 `skills/ozl-news/deck_example.yaml`, 코드 `src/ozl/briefs/`, 실제 덱은 `private/briefs/`)은 시험했던 형식으로 남아 있고, 이슈 기록이 그 자리를 이었다. 그 덱도 `private/briefs/`(비공개)에만 두고, 공개 저장소에는 지어낸 예시만 둔다. 공개 발행은 증거 경로(일일 데스크의 원문 사본 대조 같은 검증 기준)와 사용자 승인 절차를 정한 뒤에만 한다. 예약 루틴을 붙일 때도 Opus 고정, Codex 호출 금지, 쓰기 범위 `private/briefs/`, `private/pulse/` 로 한다.
+2026-11-11 에 시험한 '판정 도장 스와이프 덱' 형식(절차 `skills/ozl-news/SKILL.md`, 형식 예시 `skills/ozl-news/deck_example.yaml`, 코드 `src/ozl/briefs/`, 실제 덱은 `private/briefs/`)은 시험했던 형식으로 남아 있고, 이슈 기록이 그 자리를 이었다. 그 덱도 `private/briefs/`(비공개)에만 두고, 공개 저장소에는 지어낸 예시만 둔다. 공개 발행은 증거 경로(일일 데스크의 원문 사본 대조 같은 검증 기준)와 사용자 승인 절차를 정한 뒤에만 한다. 이 형식에 예약 실행을 붙이지 않는다.

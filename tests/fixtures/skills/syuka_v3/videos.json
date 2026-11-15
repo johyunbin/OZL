@@ -1,0 +1,40 @@
+{
+ "note": "지어낸 영상 5편의 목록이다. 실제 영상이 아니다.",
+ "videos": [
+  {
+   "video_id": "fakeSYK0001",
+   "title": "예금 금리가 내려가면 벌어지는 일 (지어낸 영상)",
+   "upload_at": "2098-10-12 18:00",
+   "duration_sec": 1260,
+   "kind": "본편"
+  },
+  {
+   "video_id": "fakeSYK0002",
+   "title": "공유 자전거는 왜 늘 적자일까 (지어낸 영상)",
+   "upload_at": "2098-06-03 18:00",
+   "duration_sec": 1380,
+   "kind": "본편"
+  },
+  {
+   "video_id": "fakeSYK0003",
+   "title": "항만이 멈추면 생기는 일 (지어낸 영상)",
+   "upload_at": "2098-12-20 18:00",
+   "duration_sec": 1500,
+   "kind": "본편"
+  },
+  {
+   "video_id": "fakeSYK0004",
+   "title": "접는 태블릿 경쟁과 별빛전자 실적 (지어낸 영상)",
+   "upload_at": "2098-11-07 18:00",
+   "duration_sec": 1620,
+   "kind": "본편"
+  },
+  {
+   "video_id": "fakeSYK0005",
+   "title": "생방송: 몽돌국 화폐 개혁과 새벽 배송 요금 (지어낸 영상)",
+   "upload_at": "2097-03-15 21:00",
+   "duration_sec": 5400,
+   "kind": "생방송 전체"
+  }
+ ]
+}

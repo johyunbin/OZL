@@ -1,0 +1,116 @@
+{
+ "video_id": "fakeSYK0001",
+ "schema_version": 3,
+ "model": "opus",
+ "seconds": 240,
+ "read_to_end": true,
+ "transcript_chars": 9000,
+ "summary": "기준금리 인하 뒤 예금 금리가 내려가는 길과 저축에 미치는 영향",
+ "ad_disclosure": "아니오",
+ "n_segments": 1,
+ "notes": "",
+ "segments": [
+  {
+   "seg": 1,
+   "span": {
+    "start_char": 300,
+    "end_char": 8800
+   },
+   "topic_line": "기준금리 인하와 예금 금리",
+   "question": "기준금리가 내리면 예금 금리는 얼마나 따라 내리는가?",
+   "field": "금리·통화·환율",
+   "field2": null,
+   "intro_style": "최근 뉴스에서 출발",
+   "main_person": null,
+   "main_org": "누리통화위원회",
+   "people": [],
+   "orgs": [
+    "누리통화위원회",
+    "가람은행"
+   ],
+   "countries": [],
+   "korea_link": {
+    "level": "직접",
+    "line": "국내 이야기다"
+   },
+   "period": {
+    "core_start": "2098-09",
+    "core_end": "2098-10",
+    "background_years": [
+     2090
+    ]
+   },
+   "claims": [
+    {
+     "point": "기준금리",
+     "value": "3.00",
+     "unit": "%",
+     "as_of": "2098-10"
+    },
+    {
+     "point": "은행 정기예금 평균 금리",
+     "value": "3.3",
+     "unit": "%",
+     "as_of": "2098-09"
+    },
+    {
+     "point": "예금 금리는 기준금리보다 늦게 움직임",
+     "value": null,
+     "unit": null,
+     "as_of": null
+    }
+   ],
+   "stages": [
+    {
+     "role": "hook",
+     "line": "금리 인하 전망 기사"
+    },
+    {
+     "role": "explainer",
+     "line": "기준금리와 시장금리의 길"
+    },
+    {
+     "role": "data",
+     "line": "예금 금리 추이"
+    },
+    {
+     "role": "implication",
+     "line": "저축하는 사람에게 생기는 일"
+    }
+   ],
+   "story_devices": [
+    "숫자로 충격 주기"
+   ],
+   "source_types": [
+    "정부 발표",
+    "국내 언론"
+   ],
+   "sensitive": [],
+   "sponsored": {
+    "level": "아니오",
+    "line": ""
+   },
+   "evergreen": "시사",
+   "followups": [
+    {
+     "metric": "기준금리",
+     "value_then": "3.00%",
+     "date_then": "2098-10",
+     "why": "인하 여부 확인"
+    },
+    {
+     "metric": "정기예금 평균 금리",
+     "value_then": "3.3%",
+     "date_then": "2098-09",
+     "why": "따라 내렸는지 확인"
+    }
+   ],
+   "keywords": [
+    "기준금리",
+    "정기예금",
+    "금리 인하"
+   ],
+   "notes": ""
+  }
+ ]
+}

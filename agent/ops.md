@@ -4,7 +4,7 @@
 
 ## 지금 도는 것과 꺼진 것
 - 돈다: 매시 수집 launchd `com.hyunbin.ozl-pulse`(매시 5분, `scripts/pulse_run.sh` 가 `python -m ozl.pulse run` 뒤에 `python -m ozl.signals run` 을 부른다. 모델 호출 없음)와 운영 서버 launchd `com.hyunbin.ozl-pulse-web`(`127.0.0.1:8765`).
-- 꺼져 있다: 모델이 도는 예약 루틴(`ozl-am`, `ozl-pm`, `ozl-weekly`), [만들기] 실행기, 커뮤니티 인기글 수집, 유튜브 인기 영상 신호.
+- 두지 않는다: 모델이 도는 예약 루틴(사용자 결정 2026-11-15). 고르기와 만들기는 사용자가 `/ozl find`, `/ozl make` 를 손으로 부를 때만 돈다. 고르는 길은 둘이다(대화의 `/ozl find`, 운영 화면 `/pick` 의 [만들기]).
 - 다른 예약 실행(Trading 의 것, `multi-model`, 그 밖의 `com.hyunbin.*`)은 건드리지 않는다.
 
 ## 수집이 읽는 파일의 저장 금지 시간

@@ -25,7 +25,7 @@ if (!ID || !TITLE || !WORK || !LIST) throw new Error('args.issue, args.title, ar
 
 const ENV = DESK
   ? '자료 루트는 ' + DESK + ' 다. ozl.issues 명령과 파이썬 스크립트 앞에 OZL_DESK_ROOT=' + DESK + ' 를 둔다.'
-  : '자료 루트는 기본값(private/desk)이다. OZL_DESK_ROOT 를 바꾸지 않는다.'
+  : '자료 루트 인자를 받지 않았다. 환경 변수 OZL_DESK_ROOT 가 있으면 그 값이고 없으면 private/desk 다. 그 변수를 바꾸지 않는다.'
 
 const COMMON = `
 ## 공통 규칙
@@ -63,6 +63,8 @@ const REVIEW = {
 const reviewPrompt = (round, prev) => `너는 OZL 이슈 기록 ${ID}("${TITLE}")의 문장 대조 검토자다. 작성자와 다른 Claude 모델이다. 작성자의 결론을 믿지 않는다. 이 이슈는 고침 회차를 거친 판이다. 고친 내용은 ${WORK}/revise_${TAG}_done.md, 고친 까닭은 ${LIST} 에 있다.
 
 ${DIR}/02_sentence_review.md 를 끝까지 읽고 그 순서대로 한다. 회차 꼬리는 ${TAG}_${round} 이고 작업 폴더는 ${WORK} 다. 새로 더한 근거를 포함해 공식 근거 전부를 다시 재대조한다. 검토 원문은 이슈 폴더의 reviews/sentence_${TAG}_${round}.md 에 쓴다. 이슈 기록과 글(article.yaml)은 고치지 않는다.
+
+문장 대조의 기준: 화면 글과 말로 할 문장의 사실 주장은 그 쪽이 인용한 기록의 text·observed 로 받쳐져야 한다. 반론 칸(counter)에만 있는 내용은 화면에 쓰지 않고 노트에 둔다. "보도에 없다" 같은 부재 주장은 "읽은 보도(매체 이름)에서 찾지 못했다"로 범위를 밝힌다.
 
 작성자의 보고:
 ${revise}

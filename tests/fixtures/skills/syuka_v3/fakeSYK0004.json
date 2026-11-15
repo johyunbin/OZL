@@ -1,0 +1,181 @@
+{
+ "video_id": "fakeSYK0004",
+ "schema_version": 3,
+ "model": "opus",
+ "seconds": 240,
+ "read_to_end": true,
+ "transcript_chars": 11200,
+ "summary": "접는 태블릿 경쟁과 별빛전자 분기 실적",
+ "ad_disclosure": "아니오",
+ "n_segments": 2,
+ "notes": "",
+ "segments": [
+  {
+   "seg": 1,
+   "span": {
+    "start_char": 300,
+    "end_char": 7000
+   },
+   "topic_line": "접는 태블릿 경쟁",
+   "question": "접는 화면은 왜 고장이 잦다는 말이 나오는가?",
+   "field": "과학·기술",
+   "field2": null,
+   "intro_style": "질문으로 출발",
+   "main_person": null,
+   "main_org": "누리전자",
+   "people": [],
+   "orgs": [
+    "누리전자",
+    "별빛전자"
+   ],
+   "countries": [],
+   "korea_link": {
+    "level": "직접",
+    "line": "국내 이야기다"
+   },
+   "period": {
+    "core_start": "2098-09",
+    "core_end": "2098-11",
+    "background_years": []
+   },
+   "claims": [
+    {
+     "point": "누리전자가 접는 태블릿을 내놓음",
+     "value": null,
+     "unit": null,
+     "as_of": null
+    },
+    {
+     "point": "접는 화면 교체 비용",
+     "value": "38",
+     "unit": "만 원",
+     "as_of": "2098-10"
+    },
+    {
+     "point": "접히는 부분의 내구성이 과제",
+     "value": null,
+     "unit": null,
+     "as_of": null
+    }
+   ],
+   "stages": [
+    {
+     "role": "hook",
+     "line": "접는 태블릿 출시"
+    },
+    {
+     "role": "explainer",
+     "line": "접는 화면의 구조"
+    },
+    {
+     "role": "case",
+     "line": "수리 사례"
+    },
+    {
+     "role": "implication",
+     "line": "값이 내려갈 조건"
+    }
+   ],
+   "story_devices": [
+    "비유"
+   ],
+   "source_types": [
+    "국내 언론",
+    "기업 공시와 실적"
+   ],
+   "sensitive": [],
+   "sponsored": {
+    "level": "아니오",
+    "line": ""
+   },
+   "evergreen": "중간",
+   "followups": [],
+   "keywords": [
+    "접는 태블릿",
+    "누리전자",
+    "화면"
+   ],
+   "notes": ""
+  },
+  {
+   "seg": 2,
+   "span": {
+    "start_char": 7000,
+    "end_char": 11000
+   },
+   "topic_line": "별빛전자 분기 실적",
+   "question": "별빛전자는 태블릿으로 얼마를 벌었나?",
+   "field": "기업·증시",
+   "field2": null,
+   "intro_style": "숫자나 통계로 출발",
+   "main_person": null,
+   "main_org": "별빛전자",
+   "people": [],
+   "orgs": [
+    "별빛전자"
+   ],
+   "countries": [],
+   "korea_link": {
+    "level": "직접",
+    "line": "국내 이야기다"
+   },
+   "period": {
+    "core_start": "2098-07",
+    "core_end": "2098-09",
+    "background_years": []
+   },
+   "claims": [
+    {
+     "point": "분기 매출",
+     "value": "2.4",
+     "unit": "조 원",
+     "as_of": "2098-09"
+    },
+    {
+     "point": "영업이익률",
+     "value": "8",
+     "unit": "%",
+     "as_of": "2098-09"
+    },
+    {
+     "point": "태블릿 부문이 실적을 이끎",
+     "value": null,
+     "unit": null,
+     "as_of": null
+    }
+   ],
+   "stages": [
+    {
+     "role": "hook",
+     "line": "실적 발표"
+    },
+    {
+     "role": "data",
+     "line": "분기 실적"
+    },
+    {
+     "role": "implication",
+     "line": "다음 분기 전망"
+    }
+   ],
+   "story_devices": [
+    "숫자로 충격 주기"
+   ],
+   "source_types": [
+    "기업 공시와 실적"
+   ],
+   "sensitive": [],
+   "sponsored": {
+    "level": "아니오",
+    "line": ""
+   },
+   "evergreen": "시사",
+   "followups": [],
+   "keywords": [
+    "별빛전자",
+    "실적"
+   ],
+   "notes": ""
+  }
+ ]
+}

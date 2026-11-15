@@ -1,0 +1,126 @@
+{
+ "video_id": "fakeSYK0002",
+ "schema_version": 3,
+ "model": "opus",
+ "seconds": 240,
+ "read_to_end": true,
+ "transcript_chars": 9800,
+ "summary": "한빛시 공유 자전거의 이용이 늘어도 적자가 커지는 까닭",
+ "ad_disclosure": "아니오",
+ "n_segments": 1,
+ "notes": "",
+ "segments": [
+  {
+   "seg": 1,
+   "span": {
+    "start_char": 200,
+    "end_char": 9600
+   },
+   "topic_line": "한빛시 공유 자전거 적자",
+   "question": "타는 사람이 느는데 왜 적자가 커지는가?",
+   "field": "국내 경제·정책",
+   "field2": null,
+   "intro_style": "숫자나 통계로 출발",
+   "main_person": null,
+   "main_org": "한빛시",
+   "people": [],
+   "orgs": [
+    "한빛시"
+   ],
+   "countries": [],
+   "korea_link": {
+    "level": "직접",
+    "line": "국내 이야기다"
+   },
+   "period": {
+    "core_start": "2097-01",
+    "core_end": "2098-05",
+    "background_years": [
+     2094
+    ]
+   },
+   "claims": [
+    {
+     "point": "공유 자전거 이용 건수",
+     "value": "1010",
+     "unit": "만 건",
+     "as_of": "2097"
+    },
+    {
+     "point": "운영 적자",
+     "value": "31",
+     "unit": "억 원",
+     "as_of": "2097"
+    },
+    {
+     "point": "1시간 이용권 요금",
+     "value": "1000",
+     "unit": "원",
+     "as_of": "2098-06"
+    },
+    {
+     "point": "재배치와 수리 비용이 큼",
+     "value": null,
+     "unit": null,
+     "as_of": null
+    }
+   ],
+   "stages": [
+    {
+     "role": "hook",
+     "line": "이용 건수 1천만 돌파"
+    },
+    {
+     "role": "data",
+     "line": "연도별 이용과 적자"
+    },
+    {
+     "role": "explainer",
+     "line": "재배치 비용의 구조"
+    },
+    {
+     "role": "comparison",
+     "line": "다른 도시의 요금"
+    },
+    {
+     "role": "implication",
+     "line": "요금을 올릴 것인가"
+    }
+   ],
+   "story_devices": [
+    "숫자로 충격 주기",
+    "해외 사례 비교"
+   ],
+   "source_types": [
+    "정부 발표",
+    "공식 통계"
+   ],
+   "sensitive": [],
+   "sponsored": {
+    "level": "아니오",
+    "line": ""
+   },
+   "evergreen": "중간",
+   "followups": [
+    {
+     "metric": "공유 자전거 운영 적자",
+     "value_then": "31억 원",
+     "date_then": "2097",
+     "why": "요금 조정 뒤 변화"
+    },
+    {
+     "metric": "1시간 이용권 요금",
+     "value_then": "1000원",
+     "date_then": "2098-06",
+     "why": "인상 여부"
+    }
+   ],
+   "keywords": [
+    "공유 자전거",
+    "적자",
+    "요금"
+   ],
+   "notes": ""
+  }
+ ]
+}

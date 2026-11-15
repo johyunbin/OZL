@@ -1,0 +1,6 @@
+video_id,title,published_kst,duration_sec,kind,view_count,like_count,comment_count,category_id,topics,tags,has_transcript,transcript_source,caption,fetched_at
+fakeSYK0001,예금 금리가 내려가면 벌어지는 일 (지어낸 영상),2098-10-12T18:00:00+09:00,1260,video,,,,,,,1,fake,,2099-01-02T09:00:00+09:00
+fakeSYK0002,공유 자전거는 왜 늘 적자일까 (지어낸 영상),2098-06-03T18:00:00+09:00,1380,video,,,,,,,1,fake,,2099-01-02T09:00:00+09:00
+fakeSYK0003,항만이 멈추면 생기는 일 (지어낸 영상),2098-12-20T18:00:00+09:00,1500,video,,,,,,,0,,,2099-01-02T09:00:00+09:00
+fakeSYK0004,접는 태블릿 경쟁과 별빛전자 실적 (지어낸 영상),2098-11-07T18:00:00+09:00,1620,video,,,,,,,0,,,2099-01-02T09:00:00+09:00
+fakeSYK0005,생방송: 몽돌국 화폐 개혁과 새벽 배송 요금 (지어낸 영상),2097-03-15T21:00:00+09:00,5400,live,,,,,,,1,fake,,2099-01-02T09:00:00+09:00

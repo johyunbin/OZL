@@ -9,8 +9,10 @@ export const meta = {
   ],
 }
 
-// 인자: title(주제 제목, 필수), work(작업 폴더, 필수), job(대기열 번호), target(대상 설명: 주제 번호, 검색어, 키워드),
-//       brief(조사 묶음 파일), desk_root(자료 루트. 없으면 실제 루트), repo(저장소. 기본 ~/OZL), tag(회차 꼬리. 기본 r1)
+// 인자: title(주제 제목, 필수), work(작업 폴더, 필수. 대기열 항목이면 <자료 루트>/make/<job_id>, 아니면 <자료 루트>/make/<YYYYMMDD>-<슬러그>),
+//       job(대기열 번호. 대화에서 고른 건이면 비운다), target(대상 설명: 화제 번호, 검색어나 제목, 키워드 가운데 하나),
+//       brief(단서 파일: 조사 묶음이나 /ozl find 의 고르기 기록), desk_root(자료 루트. 없으면 실제 루트), repo(저장소. 기본 ~/OZL),
+//       tag(회차 꼬리. 기본 r1)
 const A = args || {}
 const TITLE = A.title
 const WORK = A.work
@@ -25,7 +27,7 @@ if (!TITLE || !WORK) throw new Error('args.title 과 args.work 가 필요하다'
 
 const ENV = DESK
   ? '자료 루트는 ' + DESK + ' 다. ozl.issues 명령과 파이썬 스크립트 앞에 OZL_DESK_ROOT=' + DESK + ' 를 두고, ozl.ops 명령에는 --desk-root ' + DESK + ' 를 준다.'
-  : '자료 루트는 기본값(private/desk)이다. OZL_DESK_ROOT 를 바꾸지 않는다.'
+  : '자료 루트 인자를 받지 않았다. 환경 변수 OZL_DESK_ROOT 가 있으면 그 값이고 없으면 private/desk 다. 그 변수를 바꾸지 않는다.'
 
 const COMMON = `
 ## 공통 규칙
@@ -50,7 +52,7 @@ const DRAFT = {
   },
   required: ['issue_id', 'stopped', 'report'],
 }
-const draft = await agent(`너는 OZL 이슈 기록의 작성자다. 이번 이슈는 "${TITLE}" 이다.${TARGET ? ' 대상: ' + TARGET + '.' : ''}${JOB ? ' 대기열 번호: ' + JOB + '.' : ''}${BRIEF ? ' 조사 묶음이 ' + BRIEF + ' 에 있다. 요약을 거친 대목이 섞여 있으니 그대로 믿지 말고, 판정에 쓰는 문서는 원문 사본을 직접 받아 다시 확인한다.' : ''}
+const draft = await agent(`너는 OZL 이슈 기록의 작성자다. 이번 이슈는 "${TITLE}" 이다.${TARGET ? ' 대상: ' + TARGET + '.' : ''}${JOB ? ' 대기열 번호: ' + JOB + '.' : ''}${BRIEF ? ' 단서 파일이 ' + BRIEF + ' 에 있다(조사 묶음이거나 /ozl find 의 고르기 기록이다. 고르기 기록이면 picks 에서 이 대상의 줄만 읽는다). 단서는 근거가 아니다. 요약을 거친 대목이 섞여 있을 수 있으니 그대로 믿지 말고, 판정에 쓰는 문서는 원문 사본을 직접 받아 다시 확인한다.' : ''}
 
 ${DIR}/01_draft.md 를 끝까지 읽고 그 순서대로 한다. 작업 폴더는 ${WORK} 다. 지시서의 하지 않는 것(재대조 칸 채우기, 다른 프로세스나 에이전트 띄우기)을 지킨다.
 ${COMMON}`, { label: '쓰기', phase: '쓰기', model: 'opus', schema: DRAFT })
@@ -80,6 +82,8 @@ const REVIEW = {
 const reviewPrompt = (round, prev) => `너는 OZL 이슈 기록 ${IID}("${TITLE}")의 문장 대조 검토자다. 작성자와 다른 Claude 모델이다. 작성자의 결론을 믿지 않는다.
 
 ${DIR}/02_sentence_review.md 를 끝까지 읽고 그 순서대로 한다. 회차 꼬리는 ${TAG}_${round} 이고 작업 폴더는 ${WORK} 다. 검토 원문은 이슈 폴더의 reviews/sentence_${TAG}_${round}.md 에 쓴다. 이슈 기록과 글(article.yaml)은 고치지 않는다.
+
+문장 대조의 기준: 화면 글과 말로 할 문장의 사실 주장은 그 쪽이 인용한 기록의 text·observed 로 받쳐져야 한다. 반론 칸(counter)에만 있는 내용은 화면에 쓰지 않고 노트에 둔다. "보도에 없다" 같은 부재 주장은 "읽은 보도(매체 이름)에서 찾지 못했다"로 범위를 밝힌다.
 
 작성자의 보고:
 ${draft.report}

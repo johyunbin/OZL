@@ -1,0 +1,109 @@
+{
+ "video_id": "fakeSYK0003",
+ "schema_version": 3,
+ "model": "opus",
+ "seconds": 240,
+ "read_to_end": true,
+ "transcript_chars": 10400,
+ "summary": "마루국 항만 파업이 수출 물량과 운임에 미친 영향",
+ "ad_disclosure": "아니오",
+ "n_segments": 1,
+ "notes": "",
+ "segments": [
+  {
+   "seg": 1,
+   "span": {
+    "start_char": 250,
+    "end_char": 10200
+   },
+   "topic_line": "마루국 항만 파업과 물류",
+   "question": "항만 한 곳이 멈추면 물류는 어디까지 밀리는가?",
+   "field": "해외 경제",
+   "field2": null,
+   "intro_style": "최근 뉴스에서 출발",
+   "main_person": null,
+   "main_org": "마루국 항만노조",
+   "people": [],
+   "orgs": [
+    "마루국 항만노조",
+    "마루국 정부"
+   ],
+   "countries": [
+    "마루국"
+   ],
+   "korea_link": {
+    "level": "간접",
+    "line": "수출 물량이 이 항만을 거친다"
+   },
+   "period": {
+    "core_start": "2098-12",
+    "core_end": "2098-12",
+    "background_years": []
+   },
+   "claims": [
+    {
+     "point": "파업 기간",
+     "value": "7",
+     "unit": "일",
+     "as_of": "2098-12-19"
+    },
+    {
+     "point": "묶인 컨테이너",
+     "value": "4",
+     "unit": "만 개",
+     "as_of": "2098-12-19"
+    },
+    {
+     "point": "운임이 오름",
+     "value": null,
+     "unit": null,
+     "as_of": null
+    }
+   ],
+   "stages": [
+    {
+     "role": "hook",
+     "line": "항만 파업 일주일"
+    },
+    {
+     "role": "context",
+     "line": "노조의 요구"
+    },
+    {
+     "role": "data",
+     "line": "묶인 물량"
+    },
+    {
+     "role": "implication",
+     "line": "수출 기업의 대응"
+    }
+   ],
+   "story_devices": [
+    "숫자로 충격 주기"
+   ],
+   "source_types": [
+    "외신"
+   ],
+   "sensitive": [],
+   "sponsored": {
+    "level": "아니오",
+    "line": ""
+   },
+   "evergreen": "시사",
+   "followups": [
+    {
+     "metric": "파업 기간",
+     "value_then": "7일",
+     "date_then": "2098-12-19",
+     "why": "끝났는지 확인"
+    }
+   ],
+   "keywords": [
+    "항만 파업",
+    "물류",
+    "운임"
+   ],
+   "notes": ""
+  }
+ ]
+}

@@ -7,15 +7,15 @@
 ## 진입 순서
 1. 이 문서 → `README.md` → `docs/how-it-works.md`(일의 흐름, 자동과 사람의 경계) → 하려는 일의 `agent/` 파일 → 그 일의 정본 문서(표의 끝 칸).
 2. 지금 진행 중인 일과 사용자가 정할 것은 `private/plan/재정비_진행판_20261114.md` 에 있다. 사용자의 요청을 항목으로 만든 목록은 같은 폴더의 `요청_등록부_20261114.md`, 한 일의 기록은 `재정비_조치기록_20261114.md` 다. 사용자가 여는 결과물은 `결과물/`(비공개 폴더로 가는 링크)에 모은다. 앞선 계획 문서(`ozl_plan_20261109_164333.md`, `ozl_tidy_plan_20261110_164038.md`, `ozl_redesign_plan_20261113_014132.md`, `ozl_service_plan_20261114_022800.md`)는 `~/.claude/plans/archive/` 에 있다. 2026-11-14 의 서비스 기획안으로 만든 이슈 화면과 카드는 같은 날 사용자가 반려했다. 아래 표의 이슈 기록 절차(`/ozl make`)는 같은 날 정한 글 형식(읽는 글 `article.yaml` 과 뒤쪽 검증 기록, 명세 `private/plan/글형식_명세_20261114.md`)에 맞춰 고쳤다.
-3. 지금 쌓인 일: `.venv/bin/python -m ozl.ops queue list`(만들기 대기열), `.venv/bin/python -m ozl.issues status`(이슈 기록), `.venv/bin/python -m ozl.research status`(옛 소재 카드의 채택 대기와 검증 대기).
+3. 지금 쌓인 일: `/ozl status`(만들기 대기열, 이슈 기록의 상태, 최근 고르기 기록, 옛 소재 카드 수를 모아 보인다). 명령으로 따로 볼 때는 `.venv/bin/python -m ozl.ops queue list`, `.venv/bin/python -m ozl.issues status`, `.venv/bin/python -m ozl.research status`.
 
 | 하려는 일 | 먼저 읽을 파일 | 정본 |
 |---|---|---|
-| 이슈 기록 만들기(`/ozl make`) | `agent/issues.md` | `docs/issue-brief.md`, `.claude/skills/ozl/SKILL.md`, `src/ozl/issues/` |
+| 화제 고르기와 이슈 글 만들기(`/ozl find`, `/ozl make`) | `agent/issues.md` | `docs/issue-brief.md`, `.claude/skills/ozl/SKILL.md`, `src/ozl/issues/` |
 | 운영 화면, 화제 엔진, 매시 수집 | `agent/ops.md` | `src/ozl/ops/`, `src/ozl/signals/`, `src/ozl/pulse/` |
 | 웹(`apps/web`)과 iOS 앱(`apps/ios`) | `agent/web.md` | `apps/web/README.md`, `apps/web/DESIGN.md` |
-| 슈카 자료(영상 받기, 다글로 전사, Whisper, 슬라이드 분석)와 덱 | `agent/deck.md` | `skills/ozl/SKILL.md` §5, `src/ozl/render/` |
-| 일일 데스크(옛 소재 카드와 클레임) | `agent/desk.md` | `skills/ozl/SKILL.md`, `docs/methodology.md` |
+| 슈카 자료(영상 받기, 다글로 전사, Whisper, 슬라이드 분석)와 덱(`/syuka find`, `/syuka deck`, `/syuka ad`) | `agent/deck.md` | `.claude/skills/syuka/`, `skills/ozl/SKILL.md` §5, `src/ozl/render/` |
+| 소재 카드와 클레임(덱의 재료) | `agent/desk.md` | `.claude/skills/syuka/deck/01_card.md`, `docs/methodology.md` |
 | 공개, 커밋, 푸시, 백업 | `agent/publish.md` | `scripts/publish_gate.py`, `scripts/push_delegated.sh` |
 | 공개 문서 쓰기(README, `docs/`, 웹 글) | `agent/publish.md` 의 「공개 문서 문체」 | `scripts/style_check.py` |
 
@@ -28,8 +28,8 @@
 - `private/` 는 `scripts/backup_private.sh` 로만 비공개 원격에 올린다. 원문 사본(`private/desk/captures/` 와 이슈의 `captures/`)은 백업 밖이다(세부 `agent/publish.md`).
 
 **사람이 하는 일과 하지 않는 일**
-- 사용자의 일은 고르기(옛 소재 카드의 통과와 폐기, 운영 화면의 [만들기]와 [버리기])와 공개 승인뿐이다. 그 사이의 검증과 완성은 시스템이 하고, 어느 단계도 사용자에게 원문 대조나 확인을 요청하지 않는다.
-- 옛 소재 카드의 발행 승인(`python -m ozl.research publish`)과 사람 대조 기록(`python -m ozl.research human-verify`)은 **사용자가 그렇게 말했을 때만** 실행한다. 예약 루틴과 모델이 스스로 하지 않는다. `human-verify` 는 사용자가 스스로 대조했다고 말한 기록에만 쓴다.
+- 사용자의 일은 고르기(대화의 `/ozl find` 에서 고르기와 버리기와 직접 넣기, 운영 화면의 [만들기]와 [버리기], 덱으로 만들 소재 정하기, 옛 소재 카드의 통과와 폐기)와 공개 승인뿐이다. 그 사이의 검증과 완성은 시스템이 하고, 어느 단계도 사용자에게 원문 대조나 확인을 요청하지 않는다.
+- 옛 소재 카드의 발행 승인(`python -m ozl.research publish`)과 사람 대조 기록(`python -m ozl.research human-verify`)은 **사용자가 그렇게 말했을 때만** 실행한다. 모델이 스스로 하지 않는다. `human-verify` 는 사용자가 스스로 대조했다고 말한 기록에만 쓴다.
 - 이슈 기록의 승인(`python -m ozl.issues approve`), 내림(`withdraw`), 공개용 내보내기(`export --public`)는 **모델이 실행하지 않는다.** 사용자가 운영 화면 `/approve` 에서 한다(실행기 세션에서는 명령 자체가 막혀 있다). 시험 자료 루트의 지어낸 이슈로 하는 시험만 예외다.
 - 모델 여럿이 합의했다거나 "맞다"고 서술한 것은 등급이나 판정을 올리지 않는다.
 
@@ -37,12 +37,12 @@
 - 화면 글과 말로 할 문장의 사실 주장은 그 쪽이 인용한 기록의 `text`·`observed` 로 받쳐져야 한다. 반론 칸(`counter`)에만 있는 내용은 화면에 쓰지 않고 노트에 둔다. "보도에 없다" 같은 부재 주장은 "읽은 보도(매체 이름)에서 찾지 못했다"로 범위를 밝힌다. 대조를 맡길 때 이 기준을 프롬프트에 그대로 적는다(적지 않은 대조는 반론 칸을 근거로 인정하고 넘어갔다).
 
 **커밋과 푸시** (세부는 `agent/publish.md`)
-- 루틴의 자동 `git commit` + `push` 는 **`daily/`, `docs/`, `claims/` 한정 사전 위임**(사용자 결정)이다. 코드, 설정, `tracks/`, `src/` 는 수동 승인.
-- 루틴과 위임 범위의 push 는 **`scripts/push_delegated.sh` 로만** 한다. 코드와 설정 커밋은 **사용자가 푸시하라고 말한 뒤에만** `git push origin main` 으로 올린다.
+- 스킬(`/ozl`, `/syuka`)은 커밋과 푸시를 하지 않는다. 예약 루틴에 주었던 `daily/`, `docs/`, `claims/` 한정 자동 커밋과 푸시 위임은 루틴을 두지 않으므로 쓸 곳이 없다. 코드, 설정, `tracks/`, `src/` 는 수동 승인.
+- 사용자가 공개를 지시한 카드의 푸시(`daily/`, `docs/`, `claims/`)는 **`scripts/push_delegated.sh` 로만** 한다. 코드와 설정 커밋은 **사용자가 푸시하라고 말한 뒤에만** `git push origin main` 으로 올린다.
 
 **모델과 자동 실행**
-- 예약 루틴(`ozl-am`, `ozl-pm`, `ozl-weekly`)은 2026-11-13 부터 꺼져 있고, [만들기] 실행기(`python -m ozl.ops runner`)도 꺼져 있다. 루틴 재가동은 발굴, 겹침, 완성 경로 시험을 통과한 뒤 사용자에게 물어 정한다(문서에 실행 시각을 약속하지 않는다).
-- 루틴을 돌릴 때는 **Claude Opus 고정**(Fable 자동화 금지 · picker sticky 주의). 루틴 프롬프트와 실행기에서 **Codex 호출 금지**(Codex 는 사용자가 지시한 대화 세션에서만 쓴다).
+- 예약 루틴은 두지 않는다(사용자 결정 2026-11-15). 필요할 때 스킬(`/ozl find`, `/ozl make`, `/ozl status`, `/syuka find`, `/syuka deck`, `/syuka ad`)을 손으로 부른다. 매시 수집(launchd `com.hyunbin.ozl-pulse`)은 그대로 돈다(모델을 부르지 않는다. 화제 발굴이 며칠 치 자료를 쓴다. 끌지는 사용자가 정한다).
+- [만들기] 실행기(`python -m ozl.ops runner`)는 꺼져 있다. 켜는 것은 사용자가 정한다. 실행기가 띄우는 세션은 **Claude Opus 고정**(Fable 자동화 금지)이고, 실행기에서 **Codex 호출 금지**(Codex 는 사용자가 지시한 대화 세션에서만 쓴다).
 - 다글로 제출(동시 1건, 간격 60초 이상, 일일 상한, 402와 429 에서 바로 중단), Whisper(`nice -n 19`, 1프로세스), yt-dlp(sleep 간격) 규칙은 `agent/deck.md` 의 「영상 자료 받기」에 있다. 전사나 영상을 받는 일이면 어느 작업에서든 먼저 읽는다.
 - 외부 모델에 보내지 않는 것: 전사, 슬라이드 문구, 원문 사본 전체, 계정 정보, 일반인을 알아볼 수 있는 정보, 공개 제외로 정한 내용, 인증과 수집(스크래핑) 코드(다글로 인증은 `~/Trading` 모듈이 관리 — 호출만).
 
