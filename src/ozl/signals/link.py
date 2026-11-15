@@ -6,6 +6,7 @@ DB 를 모른다. pipeline.py 가 engine.db 에서 읽은 번호 대장·확정 
 from __future__ import annotations
 
 import hashlib
+import re
 from collections import defaultdict
 from dataclasses import dataclass, field
 
@@ -70,6 +71,36 @@ def _same_names(a: set, b: set) -> bool:
     return any(_same_subject(x, y) for x in a for y in b)
 
 
+_COMMA_HEAD = re.compile(r"^\s*([^\s,]+),\s*\S")
+
+
+def _comma_subject(title: str, lang: str = "ko") -> tuple[str, ...]:
+    """제목이 'X, …' 꼴(첫 어절 바로 뒤 쉼표)이면 주어 X 의 꼴들, 아니면 빈 튜플. 머리의 꺾쇠와 한자 약칭은 낱말 분석과 같게
+    정리한 뒤 본다. X 는 쓰인 그대로를 먼저, 그다음 조사를 뗀 꼴(두 글자 이상)을 이 순서로 본다:
+      1. 별칭 사전에 있는 꼴 → (그 꼴, 대표 표기). 이름 끝 글자가 조사와 같아도 떼지 않는다('…페이,' 의 '이').
+      2. 그 제목의 낱말 분석이 고유명사나 사건 낱말로 잡은 꼴 → (그 꼴,).
+    어느 꼴도 사전에 없고 분석이 이름이나 사건 낱말로 잡지 않았으면(뺄 낱말 '오늘', 부사 '한편') 주체가 아니다.
+    기관이나 역할을 가리키는 일반 낱말(config.LINK_COMMA_SUBJECT_SKIP — '경찰', '소속사')도 주체가 아니다."""
+    m = _COMMA_HEAD.match(text.strip_head(title or ""))
+    if not m:
+        return ()
+    raw = m.group(1).strip("\"'“”‘’")
+    forms = [x for x in dict.fromkeys((raw, text._strip_particle(raw))) if len(x) >= 2]
+    if any(x in config.LINK_COMMA_SUBJECT_SKIP for x in forms):
+        return ()
+    amap = text.resources()["amap"]
+    for x in forms:
+        canon = amap.get(text._kkey(x))
+        if canon:
+            return (x, canon) if canon != x else (x,)
+    r = text.analyze(title, lang)
+    known = set(r["entities"]) | set(r["terms"])
+    for x in forms:
+        if x in known:
+            return (x,)
+    return ()
+
+
 @dataclass
 class Linker:
     registry: dict[str, Issue]
@@ -103,6 +134,7 @@ class Linker:
         self.key_issue: dict[tuple, str] = {}                    # (날, 기사 키) → 그 날 그 기사가 붙은 이슈(day_keys 의 역색인)
         self.core_idx: dict[tuple, set] = defaultdict(set)       # (날, 사건 낱말) → 그 낱말이 그 날 씨앗 그룹에 있던 이슈
         self._pc: dict = {}
+        self._subj: dict[tuple, tuple] = {}                      # (제목, 언어) → 쉼표 주어(_comma_subject)
         self._mint_splits()
 
     # ── 번호
@@ -155,6 +187,7 @@ class Linker:
         if p["seed"] is None or _gkey(g) < p["seed"][:2]:
             p["seed"] = (*_gkey(g), set(g["ent_fam"]))
             p["seed_terms"] = set(g["term_fam"])
+            p["seed_title"] = (g["title"], g["lang"])
             for t in p["seed_terms"]:        # 씨앗이 더 이른 그룹으로 바뀌어도 앞의 낱말은 남는다(후보만 넓다. 판정은 same_day)
                 self.core_idx[(g["day"], t)].add(iid)
         if iid.startswith("임시-"):
@@ -229,6 +262,12 @@ class Linker:
             ok = (Ee >= 2 and Et >= 2 and S >= config.LINK_FAR_S) or S >= config.LINK_TITLE_ONLY
         return ok, Ee, Et, S
 
+    def _subject(self, title: str, lang: str) -> set:
+        key = (title, lang)
+        if key not in self._subj:
+            self._subj[key] = _comma_subject(title, lang)
+        return set(self._subj[key])
+
     def same_day(self, iid: str, g: dict, day: str) -> dict | None:
         """같은 날 잇기(2026-11-15): 이슈의 그날 그룹과 둘 가운데 하나를 함께 가지면 같은 일로 본다.
         이슈 쪽의 '중심 낱말':
@@ -245,6 +284,14 @@ class Linker:
         (나)와 (다)는 이름이 있는 서로 다른 주체에는 쓰지 않는다: 그룹에 고유명사가 있고 이슈에 중심 고유명사가 있는데
              그룹의 이름이 이슈의 그날 기사 어디에도 없을 때. 이름이 드문가와는 따로 본다. 같은 주체로 보는 것은 같은 이름과,
              긴 이름이 짧은 이름으로 시작하고 꼬리가 정해진 법인·조직 접미인 이름뿐이다(_same_names. 포함 관계만으로는 아니다).
+        (나)와 (다)는 쉼표 주어가 다른 그룹에도 쓰지 않는다(LINK_SAME_DAY_COMMA_SUBJECT): 그룹 씨앗 제목이 'X, …' 꼴인데 X 가
+             그룹의 고유명사로 잡히지 않았고, 이슈에 중심 고유명사가 있으며, X 가 이슈의 그날 이름과 사건 낱말 어디에도 없을 때.
+             낱말 분석이 회사 이름을 일반 낱말로 본 그룹은 위의 '이름이 있는 서로 다른 주체'에 걸리지 않기 때문이다.
+             거꾸로도 본다(기사의 선후가 바뀌어도 같은 판정): 이슈의 그날 씨앗 제목이 'Y, …' 꼴인데 Y 가 이슈의 고유명사로 잡히지
+             않았고, 그룹에 고유명사가 있으며, Y 가 그룹의 이름과 사건 낱말 어디에도 없을 때.
+        세 갈래 모두 쉼표 주어가 서로 다른 두 기사에는 쓰지 않는다: 그룹 씨앗 제목과 이슈의 그날 씨앗 제목이 둘 다 'X, …' 꼴이고,
+             두 주어가 같은 주체가 아니며(_same_names), 어느 주어도 상대 쪽의 이름과 사건 낱말에 없고, 어느 한쪽에라도 고유명사가
+             있을 때. 양쪽에 함께 있는 제3의 이름(공통 평가기관)은 (가)의 근거도, 같은 주체라는 근거도 되지 않는다.
         사건 낱말은 세 갈래 모두 이슈의 중심 사건 낱말(씨앗 그룹의 낱말)과 견준다. 그날 붙은 그룹의 낱말 전부도, 매체 계열 여러 곳이
              쓴 낱말도 아니다.
         여럿이 맞으면 (가) > (다) > (나) 순이다(근거의 prio 3, 2, 1).
@@ -252,26 +299,45 @@ class Linker:
         넓은 이름은 낱말 분석에서 이미 terms 로 옮겨지고, 직함은 사건 낱말이 아니다(ROLE_WORDS_NOT_TERMS)."""
         if self.rare is None or not config.LINK_SAME_DAY:
             return None
-        ents, core_e, core_t = set(), set(), set()
+        ents, core_e, core_t, day_terms, i_subj = set(), set(), set(), set(), set()
         n = config.LINK_SAME_DAY_CORE_FAMILIES
         for j in self._sources(iid, day):
             p = self.prof.get(j, {}).get(day)
             if p:
                 ents |= set(p["ent"])
+                day_terms |= set(p["term"])
                 core_e |= {e for e, f in p["ent"].items() if len(f) >= n} | set((p["seed"] or (None, None, set()))[2])
                 core_t |= set(p.get("seed_terms") or ())
+                st = p.get("seed_title")
+                if st and config.LINK_SAME_DAY_COMMA_SUBJECT:
+                    i_subj |= self._subject(*st)
         g_ents = set(g["ent_fam"])
+        g_words = g_ents | set(g["term_fam"])
+        i_words = ents | day_terms
+        g_subj = self._subject(g["title"], g["lang"]) if config.LINK_SAME_DAY_COMMA_SUBJECT else set()
+        # 쉼표 주어가 서로 다른 두 기사: 양쪽 씨앗 제목이 'X, …' 꼴이고 두 주어가 같은 주체가 아니며 어느 주어도 상대 쪽 낱말에 없다.
+        # 양쪽에 함께 있는 제3의 이름(공통 평가기관)만으로는 어느 갈래로도 잇지 않는다.
+        diff_subject = (bool(g_subj) and bool(i_subj) and bool(g_ents or ents) and not _same_names(g_subj, i_subj)
+                        and not (g_subj & i_words) and not (i_subj & g_words))
         rare_own = sorted(e for e in g_ents if self.rare(e, day))
         rare = [e for e in rare_own if e in core_e]
         # 사건 낱말은 세 갈래 모두 씨앗 그룹의 낱말과만 견준다. 뒤에 붙은 그룹의 낱말까지 견주면(한 매체든 여러 매체든)
         # 그 그룹이 딸고 들어온 낱말(같은 인물의 다른 일)만으로 다음 그룹이 사슬처럼 이어진다.
         shared = sorted(set(g["term_fam"]) & core_t)
         enough = len(shared) >= config.LINK_SAME_DAY_TERMS
-        if rare and enough:
+        if rare and enough and not diff_subject:
             return {"rule": "같은 날 드문 고유명사", "prio": 3, "rare": rare, "day_terms": shared}
         # 이름이 있는 서로 다른 주체: 그룹에 고유명사가 있고 이슈에 중심 고유명사가 있는데 그룹의 이름이 이슈의 그날 기사 어디에도
         # 없다. 이름이 드문가와 따로 본다(앞 7일에 여러 매체에 나온 회사 둘의 같은 꼴 기사 — 회사마다의 평가 결과).
-        other_subject = bool(g_ents) and bool(core_e) and not _same_names(g_ents, ents)
+        other_subject = diff_subject or (bool(g_ents) and bool(core_e) and not _same_names(g_ents, ents))
+        # 쉼표 주어가 다른 그룹: 씨앗 제목이 'X, …' 꼴인데 X 가 고유명사로 잡히지 않았고, 이슈에 중심 고유명사가 있으며,
+        # X 가 이슈의 그날 이름과 사건 낱말 어디에도 없다(회사마다 내는 같은 꼴 기사 — 낱말 분석이 회사 이름을 낱말로 본 경우).
+        # 거꾸로도 본다: 이슈의 그날 씨앗 제목이 'Y, …' 꼴인데 Y 가 이슈의 고유명사로 잡히지 않았고, 그룹에 고유명사가 있으며,
+        # Y 가 그룹의 이름과 사건 낱말 어디에도 없다. 이름 없는 쪽이 앞선 기사일 때도 같은 판정이 나오게 한다.
+        if not other_subject and core_e and g_subj and not (g_subj & g_ents) and not (g_subj & i_words):
+            other_subject = True
+        if not other_subject and g_ents and i_subj and not (i_subj & ents) and not (i_subj & g_words):
+            other_subject = True
         if self.trend_pair is not None and config.LINK_SAME_DAY_TREND and enough and not other_subject:
             conflict = bool(rare_own) and not (set(rare_own) & ents) and bool({e for e in core_e if self.rare(e, day)})
             keys = set()

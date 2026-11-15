@@ -255,12 +255,7 @@ class DayCalc:
         else:
             new_thing = ""
         ys = gdays.get(config.day_add(d, -1), []) + gdays.get(d, [])
-        yrow = self.rows.get(iid, {}).get(config.day_add(d, -1))
-        prev_day = None
-        if yrow is not None:
-            prev_day = {"day": config.day_add(d, -1), "outlets_n": yrow["A"], "articles_n": yrow["articles_n"],
-                        "kinds": list(yrow["kinds_present"]), "kinds_ok": list(yrow["kinds_ok"]),
-                        "score": yrow["score"], "state": yrow["state"]}
+        prev_day = self.prev_day(iid, d, gdays, srcs)
         # 사람 판단으로 합친 이슈는 합쳐져 들어온 번호(srcs)의 지난 줄도 본다. 지난 날의 줄은 번호마다 따로 있으므로,
         # 줄이 둘 이상인 날의 매체 계열은 그날 그룹(gdays 에 그 번호들의 그룹이 함께 들어 있다)에서 다시 세어 같은 계열을
         # 한 번만 세고, 급상승 등급은 가장 큰 값을 쓴다.
@@ -282,6 +277,27 @@ class DayCalc:
                 "indirect": {"n": len(ind), "label": f"커뮤니티에서 화제라는 보도 {len(ind)}곳"} if ind else None,
                 "rep_group": rep["group_id"] if rep else None, "prev_day": prev_day,
                 "links": self.links(ys, rep)}
+
+    def prev_day(self, iid: str, d: str, gdays: dict, srcs=()) -> dict | None:
+        """후보 줄의 '어제' 칸. 사람 판단으로 합친 이슈는 합쳐져 들어온 번호(srcs)의 어제 줄도 본다(합친 첫날에는 어제 줄이
+        번호마다 따로 있다). 줄이 둘 이상이면 매체 계열은 어제 그룹(gdays 에 그 번호들의 그룹이 함께 들어 있다)에서 다시 세어
+        같은 계열을 한 번만 세고, 기사 수는 합, 출처 종류는 합집합이다. 점수와 상태는 남는 번호의 줄이 있으면 그것,
+        없으면 점수가 가장 높은 줄(같으면 번호가 이른 줄)의 것이다."""
+        y = config.day_add(d, -1)
+        yrs = [(j, r) for j in sorted(set(srcs) | {iid}) if (r := self.rows.get(j, {}).get(y)) is not None]
+        if not yrs:
+            return None
+        lead = next((r for j, r in yrs if j == iid), None)
+        if lead is None:
+            lead = min(yrs, key=lambda jr: (-(jr[1]["score_raw"] if jr[1]["score_raw"] is not None else -1.0), jr[0]))[1]
+        if len(yrs) == 1:
+            outlets_n, articles_n, kinds = lead["A"], lead["articles_n"], list(lead["kinds_present"])
+        else:
+            outlets_n = len({f for g in gdays.get(y, []) for f in g["families"]})
+            articles_n = sum(int(r["articles_n"] or 0) for _, r in yrs)
+            kinds = score.ordered({k for _, r in yrs for k in r["kinds_present"]})
+        return {"day": y, "outlets_n": outlets_n, "articles_n": articles_n, "kinds": kinds,
+                "kinds_ok": list(lead["kinds_ok"]), "score": lead["score"], "state": lead["state"]}
 
     def links(self, gs: list[dict], rep: dict | None = None) -> list[dict]:
         """최대 3개: 대표 그룹의 기사(씨앗부터, 서로 다른 계열) 둘, 공공 원문 하나, 나머지는 어제·오늘 그룹의 서로 다른 계열."""

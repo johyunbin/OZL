@@ -593,3 +593,348 @@ def test_trend_index_gives_the_same_links_as_scanning_every_issue_of_the_day():
             if kind in ("새그룹만", "검색어없음"):                           # 제목과 이름으로는 후보에 들지 않는 이슈다
                 assert base_issue not in r["cands"][gid], (kind, g["title"])
     assert len(a["calls"]) < len(b["calls"])
+
+
+# ── 쉼표 주어 막는 조건(2026-11-15)
+def _two(a_titles, b_titles, **kw):
+    a = G([U(a_titles[0], "매체A", "2030-04-01T03:00"), U(a_titles[1], "매체B", "2030-04-01T03:30")], DAY)
+    b = G([U(b_titles[0], "매체C", "2030-04-01T09:00"), U(b_titles[1], "매체D", "2030-04-01T09:20")], DAY)
+    assert len(a) == len(b) == 1
+    L = _linker(rare=lambda e, d: True, rare_term=lambda t, d: True, **kw)
+    L.run_day(DAY, a + b)
+    return a[0], b[0]
+
+
+RATED = ["모아제지, 가람평가원 평가서 3년 연속 통합 A등급", "모아제지 가람평가원 평가 3년 연속 통합 A등급 획득"]
+OTHER_RATED = ["동녘, ESG 평가 통합 A등급…2년 연속 상승", "동녘 ESG 평가 통합 A등급 2년 연속 올라"]
+
+
+def test_comma_subject_reads_first_eojeol_before_comma():
+    from ozl.signals import link
+    assert link._comma_subject("동녘, ESG 평가 통합 A등급") == ("동녘",)
+    assert link._comma_subject("[단독] 美, 가람국 관세 인상") == ("미국",)        # 머리와 한자 약칭은 낱말 분석과 같게
+    assert link._comma_subject("\"동녘\", 새 공장 착공") == ("동녘",)
+    assert link._comma_subject("동녘 제지, 새 공장 착공") == ()                   # 첫 어절 바로 뒤가 쉼표일 때만
+    assert link._comma_subject("가, 나") == ()                                    # 두 글자 이상
+    assert link._comma_subject("동녘 ESG 평가 통합 A등급") == ()
+
+
+def test_comma_subject_blocks_unnamed_group_of_another_company(monkeypatch):
+    """회사마다 내는 같은 꼴 기사. 붙는 쪽 그룹의 회사 이름('동녘')이 고유명사로 잡히지 않아 '이름이 있는 서로 다른 주체'에
+    걸리지 않던 것을, 씨앗 제목의 쉼표 주어가 이슈의 그날 이름과 낱말 어디에도 없다는 것으로 막는다((나)와 (다))."""
+    from ozl.signals import config
+    assert text.analyze(OTHER_RATED[0], "ko")["entities"] == []            # 이름으로 잡히지 않는다(낱말로 든다)
+    a, b = _two(RATED, OTHER_RATED)
+    assert a["issue_id"] and b["issue_id"] and a["issue_id"] != b["issue_id"]
+    pair = lambda g, keys, d, lang: [("평가", frozenset({"평가"}))]          # noqa: E731
+    a, b = _two(RATED, OTHER_RATED, trend_pair=pair)
+    assert a["issue_id"] != b["issue_id"]                                  # 같은 급상승어 갈래도 쓰지 않는다
+    monkeypatch.setattr(config, "LINK_SAME_DAY_COMMA_SUBJECT", False)      # 끄면 고치기 전처럼 붙는다
+    a, b = _two(RATED, OTHER_RATED)
+    assert a["issue_id"] == b["issue_id"] and b["link"]["rule"] == "같은 날 드문 사건 낱말"
+    a, b = _two(RATED, OTHER_RATED, trend_pair=pair)
+    assert a["issue_id"] == b["issue_id"] and b["link"]["rule"] == "같은 날 같은 급상승어"
+
+
+def test_comma_subject_does_not_block_when_subject_is_in_the_issue_or_issue_has_no_names():
+    # (1) 쉼표 주어가 이슈의 그날 낱말에 있다(같은 일을 받은 쪽의 반응 기사).
+    a, b = _two(["나래국 외무부 \"뱁새가 황새 따라가다\" 한빛부대 겨냥", "나래국 외무부, 한빛부대 겨냥 \"뱁새가 황새 따라가다\""],
+                ["외무부, '뱁새가 황새' 메시지에 \"전쟁 불관여\"", "외무부 '뱁새가 황새' 메시지에 \"전쟁 불관여 원칙\""])
+    assert a["ent_fam"] and not b["ent_fam"]
+    assert a["issue_id"] == b["issue_id"] and b["link"]["rule"] == "같은 날 드문 사건 낱말"
+    # (2) 이슈에 중심 고유명사가 없다(이름 없는 같은 일. 쉼표 주어 '정부'는 사건 낱말이 아니라 이슈의 낱말에도 없다).
+    a, b = _two(["정부, 경기 판단 '견조한 성장세'로 상향…투자 증가", "정부 경기 판단 견조한 성장세로 상향"],
+                ["정부, '견조한 성장세'로 경기 진단 올려…새 변수는 물가", "정부 '견조한 성장세' 경기 진단 올려…물가 변수"])
+    assert not a["ent_fam"] and not b["ent_fam"]
+    assert a["issue_id"] == b["issue_id"] and b["link"]["rule"] == "같은 날 드문 사건 낱말"
+
+
+def test_comma_subject_leaves_named_groups_to_the_named_subject_rule():
+    """쉼표 주어가 그룹의 고유명사로 잡혔으면 이 조건은 보지 않는다. 드문 고유명사 갈래 (가)는 그대로 잇는다."""
+    a, b = _two(["윤새봄, 만취 운전 사고…가로등 들이받아", "윤새봄 만취 운전 사고로 가로등 파손"],
+                ["윤새봄, 운전 사고 여파에 출연 예능 줄편집", "윤새봄 운전 사고 여파, 출연 예능 줄줄이 편집"])
+    assert a["issue_id"] == b["issue_id"] and b["link"]["rule"] == "같은 날 드문 고유명사"
+
+
+# ── 딸린 기사 제목 여럿과 좁은 보완(2026-11-15)
+def _tr_all(title, all_news, last=None, traffic="2000+"):
+    t = _tr(title, news=all_news[-1] if last is None else last, traffic=traffic)
+    t["extra"]["trend_news_all"] = list(all_news)
+    return t
+
+
+def test_news_titles_reads_all_and_falls_back_to_one():
+    assert trends.news_titles(_tr("가람시 정전", news="가람시 대규모 정전")) == ["가람시 대규모 정전"]
+    assert trends.news_titles(_tr("가람시 정전")) == []
+    t = _tr_all("가람시 정전", ["가", " 나 ", "가", "", "다", "라", "마", "바"])
+    assert trends.news_titles(t) == ["가", "나", "다", "라", "마"]          # 빈 것과 겹친 것을 빼고 많아야 다섯
+    t = _tr("가람시 정전", news="가람시 대규모 정전")
+    t["extra"]["trend_news_all"] = "목록이 아닌 값"                         # 꼴이 틀리면 하나로 돌아간다
+    assert trends.news_titles(t) == ["가람시 대규모 정전"]
+
+
+def test_one_matching_title_among_several_is_enough():
+    """딸린 기사 제목마다 지금 조건(Dice 0.50 이상 또는 겹침 2개)을 본다. 마지막 제목(trend_news)이 다른 일이어도
+    앞의 제목 하나가 맞으면 이어진다. 제목 하나만 볼 때는 이어지지 않는다."""
+    side = _side("한빛전자, 가람시 배터리 증설 발표")
+    other = "별솔게임즈 신작 출시 연기 공지"
+    one = _tr("한빛전자 배터리", news=other)
+    assert not trends.match(one, side)[0]
+    many = _tr_all("한빛전자 배터리", ["두리항공 새 노선 취항", "한빛전자 가람시 배터리 증설 발표", other])
+    ok, dv, over, key = trends.match(many, side)
+    assert ok and dv >= 0.5 and key == "매체0|한빛전자, 가람시 배터리 증설 발표"
+    assert not trends.match(_tr_all("한빛전자 배터리", ["두리항공 새 노선 취항", other]), side)[0]    # 모두 다른 일이면 그대로 안 잇는다
+    got, un = trends.assign([many], {"t1": ("ko", side)})
+    assert got[many["key"]]["issue_id"] == "t1" and not un
+
+
+SAME_NAME_ISSUE = ("김하람♥박나래, 결혼 8년 만에 임신", "\"2세 계획 없다\"던 김하람♥박나래…결혼 7년 만에 깜짝 임신")
+SAME_NAME_NEWS = "'김하람 아내' 임신 박나래 \"아동복 사서 입었다\" 웃음"
+
+
+def test_keyword_in_both_titles_is_not_enough_for_the_news_condition():
+    """딸린 기사 조건은 그대로다(Dice 0.50 이상 또는 겹침 2개). 검색어가 딸린 기사 제목과 이슈 기사 제목 양쪽에 있어도
+    겹침이 1개면 잇지 않는다. 실제 자료에서 이 꼴로 조건을 낮추면 새로 이어지는 것의 절반이 다른 일이었다.
+    이슈에 잇기(assign), 같은 날 잇기의 급상승어 갈래(PairRule), 계열 1곳 그룹의 새 이슈 조건(group_hit) 모두 같은 조건을 쓴다."""
+    side = _side(*SAME_NAME_ISSUE)
+    t = _tr("김하람", news=SAME_NAME_NEWS)
+    assert trends.words_ok(t, side[0], side[2])                            # 낱말 조건은 채운다(검색어가 이슈 제목에 있다)
+    ok, dv, over, key = trends.match(t, side)
+    assert not ok and dv < 0.5 and over == 1 and key is None
+    got, un = trends.assign([t], {"t1": ("ko", side)})
+    assert got == {} and [x["title"] for x in un] == ["김하람"]
+    arts, units = {}, []
+    for i, title in enumerate(SAME_NAME_ISSUE):
+        u = U(title, f"매체{i}", f"2030-04-01T0{i + 3}:00")
+        arts[u["key"]] = u
+        units.append(u)
+    g = {"group_id": "g1", "day": DAY, "lang": "ko", "units": [u["key"] for u in units], "copies": []}
+    assert trends.group_hit(g, [t], arts) is False
+    rule = trends.pair_rule([t], arts)
+    assert rule(g, None, DAY, "ko") == [] and rule(g, set(arts), DAY, "ko") == []
+
+
+def test_pair_rule_and_group_hit_also_read_every_news_title():
+    """같은 날 잇기의 급상승어 갈래와 계열 1곳 그룹의 새 이슈 조건도 딸린 기사 제목마다 같은 조건을 본다. 조건 값은 바뀌지 않는다."""
+    titles = ("한빛전자 가람시 배터리 공장 증설 발표", "한빛전자, 가람시 배터리 공장 증설한다")
+    arts, units = {}, []
+    for i, title in enumerate(titles):
+        u = U(title, f"매체{i}", f"2030-04-01T0{i + 3}:00")
+        arts[u["key"]] = u
+        units.append(u)
+    g = {"group_id": "g1", "day": DAY, "lang": "ko", "units": [u["key"] for u in units], "copies": []}
+    other = "별솔게임즈 신작 출시 연기 공지"
+    one = _tr("한빛전자 배터리", news=other)
+    many = _tr_all("한빛전자 배터리", [titles[0], other])
+    assert trends.group_hit(g, [one], arts) is False and trends.group_hit(g, [many], arts) is True
+    assert trends.pair_rule([one], arts)(g, None, DAY, "ko") == []
+    assert [k for k, _ in trends.pair_rule([many], arts)(g, None, DAY, "ko")] == ["한빛전자 배터리"]
+
+
+# ── 검토가 짚은 것(2026-11-15): 서로 다른 딸린 기사, 주체 차단의 방향, 쉼표 주어 뽑기
+def _two_at(a_titles, b_titles, b_first=False, trends_=None, **kw):
+    """그룹 둘(매체 둘씩)을 하루에 넣고 잇는다. b_first 면 기사의 시각을 바꿔 b 쪽이 앞선 이슈가 된다."""
+    ha, hb = ("09", "03") if b_first else ("03", "09")
+    ua = [U(a_titles[0], "매체A", f"2030-04-01T{ha}:00"), U(a_titles[1], "매체B", f"2030-04-01T{ha}:30")]
+    ub = [U(b_titles[0], "매체C", f"2030-04-01T{hb}:00"), U(b_titles[1], "매체D", f"2030-04-01T{hb}:20")]
+    a, b = G(ua, DAY), G(ub, DAY)
+    assert len(a) == len(b) == 1
+    if trends_ is not None:
+        kw["trend_pair"] = trends.pair_rule(trends_, {u["key"]: u for u in ua + ub})
+    kw.setdefault("rare", lambda e, d: False)
+    kw.setdefault("rare_term", lambda t, d: False)
+    L = _linker(**kw)
+    L.run_day(DAY, a + b)
+    assert a[0]["issue_id"] and b[0]["issue_id"]
+    return a[0], b[0]
+
+
+NET_DOWN = ["전국 통신망 마비로 여객기 운항 중단…승객 수천 명 발 묶여", "전국 통신망 마비에 여객기 운항 중단, 승객 수천 명 발 묶였다"]
+STORM = ["강력한 태풍 상륙 앞두고 운항 중단…공항 비상 대비", "강력한 태풍 상륙 앞두고 운항 중단, 공항 비상 대비 돌입"]
+NET_NEXT = ["여객기 운항 중단 이틀째…통신망 복구 늦어져 결항 속출", "여객기 운항 중단 이틀째, 통신망 복구 늦어 결항 속출 우려"]
+
+
+def test_pair_rule_needs_the_same_news_title_on_both_sides(monkeypatch):
+    """검색어 하나에 딸린 기사가 둘(통신망 마비, 태풍)이고 두 묶음이 서로 다른 딸린 기사에 하나씩 맞으면 같은 급상승어 갈래로
+    잇지 않는다. 기사의 선후와 딸린 기사의 순서를 바꿔도 둘로 남는다. 같은 딸린 기사에 함께 맞는지를 보지 않으면 하나로 합쳐진다."""
+    assert not any(text.analyze(t, "ko")["entities"] for t in NET_DOWN + STORM)
+    assert text.dice(text.norm_title(NET_DOWN[0]), text.norm_title(STORM[0])) < 0.3
+    for b_first in (False, True):
+        for news in ([NET_DOWN[0], STORM[0]], [STORM[0], NET_DOWN[0]], [STORM[0]], [NET_DOWN[0]]):
+            a, b = _two_at(NET_DOWN, STORM, b_first, trends_=[_tr_all("운항 중단", news)])
+            assert a["issue_id"] != b["issue_id"], (b_first, news)
+            assert a["link"]["rule"] == b["link"]["rule"] == "새 이슈"
+    monkeypatch.setattr(trends, "same_news", lambda x, y: True)             # 고치기 전: 각각 다른 딸린 기사에 맞아도 근거로 썼다
+    for b_first in (False, True):
+        a, b = _two_at(NET_DOWN, STORM, b_first, trends_=[_tr_all("운항 중단", [NET_DOWN[0], STORM[0]])])
+        assert a["issue_id"] == b["issue_id"]
+        assert (a if b_first else b)["link"]["rule"] == "같은 날 같은 급상승어"
+
+
+NET_FAULT = ["통신망 장애에 여객기 멈췄다…전국 공항 운항 중단", "통신망 장애에 여객기 멈췄다, 전국 공항 운항 중단 사태"]
+STORM_NEAR = ["초강력 태풍 다가오자 열도 공항 비상…운항 중단", "초강력 태풍 다가오자 열도 공항 비상, 운항 중단 잇따라"]
+NEWS_FAULT = "통신망 장애로 항공편 운항 중단…승객 불편에 복구 작업"
+NEWS_STORM = "태풍 접근으로 항공편 운항 중단…승객 불편에 비상 대응"
+
+
+def test_pair_rule_does_not_take_two_alike_news_titles_as_the_same_article(monkeypatch):
+    """딸린 제목 둘이 틀만 같아 서로 Dice 0.50 을 넘어도(원인이 다른 두 운항 중단) 두 묶음이 각각 다른 제목에 맞았으면 잇지 않는다.
+    어느 기사가 앞서도 같다. 비슷한 제목을 같은 기사로 보면 하나로 합쳐진다."""
+    n = text.norm_title
+    assert text.dice(n(NEWS_FAULT), n(NEWS_STORM)) >= 0.5
+    t = _tr_all("운항 중단", [NEWS_FAULT, NEWS_STORM])
+    assert trends.matched_news(t, _side(*NET_FAULT), strict=True) == frozenset({n(NEWS_FAULT)})
+    assert trends.matched_news(t, _side(*STORM_NEAR), strict=True) == frozenset({n(NEWS_STORM)})
+    for b_first in (False, True):
+        a, b = _two_at(NET_FAULT, STORM_NEAR, b_first, trends_=[t])
+        assert a["issue_id"] != b["issue_id"] and a["link"]["rule"] == b["link"]["rule"] == "새 이슈"
+    alike = lambda x, y: any(text.dice(i, j) >= 0.5 for i in x for j in y)   # noqa: E731
+    monkeypatch.setattr(trends, "same_news", alike)
+    for b_first in (False, True):
+        a, b = _two_at(NET_FAULT, STORM_NEAR, b_first, trends_=[t])
+        assert a["issue_id"] == b["issue_id"]
+        assert (a if b_first else b)["link"]["rule"] == "같은 날 같은 급상승어"
+
+
+def test_pair_rule_still_joins_two_groups_on_the_same_news_title():
+    """딸린 기사가 여럿이어도 두 묶음이 같은 딸린 기사에 함께 맞으면 그대로 잇는다(다른 딸린 기사는 태풍 건)."""
+    news = [STORM[0], "통신망 마비로 여객기 운항 중단 이틀째"]
+    for b_first in (False, True):
+        a, b = _two_at(NET_DOWN, NET_NEXT, b_first, trends_=[_tr_all("운항 중단", news)])
+        assert a["issue_id"] == b["issue_id"], b_first
+        why = (a if b_first else b)["link"]
+        assert (why["rule"], why["keyword"]) == ("같은 날 같은 급상승어", "운항 중단")
+    a, b = _two_at(NET_DOWN, NET_NEXT)                                      # 검색어가 없으면 이 둘은 따로다
+    assert a["issue_id"] != b["issue_id"]
+
+
+def test_same_news_is_only_the_same_title():
+    """같은 기사 = 정규화한 꼴이 같은 제목뿐이다(공백, 대소문자, 기호만 다른 것). 비슷한 제목(Dice 0.50 이상)은 같은 기사가 아니다."""
+    n = text.norm_title
+    one, copy, other = n("통신망 마비로 여객기 운항 중단 이틀째"), n("통신망 마비로 여객기 운항 중단 이틀째 이어져"), n(STORM[0])
+    assert text.dice(one, copy) >= 0.5
+    assert trends.same_news(frozenset({one}), frozenset({one, other}))
+    assert trends.same_news(frozenset({n("통신망 마비로 여객기 운항 중단 이틀째")}), frozenset({n(" 통신망 마비로, 여객기 운항 중단…이틀째 ")}))
+    assert not trends.same_news(frozenset({one}), frozenset({copy}))
+    assert not trends.same_news(frozenset({one}), frozenset({other}))
+    assert trends.same_news(frozenset(), frozenset())                       # 딸린 기사가 없는 검색어는 낱말 조건만 본다
+    side_a, side_b = _side(*NET_DOWN), _side(*STORM)
+    t = _tr_all("운항 중단", [NET_DOWN[0], STORM[0]])
+    assert trends.matched_news(t, side_a, strict=True) == frozenset({n(NET_DOWN[0])})
+    assert trends.matched_news(t, side_b, strict=True) == frozenset({n(STORM[0])})
+    assert trends.matched_news(_tr("운항 중단"), side_a, strict=True) == frozenset()
+    assert trends.matched_news(_tr("결항 속출"), side_a, strict=True) is None
+    assert trends.match(t, side_a)[0] and trends.match(t, side_b)[0]        # 이슈에 잇기(assign)의 조건은 그대로다
+
+
+OTHER_RATED_SAME_RATER = ["동녘, 가람평가원 ESG 평가 통합 A등급…2년 연속 상승", "동녘 가람평가원 ESG 평가 통합 A등급 2년 연속 올라"]
+ALL_RARE = dict(rare_term=lambda t, d: True)
+
+
+def test_other_subject_block_does_not_depend_on_which_article_came_first(monkeypatch):
+    """이름이 잡히지 않은 회사(동녘)의 기사가 앞서고 이름이 잡힌 회사(모아제지)의 기사가 뒤에 와도 갈라진다.
+    앞선 이슈에 중심 고유명사가 없다고 쉼표 주어 조건을 건너뛰지 않는다. (나)와 (다) 모두."""
+    from ozl.signals import config
+    assert text.analyze(OTHER_RATED[0], "ko")["entities"] == [] and "모아제지" in text.analyze(RATED[0], "ko")["entities"]
+    pair = lambda g, keys, d, lang: [("평가", frozenset({"평가"}))]          # noqa: E731
+    for b_first in (False, True):
+        for kw in (ALL_RARE, dict(ALL_RARE, trend_pair=pair), dict(trend_pair=pair)):
+            a, b = _two_at(RATED, OTHER_RATED, b_first, **kw)
+            assert a["issue_id"] != b["issue_id"], (b_first, sorted(kw))
+            assert a["link"]["rule"] == b["link"]["rule"] == "새 이슈"
+    monkeypatch.setattr(config, "LINK_SAME_DAY_COMMA_SUBJECT", False)      # 끄면 어느 순서로도 붙는다
+    for b_first in (False, True):
+        a, b = _two_at(RATED, OTHER_RATED, b_first, **ALL_RARE)
+        assert a["issue_id"] == b["issue_id"]
+        assert (a if b_first else b)["link"]["rule"] == "같은 날 드문 사건 낱말"
+
+
+def test_shared_third_name_does_not_join_two_different_comma_subjects(monkeypatch):
+    """두 회사 기사에 같은 평가기관 이름이 있어도 쉼표 주어가 다르면 잇지 않는다. 평가기관이 드문 이름이어도((가) 갈래),
+    드물지 않아도((나)와 (다) 갈래), 어느 기사가 앞서도 같다."""
+    from ozl.signals import config
+    assert text.analyze(OTHER_RATED_SAME_RATER[0], "ko")["entities"] == ["가람평가원"]
+    pair = lambda g, keys, d, lang: [("평가", frozenset({"평가"}))]          # noqa: E731
+    rater_rare = lambda e, d: e == "가람평가원"                              # noqa: E731
+    cases = (dict(ALL_RARE, rare=rater_rare), dict(ALL_RARE, rare=lambda e, d: True), ALL_RARE, dict(trend_pair=pair))
+    for b_first in (False, True):
+        for kw in cases:
+            a, b = _two_at(RATED, OTHER_RATED_SAME_RATER, b_first, **kw)
+            assert a["issue_id"] != b["issue_id"], (b_first, sorted(kw))
+    # 이름이 둘 다 잡힌 두 회사도 같다(공통 평가기관이 '같은 주체'의 근거가 되지 않는다)
+    named = ["한빛전자, 친환경 투자 성과로 가람평가원 평가 통합 A등급 올라", "한빛전자 친환경 투자 성과에 가람평가원 평가 통합 A등급 올랐다"]
+    assert {"한빛전자", "가람평가원"} <= set(text.analyze(named[0], "ko")["entities"])
+    for b_first in (False, True):
+        for kw in cases:
+            a, b = _two_at(RATED, named, b_first, **kw)
+            assert a["issue_id"] != b["issue_id"], (b_first, sorted(kw))
+    monkeypatch.setattr(config, "LINK_SAME_DAY_COMMA_SUBJECT", False)      # 끄면 공통 평가기관으로 붙는다
+    a, b = _two_at(RATED, OTHER_RATED_SAME_RATER, **dict(ALL_RARE, rare=rater_rare))
+    assert a["issue_id"] == b["issue_id"] and b["link"]["rule"] == "같은 날 드문 고유명사"
+    a, b = _two_at(RATED, named, **ALL_RARE)
+    assert a["issue_id"] == b["issue_id"] and b["link"]["rule"] == "같은 날 드문 사건 낱말"
+
+
+def test_different_comma_subjects_still_join_when_one_subject_is_in_the_other_article():
+    """쉼표 주어가 달라도 한쪽 주어가 상대 기사에 있으면(같은 일을 받은 쪽의 기사) 드문 고유명사 갈래는 그대로 잇는다."""
+    a_t = ["윤새봄, 만취 운전 사고…가로등 들이받아", "윤새봄 만취 운전 사고로 가로등 파손"]
+    b_t = ["별솔엔터, 윤새봄 운전 사고 사과…\"깊이 반성\"", "별솔엔터 윤새봄 운전 사고 사과 \"깊이 반성한다\""]
+    from ozl.signals import link
+    assert link._comma_subject(a_t[0]) == ("윤새봄",) and link._comma_subject(b_t[0]) == ("별솔엔터",)
+    for b_first in (False, True):
+        a, b = _two_at(a_t, b_t, b_first, rare=lambda e, d: True)
+        assert a["issue_id"] == b["issue_id"]
+        assert (a if b_first else b)["link"]["rule"] == "같은 날 드문 고유명사"
+
+
+def test_institution_or_role_word_before_the_comma_is_not_a_subject():
+    """'경찰, …' 과 '소속사, …' 는 같은 사건을 서로 다른 쪽에서 다룬 기사다. 쉼표 앞이 기관이나 역할을 가리키는 일반 낱말이면
+    주체로 치지 않아(config.LINK_COMMA_SUBJECT_SKIP) 어느 순서로도 그대로 이어진다. 회사 이름이 쉼표 주어이면 그대로 막는다."""
+    from ozl.signals import config, link
+    police = ["경찰, 윤새봄 음주 운전 사고 수사 착수…정확한 경위 조사", "경찰 윤새봄 음주 운전 사고 수사 착수, 경위 조사"]
+    agency = ["소속사, 윤새봄 음주 운전 사고 사과…활동 전면 중단", "소속사 윤새봄 음주 운전 사고 사과, 활동 전면 중단 발표"]
+    assert {"경찰", "소속사"} <= set(config.LINK_COMMA_SUBJECT_SKIP)
+    assert link._comma_subject(police[0]) == () and link._comma_subject(agency[0]) == ()
+    assert link._comma_subject("경찰이, 윤새봄 사고 수사 착수") == ()              # 조사가 붙어도 같다
+    for b_first in (False, True):
+        a, b = _two_at(police, agency, b_first, rare=lambda e, d: True)
+        assert a["issue_id"] == b["issue_id"]
+        assert (a if b_first else b)["link"]["rule"] == "같은 날 드문 고유명사"
+    assert link._comma_subject(OTHER_RATED[0]) == ("동녘",) and link._comma_subject(RATED[0]) == ("모아제지",)
+    for b_first in (False, True):
+        a, b = _two_at(RATED, OTHER_RATED_SAME_RATER, b_first, **dict(ALL_RARE, rare=lambda e, d: e == "가람평가원"))
+        assert a["issue_id"] != b["issue_id"]
+
+
+PAY = ["나래페이 ESG 평가 통합 A등급 획득", "나래페이 ESG 평가서 통합 A등급 획득 성과"]
+PAY_COMMA = ["나래페이, ESG 평가 등급 올라 주가 강세", "나래페이 ESG 평가 등급 올라 주가 강세 마감"]
+
+
+def test_comma_subject_does_not_cut_the_last_letter_of_a_name(monkeypatch):
+    """이름 끝 글자가 조사와 같아도('…페이') 떼지 않는다. 별칭 사전을 먼저 보고, 그다음 낱말 분석이 잡은 이름을 본다."""
+    from ozl.signals import link
+    assert "나래페이" in text.analyze(PAY_COMMA[0], "ko")["entities"]
+    assert link._comma_subject(PAY_COMMA[0]) == ("나래페이",)
+    assert link._comma_subject("동녘이, ESG 평가 통합 A등급") == ("동녘",)        # 조사가 붙은 낱말은 뗀 꼴로 본다
+    monkeypatch.setitem(text.resources()["amap"], text._kkey("나래페이"), "나래페이")
+    monkeypatch.setitem(text.resources()["amap"], text._kkey("나래pay"), "나래페이")
+    assert link._comma_subject(PAY_COMMA[0]) == ("나래페이",)                    # 사전에 있는 이름
+    assert link._comma_subject("나래pay, ESG 평가 등급 올라") == ("나래pay", "나래페이")
+
+
+def test_comma_subject_is_not_a_word_that_is_not_a_name_or_an_event_word():
+    from ozl.signals import link
+    assert link._comma_subject("오늘, 한빛전자 ESG 평가 등급 올라 주가 강세") == ()      # 뺄 낱말(사건 낱말이 아니다)
+    assert link._comma_subject("한편, 한빛전자 ESG 평가 등급 올라 주가 강세") == ()      # 부사
+    assert link._comma_subject("동녘, ESG 평가 통합 A등급") == ("동녘",)                 # 사건 낱말로 잡힌 회사 이름은 그대로
+
+
+def test_same_company_and_non_subject_head_keep_their_links():
+    """같은 회사의 두 기사(한쪽만 쉼표 꼴)와, 쉼표 앞이 이름이 아닌 낱말인 기사는 쉼표 주어 조건에 걸리지 않는다. 어느 순서로도."""
+    today = ["오늘, 한빛전자 ESG 평가 등급 올라 주가 강세", "오늘 한빛전자 ESG 평가 등급 올라 주가 강세 마감"]
+    firm = ["한빛전자 ESG 평가 통합 A등급 획득", "한빛전자 ESG 평가서 통합 A등급 획득 성과"]
+    for x, y in ((PAY, PAY_COMMA), (firm, today)):
+        for b_first in (False, True):
+            a, b = _two_at(x, y, b_first, **ALL_RARE)
+            assert a["issue_id"] == b["issue_id"], (y[0], b_first)
+            assert (a if b_first else b)["link"]["rule"] == "같은 날 드문 사건 낱말"

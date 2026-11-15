@@ -13,8 +13,9 @@ from datetime import datetime, timedelta
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 PULSE = ROOT / "private" / "pulse"
 DB = PULSE / "pulse.db"
-# items.extra 에 두는 칸 — 급상승어의 검색량·딸린 기사 제목, 커뮤니티 목록의 소스·순위·추천/조회/댓글 수·정치 게시판 표시
-EXTRA = ("traffic", "trend_news", "source", "rank", "votes", "views", "comments", "politics")
+# items.extra 에 두는 칸 — 급상승어의 검색량·딸린 기사 제목(trend_news 는 마지막 하나, trend_news_all 은 전부를 담은 목록),
+# 커뮤니티 목록의 소스·순위·추천/조회/댓글 수·정치 게시판 표시
+EXTRA = ("traffic", "trend_news", "trend_news_all", "source", "rank", "votes", "views", "comments", "politics")
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS runs (

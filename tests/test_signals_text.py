@@ -101,3 +101,40 @@ def test_dict_version_changes_with_role_flag(monkeypatch):
     v1 = config.dict_version()
     monkeypatch.setattr(config, "ROLE_WORDS_NOT_TERMS", not config.ROLE_WORDS_NOT_TERMS)
     assert config.dict_version() != v1
+
+
+def test_dict_version_changes_with_text_rules_ver(monkeypatch):
+    # 낱말 규칙 판을 올리면 저장된 분석을 다시 한다(같은 제목에서 다른 낱말이 나오게 코드를 고쳤을 때).
+    v1 = config.dict_version()
+    monkeypatch.setattr(config, "TEXT_RULES_VER", config.TEXT_RULES_VER + "-시험")
+    assert config.dict_version() != v1
+
+
+@pytest.fixture
+def two_part_name(monkeypatch):
+    """지어낸 두 어절 이름 '로건 표'(붙인 꼴 '로건표')를 별칭 사전에 끼운다."""
+    R = dict(text.resources())
+    R["amap"] = {**R["amap"], "로건표": "로건 표"}
+    R["canon"] = set(R["amap"].values())
+    monkeypatch.setattr(text, "resources", lambda: R)
+    return R
+
+
+@pytest.mark.parametrize("title", ["로건 표의 자책…두 손 들었다", "카리스마 로건 표가 무너졌다", "로건 표에게 쏟아진 질문",
+                                   "로건표의 자책", "로건 표 사임 직전 자책"])
+def test_two_eojeol_alias_with_one_syllable_tail_and_particle(two_part_name, title):
+    """'이름 성의' 꼴. 뒤 어절이 한 글자 + 조사면 뒤 어절만으로는 조사를 떼지 못한다(남는 것이 한 글자).
+    붙인 꼴 전체에서 조사를 뗀 꼴도 보아 대표 표기로 잡는다. 띄어 쓴 제목과 붙여 쓴 제목이 같은 이름이 된다."""
+    ents = text.analyze(title, "ko")["entities"]
+    assert "로건 표" in ents and "로건" not in ents
+
+
+def test_joined_particle_form_only_hits_dictionary_names(two_part_name):
+    # 별칭 사전에 없는 두 어절에는 걸리지 않는다. 뒤 어절이 조사가 아닌 낱말이면 붙이지 않는다.
+    assert "미르 표" not in text.analyze("미르 표의 자책", "ko")["entities"]
+    r = text.analyze("로건 표결 앞두고 침묵", "ko")
+    assert "로건 표" not in r["entities"] and "표결" in r["terms"]
+    # 앞 어절 + 조사뿐인 어절은 두 어절 이름으로 보지 않는다(뗀 꼴이 앞 어절보다 길 때만 쓴다)
+    R = two_part_name
+    R["amap"]["가상시"] = "가상광역시"
+    assert text.analyze("가상시 는 지금", "ko")["entities"] == ["가상광역시"]

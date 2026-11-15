@@ -171,8 +171,16 @@ def _analyze_ko(title: str) -> dict:
 
     tok_eoj = [eoj_of(t.start) for t in toks]
     # 별칭 먼저: 이웃 두 어절 붙임, 그다음 한 어절(조사 뗀 꼴 포함). 한 글자 별칭은 한국어 문장에서 오탐이 많아 쓰지 않는다.
+    # 두 어절 붙임은 세 꼴을 본다: 그대로, 뒤 어절에서 조사를 뗀 꼴, 붙인 꼴 전체에서 조사를 뗀 꼴.
+    # 셋째는 뒤 어절이 '한 글자 + 조사'일 때를 위한 것이다('한빛 강의' → '한빛강의' → '한빛강'). 뒤 어절만 보면 조사를 떼고
+    # 남는 것이 한 글자라 떼지 못한다. 뗀 꼴이 앞 어절보다 길 때만 쓴다(앞 어절 + 조사뿐인 어절을 두 어절 이름으로 보지 않게).
     for i in range(len(spans) - 1):
-        for key in (spans[i][2] + spans[i + 1][2], spans[i][2] + _strip_particle(spans[i + 1][2])):
+        joined = spans[i][2] + spans[i + 1][2]
+        whole = _strip_particle(joined)
+        keys = [joined, spans[i][2] + _strip_particle(spans[i + 1][2])]
+        if len(whole) > len(spans[i][2]):
+            keys.append(whole)
+        for key in keys:
             c = canon(key)
             if c:
                 ents.add(c)

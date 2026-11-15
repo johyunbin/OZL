@@ -14,6 +14,9 @@ UTC = timezone.utc
 
 DATA_FILES = ("stop_terms.txt", "broad_entities.yaml", "en_common.txt",
               "categories.yaml", "indirect.yaml", "outlet_family.yaml", "not_entities.txt", "seo_nouns.txt")
+# 낱말 분석 규칙의 판(text.py 의 코드가 같은 제목에서 다른 낱말을 내게 바뀌면 올린다). dict_version() 에 들어가므로
+# 올리면 저장된 분석을 다시 한다. 2 = 두 어절 별칭 붙임에서 붙인 꼴 전체의 조사를 뗀 꼴도 본다(2026-11-15).
+TEXT_RULES_VER = "2"
 
 # ── 중복 제거(§2)
 COPY_TITLE_DICE = 0.90          # (가) 제목 Dice
@@ -59,6 +62,15 @@ LINK_RARE_PRIOR_FAMILIES = 2
 # 이름('새한빛전자')이나 꼬리가 업종 낱말인 이름('한빛전자')은 다른 회사일 수 있다. 실제 자료(11-11 ~ 11-14)에서 포함 관계에
 # 기대어 이어지던 것은 2건이고 둘 다 낱말 분석이 인물 이름을 다르게 자른 꼴이라 이 목록으로는 잇지 않는다.
 LINK_SAME_SUBJECT_TAILS = ("그룹", "홀딩스", "지주", "본사", "측", "쪽")
+# 쉼표 주어 막는 조건(2026-11-15, link._comma_subject): 그룹 씨앗 제목이 'X, …' 꼴(첫 어절 바로 뒤 쉼표)인데 X 가 그룹의
+# 고유명사로 잡히지 않았고(낱말 분석이 회사 이름을 일반 낱말로 본 경우), 이슈에 그날 중심 고유명사가 있으며, X 가 이슈의 그날
+# 이름과 사건 낱말 어디에도 없으면 같은 날 잇기의 (나)와 (다)를 쓰지 않는다. 회사마다 내는 같은 꼴 기사(평가 등급 발표)가
+# 이름 없는 그룹이라는 까닭으로 다른 회사의 이슈에 붙던 것을 막는다. 잇는 조건은 넓히지 않는다.
+LINK_SAME_DAY_COMMA_SUBJECT = True
+# 쉼표 주어로 치지 않는 낱말: 기관이나 역할을 가리키는 일반 낱말. '경찰, …' 과 '소속사, …' 는 같은 사건을 서로 다른 쪽에서 다룬
+# 기사라서 쉼표 앞이 다르다는 것으로 가르지 않는다. 회사나 사람의 이름은 넣지 않는다(같은 성격의 낱말만 더한다).
+LINK_COMMA_SUBJECT_SKIP = ("경찰", "검찰", "법원", "재판부", "정부", "당국", "금융당국", "국회", "여당", "야당", "여야", "대통령실",
+                           "소속사", "구단", "협회", "노조", "유족", "측근", "업계", "전문가", "누리꾼")
 
 # ── 묶기 보정 둘(2026-11-14 부터 기본 켜짐)
 # 설계 그대로는 묶기 정답 60쌍에서 '같은 인물의 다른 사건'을 13쌍 합쳐 기준(잘못 합침 3쌍 이하)에 못 미쳤다.
@@ -98,6 +110,11 @@ TREND_MIN_WORDS = 2            # trend_news 가 없으면 검색어 낱말이 �
 # 그리고 띄어쓰기와 조사를 무시한 꼴이 기사 제목에 들어 있으면 낱말 조건을 채운 것으로 본다(이 글자 수 이상인 꼴만).
 TREND_TERMS_SHARE = 0.5
 TREND_SQUASH_MIN = 3
+# 2026-11-15 딸린 기사: 수집기가 급상승어마다 딸린 기사 제목을 전부 담는다(extra 의 trend_news_all, 많아야 TREND_NEWS_MAX 개).
+# 잇기는 제목마다 위 조건(Dice TREND_NEWS_DICE 이상 또는 겹침 TREND_NEWS_OVERLAP 개)을 보고 가장 좋은 것을 쓴다. 조건 값은 그대로다.
+# 검색어가 딸린 기사 제목과 이슈 기사 제목 양쪽에 있으면 겹침 1개로도 잇는 보완은 넣지 않았다. 사본 재생(11-11 ~ 11-15)에서
+# 새로 이어진 6건 가운데 3건이 다른 일이었다(같은 회사의 다른 소식, 같은 품목의 다른 나라 가격, 프로그램 이름만 같은 기사).
+TREND_NEWS_MAX = 5
 
 # ── 후속 사건·새 인물(§5-4)
 FOLLOWUP_DICE = 0.50
@@ -159,7 +176,8 @@ def file_hash(path: pathlib.Path) -> str:
 
 
 def dict_version() -> str:
-    """별칭 사전 + 자료 파일 8개 + kiwipiepy 판의 sha256 앞 12자. 바뀌면 낱말 분석을 다시 한다."""
+    """별칭 사전 + 자료 파일 8개 + kiwipiepy 판 + 직함 규칙 + 낱말 규칙 판(TEXT_RULES_VER)의 sha256 앞 12자.
+    바뀌면 낱말 분석을 다시 한다."""
     from ozl.research import videos
     import kiwipiepy
     h = hashlib.sha256()
@@ -168,6 +186,7 @@ def dict_version() -> str:
         h.update(p.read_bytes() if p.exists() else b"")
     h.update(("kiwipiepy=" + kiwipiepy.__version__).encode())
     h.update(f"roles={ROLE_WORDS_NOT_TERMS}".encode())
+    h.update(f"text={TEXT_RULES_VER}".encode())
     return h.hexdigest()[:12]
 
 

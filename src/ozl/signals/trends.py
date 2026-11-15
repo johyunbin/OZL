@@ -5,8 +5,11 @@
         정규화한 꼴(글자와 숫자만) 하나에 들어 있다('주한 미군의 철수' → '주한미군철수').
    (나) 검색어의 고유명사(entities)는 전부, 나머지 낱말(terms)은 절반 이상(올림)이 이슈 쪽 낱말(d−1 ~ d 기사)에 들어 있다.
    검색어 낱말이 비어 있으면 (가)만 본다.
-2. 딸린 기사(trend_news)가 있으면: 그 제목과 이슈 기사 제목 하나의 Dice ≥ 0.50, 또는 딸린 기사 낱말에서 검색어 낱말을 뺀 나머지가
-   이슈 쪽과 2개 이상 겹친다.
+2. 딸린 기사가 있으면: 그 제목과 이슈 기사 제목 하나의 Dice ≥ 0.50, 또는 딸린 기사 낱말에서 검색어 낱말을 뺀 나머지가
+   이슈 쪽과 2개 이상 겹친다. 딸린 기사 제목이 여럿이면(trend_news_all, 2026-11-15) 제목마다 이 조건을 보고 가장 좋은 것을 쓴다.
+   검색어가 두 제목에 다 있다는 것만으로 조건을 낮추지 않는다(같은 회사나 같은 품목의 다른 소식이 이어진다. config.py 의 주석).
+   같은 날 잇기의 급상승어 갈래(PairRule)는 그룹과 이슈가 같은 딸린 기사 제목에 함께 맞을 때만 근거로 쓴다(matched_news, same_news).
+   서로 다른 딸린 기사에 하나씩 맞은 것은 같은 검색어를 쓰는 다른 일이다('운항 중단'에 딸린 통신망 마비 기사와 태풍 기사).
 3. 딸린 기사가 없으면 검색어 낱말이 둘 이상.
 여럿이 맞으면 (Dice, 겹친 수)가 큰 이슈 하나, 같으면 번호가 이른 쪽. 딸린 기사는 기사로 세지 않는다(§2-3).
 """
@@ -60,6 +63,22 @@ def news_title(t: dict) -> str:
     return str((t.get("extra") or {}).get("trend_news") or "").strip()
 
 
+def news_titles(t: dict) -> list[str]:
+    """딸린 기사 제목 전부. 수집기가 담은 trend_news_all(많아야 TREND_NEWS_MAX 개)이 있으면 그것, 없으면 trend_news 하나.
+    2026-11-15 전에 받은 검색어와 본문을 읽지 못한 검색어에는 trend_news 만 있다."""
+    raw = (t.get("extra") or {}).get("trend_news_all")
+    out: list[str] = []
+    if isinstance(raw, (list, tuple)):
+        for x in raw:
+            s = str(x or "").strip()
+            if s and s not in out:
+                out.append(s)
+    if not out:
+        one = news_title(t)
+        return [one] if one else []
+    return out[:config.TREND_NEWS_MAX]
+
+
 def traffic(t: dict) -> str:
     return str((t.get("extra") or {}).get("traffic") or "")
 
@@ -76,25 +95,60 @@ def side_of(arts: list[dict]) -> tuple[frozenset, list, tuple]:
     return frozenset(words), tbs, tuple(norms)
 
 
-def match(t: dict, side: tuple, strict: bool = False) -> tuple[bool, float, int, str | None]:
-    """(맞는가, Dice, 겹친 수, 맞은 기사 키). strict 면 낱말 조건을 '전부 포함'으로 본다(같은 날 잇기의 급상승어 갈래)."""
+def _news_match(t: dict, nt: str, kw: frozenset, side: tuple) -> tuple[bool, float, int, str | None]:
+    """딸린 기사 제목 하나의 조건(머리말 2). → (맞는가, Dice, 겹친 수, 맞은 기사 키)."""
     words, tbs = side[0], side[1]
+    ntb = text.bigrams(text.norm_title(nt))
+    best, key = 0.0, None
+    for k, tb in tbs:
+        dv = text.dice(ntb, tb)
+        if dv > best:
+            best, key = dv, k
+    over = len((_words(nt, t["lang"]) - kw) & words)
+    ok = best >= config.TREND_NEWS_DICE or over >= config.TREND_NEWS_OVERLAP
+    return ok, best, over, key if best >= config.TREND_NEWS_DICE else None
+
+
+def match(t: dict, side: tuple, strict: bool = False) -> tuple[bool, float, int, str | None]:
+    """(맞는가, Dice, 겹친 수, 맞은 기사 키). strict 면 낱말 조건을 '전부 포함'으로 본다(같은 날 잇기의 급상승어 갈래).
+    딸린 기사 제목이 여럿이면 제목마다 조건을 보고 (맞는가, Dice, 겹친 수)가 가장 큰 것을 쓴다(같으면 앞의 것)."""
+    words = side[0]
     norms = side[2] if len(side) > 2 else tuple()
     kw = kw_words(t)
     if not words_ok(t, words, norms, strict):
         return False, 0.0, 0, None
-    nt = news_title(t)
-    if nt:
-        ntb = text.bigrams(text.norm_title(nt))
-        best, key = 0.0, None
-        for k, tb in tbs:
-            dv = text.dice(ntb, tb)
-            if dv > best:
-                best, key = dv, k
-        over = len((_words(nt, t["lang"]) - kw) & words)
-        ok = best >= config.TREND_NEWS_DICE or over >= config.TREND_NEWS_OVERLAP
-        return ok, best, over, key if best >= config.TREND_NEWS_DICE else None
-    return len(kw) >= config.TREND_MIN_WORDS, 0.0, 0, None
+    nts = news_titles(t)
+    if not nts:
+        return len(kw) >= config.TREND_MIN_WORDS, 0.0, 0, None
+    best = None
+    for nt in nts:
+        r = _news_match(t, nt, kw, side)
+        if best is None or r[:3] > best[:3]:
+            best = r
+    return best
+
+
+def matched_news(t: dict, side: tuple, strict: bool = False) -> frozenset | None:
+    """이 쪽이 검색어 t 에 맞으면 조건을 채운 딸린 기사 제목들(정규화한 꼴), 맞지 않으면 None.
+    딸린 기사가 없는 검색어가 낱말만으로 맞으면 빈 묶음이다. 맞는가는 match 와 같다."""
+    words = side[0]
+    norms = side[2] if len(side) > 2 else tuple()
+    if not words_ok(t, words, norms, strict):
+        return None
+    kw = kw_words(t)
+    nts = news_titles(t)
+    if not nts:
+        return frozenset() if len(kw) >= config.TREND_MIN_WORDS else None
+    return frozenset(text.norm_title(nt) for nt in nts if _news_match(t, nt, kw, side)[0]) or None
+
+
+def same_news(a: frozenset, b: frozenset) -> bool:
+    """두 쪽이 맞은 딸린 기사 제목(matched_news)에 같은 기사가 있는가. 정규화한 꼴(공백, 대소문자, 기호를 고르게 한 것)이 같은
+    제목일 때만이다. 비슷한 제목(Dice)은 같은 기사로 보지 않는다: 원인이 다른 두 사건의 딸린 제목이 틀만 같아 Dice 0.52 였다.
+    딸린 기사가 없는 검색어(양쪽 다 빈 묶음)는 낱말 조건만으로 본다."""
+    if not a and not b:
+        return True
+    return bool(a & b)
 
 
 def assign(trends_d: list[dict], sides: dict[str, tuple[str, tuple]], multi: list | None = None) -> tuple[dict, list]:
@@ -128,6 +182,8 @@ class PairRule:
     """같은 날 잇기의 급상승어 갈래(2026-11-15). 낱말 조건은 '전부 포함'(strict)으로 본다.
 
     rule(그룹, 이슈의 그날 기사 키, 날, 언어) → 그룹과 이슈 양쪽에 맞는 검색어 전부 [(검색어, 검색어 낱말) …](검색어 키 순, 없으면 빈 목록).
+      딸린 기사 제목이 여럿인 검색어는 그룹과 이슈가 같은 딸린 기사에 함께 맞아야 한다(same_news). 각각 다른 딸린 기사에 맞은 것은
+      같은 검색어를 쓰는 다른 일이라 돌려주지 않는다.
       이슈의 그날 기사 키에 None 을 주면 그룹 쪽만 본다. 여럿 가운데 어느 것을 쓸지는 부르는 쪽이 고른다(link.Linker.same_day 의
       중심 낱말 조건). 맨 앞 하나만 돌려주면 그것이 조건에서 떨어질 때 뒤의 맞는 검색어를 보지 못한다.
     rule.seeds(그룹, 날, 언어) → 그룹 쪽에 맞는 검색어가 맞을 수 있는 기사 키(낱말과 제목의 역색인에서). 어떤 이슈가 그 검색어에
@@ -143,19 +199,20 @@ class PairRule:
         self.by_day: dict[tuple, list] = {}
         for t in sorted(trends, key=lambda x: x["key"]):
             self.by_day.setdefault((t["day"], t["lang"]), []).append(t)
-        self._group: dict[str, list] = {}           # 그룹 번호 → 그룹 쪽에 맞는 검색어
+        self._group: dict[str, list] = {}           # 그룹 번호 → 그룹 쪽에 맞는 [(검색어, 맞은 딸린 기사 제목들)]
         self._side: dict[frozenset, tuple] = {}     # 기사 키 묶음 → side_of
         self._seed: dict[str, frozenset] = {}       # 검색어 키 → 그 검색어가 맞을 수 있는 기사 키
         self._idx: dict[str, tuple] = {}            # 언어 → (낱말 → 기사 키, [(기사 키, 정규화한 제목)])
 
-    def _of_group(self, group: dict, day: str, lang: str) -> list[dict]:
+    def _of_group(self, group: dict, day: str, lang: str) -> list[tuple]:
         ts = self.by_day.get((day, lang))
         if not ts:
             return []
         gid = group["group_id"]
         if gid not in self._group:
             side = side_of([self.arts[k] for k in [*group["units"], *(group.get("copies") or [])] if k in self.arts])
-            self._group[gid] = [t for t in ts if match(t, side, strict=True)[0]]
+            hits = [(t, matched_news(t, side, strict=True)) for t in ts]
+            self._group[gid] = [(t, h) for t, h in hits if h is not None]
         return self._group[gid]
 
     def _side_of(self, keys) -> tuple:
@@ -170,8 +227,13 @@ class PairRule:
         ts = self._of_group(group, day, lang)
         if ts and issue_keys is not None:
             side = self._side_of(issue_keys)
-            ts = [t for t in ts if match(t, side, strict=True)[0]]
-        return [(t["title"], kw_words(t)) for t in ts]
+            both = []
+            for t, gh in ts:
+                ih = matched_news(t, side, strict=True)
+                if ih is not None and same_news(gh, ih):
+                    both.append((t, gh))
+            ts = both
+        return [(t["title"], kw_words(t)) for t, _ in ts]
 
     def _index(self, lang: str) -> tuple[dict, list]:
         if lang not in self._idx:
@@ -201,7 +263,7 @@ class PairRule:
 
     def seeds(self, group: dict, day: str, lang: str) -> set:
         out: set = set()
-        for t in self._of_group(group, day, lang):
+        for t, _ in self._of_group(group, day, lang):
             out |= self._seed_keys(t)
         return out
 

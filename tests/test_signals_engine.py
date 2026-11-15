@@ -378,3 +378,100 @@ def test_engine_never_writes_pulse_db(tmp_path):
     for r in runs:
         engine.step(con, pdb, r)
     assert (pdb.stat().st_mtime_ns, hashlib.sha256(pdb.read_bytes()).hexdigest()) == before
+
+
+# ── 합쳐진 이슈의 어제 줄(2026-11-15)
+def _merge_story(tmp_path, keep: str, absorb: str):
+    """첫날 두 이슈(한빛전자 신공장 5곳 + 급상승어, 켐텍화학 폭발 2곳), 둘째 날 켐텍화학 2곳. 둘째 날 10:00 에 사람이 합친다."""
+    d1, d2 = D1, "2030-03-02"
+    its = five(d1) + [trend("한빛전자 신공장", "2000+", f"{d1}T10:00", news=X),
+                      A("켐텍화학 덴포시 공장 폭발", "연합뉴스", f"{d1}T12:00"),
+                      A("덴포시 켐텍화학 공장 폭발 사고 수습", "조선일보", f"{d1}T12:20"),
+                      A("켐텍화학 덴포시 공장 폭발 원인 조사", "동아일보", f"{d2}T08:00"),
+                      A("덴포시, 켐텍화학 공장 폭발 피해 주민 지원", "경향신문", f"{d2}T08:30")]
+    ov = tmp_path / "ov.yaml"
+    ov.write_text(f'- {{at: "{d2}T10:00:00+09:00", by: 사용자, action: merge, keep: {keep}, absorb: [{absorb}], '
+                  'reason: 시험}\n', encoding="utf-8")
+    runs = [K.kst(f"{d1}T13:05"), K.kst(f"{d1}T23:05"), K.kst(f"{d2}T09:05"), K.kst(f"{d2}T10:05")]
+    pdb = pulse(tmp_path, its, runs)
+    con = store.connect(tmp_path / "e.db")
+    boards = [engine.step(con, pdb, r, overrides_path=ov)["board"] for r in runs]
+    return rows(boards[2]), rows(boards[3])
+
+
+def test_prev_day_of_merged_issue_reads_the_absorbed_numbers_rows(tmp_path):
+    """합친 첫날에는 어제 줄이 번호마다 따로 있다. 후보 줄의 '어제' 칸은 합쳐져 들어온 번호의 줄도 본다:
+    매체 계열은 어제 그룹에서 다시 세어 같은 계열을 한 번만(연합뉴스가 두 이슈에 모두 있다), 기사 수는 합, 출처 종류는 합집합,
+    점수와 상태는 남는 번호의 줄."""
+    before, after = _merge_story(tmp_path, keep="t20300301-002", absorb="t20300301-001")
+    assert before["t20300301-001"]["prev_day"]["outlets_n"] == 5 and before["t20300301-002"]["prev_day"]["outlets_n"] == 2
+    assert sorted(after) == ["t20300301-002"]
+    pd, own = after["t20300301-002"]["prev_day"], before["t20300301-002"]["prev_day"]
+    assert pd["day"] == D1
+    assert pd["outlets_n"] == 6                                    # 5곳 + 2곳 − 겹친 연합뉴스
+    assert pd["articles_n"] == before["t20300301-001"]["prev_day"]["articles_n"] + own["articles_n"] == 7
+    assert pd["kinds"] == ["언론", "검색"]                         # 급상승어는 합쳐져 들어온 번호에만 이어졌다
+    assert own["kinds"] == ["언론"]
+    assert (pd["score"], pd["state"], pd["kinds_ok"]) == (own["score"], own["state"], own["kinds_ok"])
+
+
+def test_prev_day_falls_back_to_the_absorbed_row_when_the_kept_number_has_none(tmp_path):
+    """남는 번호에 어제 줄이 없으면(둘째 날 새로 생긴 번호로 합친 경우) 합쳐져 들어온 번호의 줄을 쓴다. 전에는 빈칸이었다."""
+    d2 = "2030-03-02"
+    its = five(D1) + [A("누리은행 젠타은행 합병 추진 공식화", "조선일보", f"{d2}T08:00"),
+                      A("젠타은행, 누리은행과 합병 추진", "동아일보", f"{d2}T08:30")]
+    ov = tmp_path / "ov.yaml"
+    ov.write_text(f'- {{at: "{d2}T10:00:00+09:00", by: 사용자, action: merge, keep: t20300302-001, '
+                  'absorb: [t20300301-001], reason: 시험}\n', encoding="utf-8")
+    runs = [K.kst(f"{D1}T13:05"), K.kst(f"{D1}T23:05"), K.kst(f"{d2}T09:05"), K.kst(f"{d2}T10:05")]
+    pdb = pulse(tmp_path, its, runs)
+    con = store.connect(tmp_path / "e.db")
+    boards = [rows(engine.step(con, pdb, r, overrides_path=ov)["board"]) for r in runs]
+    assert boards[2]["t20300302-001"]["prev_day"] is None          # 합치기 전: 새 번호에는 어제가 없다
+    old = boards[2]["t20300301-001"]["prev_day"]
+    assert sorted(boards[3]) == ["t20300302-001"]
+    assert boards[3]["t20300302-001"]["prev_day"] == old and old["outlets_n"] == 5
+
+
+# ── 딸린 기사 제목 여럿(2026-11-15): 수집 DB 의 extra → 엔진의 잇기
+def test_trend_with_several_news_titles_links_through_any_of_them(tmp_path):
+    """수집기가 담은 trend_news_all 가운데 하나만 맞아도 이어진다. 마지막 제목(trend_news)만 있으면 이어지지 않는다."""
+    other = "별솔게임즈 신작 출시 연기 공지"
+    runs = K.hourly(f"{D1}T12:00", f"{D1}T13:00")
+
+    def g_of(extra, name):
+        t = A("한빛전자 신공장", "구글 트렌드", f"{D1}T10:00", kind="trend", feed="trends_kr", url=TREND_URL, extra=extra)
+        _, out, _ = go(tmp_path, five() + [t], runs, name=name)
+        b = out["board"]
+        return rows(b)["t20300301-001"]["parts"]["g"], [u["keyword"] for u in b["searches_unmatched"]]
+
+    assert g_of({"traffic": "2000+", "trend_news": other}, "one.db") == (0.0, ["한빛전자 신공장"])
+    g, un = g_of({"traffic": "2000+", "trend_news": other, "trend_news_all": ["두리항공 새 노선 취항", X, other]}, "all.db")
+    assert g == approx(0.7) and un == []
+
+
+def test_trend_whose_news_titles_are_two_events_does_not_join_them(tmp_path):
+    """검색어 하나에 딸린 기사 둘이 서로 다른 일이면, 그 둘에 하나씩 맞은 두 묶음을 같은 날 잇기로 합치지 않는다.
+    같은 딸린 기사에 함께 맞는 두 묶음(통신망 마비와 그 이튿날 소식)은 잇는다. '운항'과 '중단'은 전날 여러 매체에 나와 드물지 않다."""
+    d0 = "2030-02-28"
+    net = ["전국 통신망 마비로 여객기 운항 중단…승객 수천 명 발 묶여", "전국 통신망 마비에 여객기 운항 중단, 승객 수천 명 발 묶였다"]
+    storm = ["강력한 태풍 상륙 앞두고 운항 중단…공항 비상 대비", "강력한 태풍 상륙 앞두고 운항 중단, 공항 비상 대비 돌입"]
+    nxt = ["여객기 운항 중단 이틀째…통신망 복구 늦어져 결항 속출", "여객기 운항 중단 이틀째, 통신망 복구 늦어 결항 속출 우려"]
+    old = [A(t, o, f"{d0}T10:00") for t, o in (("조종사 노조 파업 예고에 화물기 운항 중단 우려", "연합뉴스"),
+                                               ("가람해운 여객선 운항 중단 석 달째", "한국경제"),
+                                               ("나래시 시내버스 운항 중단 사태 장기화", "매일경제"),
+                                               ("겨울 한파에 케이블카 운항 중단 잇따라", "서울경제"))]
+    runs = K.hourly(f"{D1}T12:00", f"{D1}T13:00")
+
+    def issues(second, news, name):
+        its = old + [A(net[0], "조선일보", f"{D1}T03:00"), A(net[1], "동아일보", f"{D1}T03:30"),
+                     A(second[0], "경향신문", f"{D1}T09:00"), A(second[1], "SBS", f"{D1}T09:20"),
+                     A("운항 중단", "구글 트렌드", f"{D1}T10:00", kind="trend", feed="trends_kr", url=TREND_URL,
+                       extra={"traffic": "2000+", "trend_news": news[-1], "trend_news_all": news})]
+        con, _, _ = go(tmp_path, its, runs, name=name)
+        gs = [g for g in store.calc_groups(con, store.last_step_calc(con)) if g["day"] == D1 and g["issue_id"]]
+        return len({g["issue_id"] for g in gs}), sorted((g["link"] or {}).get("rule") for g in gs)
+
+    assert issues(storm, [net[0], storm[0]], "two.db") == (2, ["새 이슈", "새 이슈"])
+    assert issues(storm, [storm[0], net[0]], "two_r.db") == (2, ["새 이슈", "새 이슈"])
+    assert issues(nxt, [storm[0], "통신망 마비로 여객기 운항 중단 이틀째"], "one.db") == (1, ["같은 날 같은 급상승어", "새 이슈"])

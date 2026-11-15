@@ -44,6 +44,75 @@ def clean(s: str, limit: int = 300) -> str:
     return re.sub(r"\s+", " ", s).strip()[:limit]
 
 
+TREND_NEWS_MAX = 5              # 급상승어 하나에 담는 딸린 기사 제목 수의 위 끝
+TREND_FEED_MAX_BYTES = 5_000_000  # 이보다 큰 본문은 딸린 기사 제목을 다시 읽지 않는다
+TREND_ITEMS_MAX = 2000          # 본문 하나에서 읽는 항목 수의 위 끝
+
+
+def _tag(name: str) -> tuple:
+    """(여는 꼬리표, 닫는 꼬리표)를 찾는 식 한 쌍. 대소문자를 가리지 않는다."""
+    return (re.compile(r"<" + re.escape(name) + r"(?=[\s>/])", re.I), re.compile(r"</" + re.escape(name) + r"\s*>", re.I))
+
+
+_T_ITEM, _T_TITLE, _T_NEWS = _tag("item"), _tag("title"), _tag("ht:news_item_title")
+
+
+def _elements(doc: str, tag: tuple, limit: int):
+    """요소의 안쪽 글자를 본문에 나온 차례로 낸다. 앞으로만 훑고, 닫는 꼬리표가 없으면 거기서 끝낸다.
+    '여는 꼬리표부터 닫는 꼬리표까지'를 식 하나로 찾으면 닫히지 않은 요소가 많은 본문에서 시간이 제곱으로 늘어 수집이 멈춘다."""
+    op, cl = tag
+    pos = 0
+    for _ in range(limit):
+        m = op.search(doc, pos)
+        if not m:
+            return
+        j = doc.find(">", m.end())
+        if j < 0:
+            return
+        c = cl.search(doc, j + 1)
+        if not c:
+            return
+        yield doc[j + 1:c.start()]
+        pos = c.end()
+
+
+_CDATA = re.compile(r"<!\[CDATA\[(.*?)\]\]>", re.S)
+
+
+def _xml_text(raw: str, limit: int = 200) -> str:
+    """XML 요소 안의 글자를 clean() 과 같은 꼴로. CDATA 는 안의 글자 그대로, 아니면 XML 이스케이프를 한 번 푼다."""
+    m = _CDATA.fullmatch(raw.strip())
+    return clean(m.group(1) if m else html.unescape(raw), limit)
+
+
+def _trend_key(title: str) -> str:
+    return re.sub(r"\s+", "", title or "").casefold()
+
+
+def trend_news_titles(content) -> dict[str, list[str]]:
+    """구글 트렌드 피드 본문에서 급상승어마다 딸린 기사 제목 전부(본문에 나온 차례, 많아야 TREND_NEWS_MAX 개).
+    feedparser 는 항목 하나에 같은 이름의 요소가 여럿이면 마지막 것만 남긴다. 그래서 이미 받은 본문을 한 번 더 읽는다
+    (요청은 늘지 않는다). 열쇠는 공백을 뺀 소문자 검색어다. XML 파서를 쓰지 않고 요소 이름으로만 찾는다(바깥에서 온 본문이다).
+    읽다가 오류가 나면 빈 사전을 돌려준다. 그러면 부르는 쪽은 지금처럼 trend_news 하나만 담고 수집은 이어진다."""
+    try:
+        if len(content) > TREND_FEED_MAX_BYTES:
+            return {}
+        doc = content.decode("utf-8", errors="replace") if isinstance(content, (bytes, bytearray)) else str(content)
+        out: dict[str, list[str]] = {}
+        for body in _elements(doc, _T_ITEM, TREND_ITEMS_MAX):
+            t = next(_elements(body, _T_TITLE, 1), None)
+            if t is None:
+                continue
+            titles = out.setdefault(_trend_key(_xml_text(t)), [])
+            for n in _elements(body, _T_NEWS, 50):
+                x = _xml_text(n)
+                if x and x not in titles and len(titles) < TREND_NEWS_MAX:
+                    titles.append(x)
+        return {k: v for k, v in out.items() if k and v}
+    except Exception:  # noqa: BLE001 — 딸린 기사 제목은 덧붙이는 값이다. 못 읽어도 수집을 멈추지 않는다
+        return {}
+
+
 def entry_time(e) -> datetime | None:
     t = e.get("published_parsed") or e.get("updated_parsed")
     return datetime(*t[:6], tzinfo=timezone.utc) if t else None
@@ -65,6 +134,7 @@ def fetch_feed(feed: dict, now: datetime) -> tuple[list[dict], dict]:
     except Exception as e:  # noqa: BLE001
         status["error"] = type(e).__name__
         return [], status
+    more = trend_news_titles(r.content) if feed.get("kind") == "trend" else {}
     items = []
     for e in d.entries:
         title = clean(e.get("title", ""), 200)
@@ -83,6 +153,9 @@ def fetch_feed(feed: dict, now: datetime) -> tuple[list[dict], dict]:
         if feed["kind"] == "trend":   # 구글 트렌드 피드의 대략 검색량("500+")과 딸린 기사 제목 하나(feedparser 는 마지막 것만 남긴다)
             items[-1]["traffic"] = clean(e.get("ht_approx_traffic", ""), 20)
             items[-1]["trend_news"] = clean(e.get("ht_news_item_title", ""), 200)
+            alln = more.get(_trend_key(title))
+            if alln:                  # 딸린 기사 제목 전부(본문을 다시 읽은 것). 못 읽었으면 칸을 두지 않는다
+                items[-1]["trend_news_all"] = alln
     status["entries"] = len(items)
     if not items:
         status["error"] = "항목 0개"
