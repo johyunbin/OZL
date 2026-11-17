@@ -1,7 +1,7 @@
 site_name: OZL — 오늘의 즐길거리
 site_description: 뉴스에서 방송 소재를 골라 숫자를 원문과 맞춰 보는 작업 기록
-site_url: https://johyunbin.github.io/ozl/
-repo_url: https://github.com/johyunbin/ozl
+site_url: https://johyunbin.github.io/OZL/
+repo_url: https://github.com/johyunbin/OZL
 theme:
   name: material
   language: ko

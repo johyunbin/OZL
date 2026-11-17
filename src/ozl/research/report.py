@@ -18,8 +18,8 @@ from urllib.parse import quote
 from . import cards as C
 
 ROOT = C.ROOT
-SITE ="https://johyunbin.github.io/ozl"
-REPO = "https://github.com/johyunbin/ozl"  # 발행본은 저장소 화면과 사이트 양쪽에서 읽히므로 링크를 절대 주소로 쓴다
+SITE ="https://johyunbin.github.io/OZL"
+REPO = "https://github.com/johyunbin/OZL"  # 발행본은 저장소 화면과 사이트 양쪽에서 읽히므로 링크를 절대 주소로 쓴다
 SLOT_KO = {"am": "아침", "pm": "저녁", "wk": "주간"}
 DOW = "월화수목금토일"
 _ANCHOR = re.compile(r'<a id="((?:am|pm|wk)-\d{2})"></a>')   # 발행본에 실린 카드 자리표

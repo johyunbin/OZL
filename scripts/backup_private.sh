@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 비공개 기록(private/)을 백업 저장소(ozl-private)에 커밋하고 올린다.
+# 비공개 기록(private/)을 백업 저장소(OZL-private)에 커밋하고 올린다.
 #
 #   scripts/backup_private.sh            # 바뀐 기록이 있으면 커밋·푸시
 #   scripts/backup_private.sh --dry-run  # 올릴 파일만 보여 준다
@@ -7,7 +7,8 @@
 # private/ 는 공개 저장소와 별개의 git 저장소다. 무엇이 올라가는지는 private/.gitignore 의 허용 목록이 정한다
 # (카드·클레임 정본, 수집 원본, 전체본·검증 시트, 계획, 설명서, 태그 파일, 수집 DB 스냅숏, 열람 문서, 덱 완성본).
 # 영상·전사·프레임·원문 사본·유튜브 통계는 올라가지 않는다.
-# 올리기 전에 원격이 ozl-private 이고 비공개인지 확인한다. 아니면 멈춘다.
+# 올리기 전에 원격이 OZL-private 이고 비공개인지 확인한다. 아니면 멈춘다.
+# (GitHub 는 저장소 이름의 대소문자를 가리지 않으므로 옛 소문자 주소 ozl-private 도 같은 저장소다 — 둘 다 받는다.)
 set -euo pipefail
 
 DRY=0
@@ -19,8 +20,8 @@ cd "$(dirname "$0")/../private" || die "private/ 가 없다" 2
 
 URL="$(git remote get-url origin 2>/dev/null || true)"
 case "$URL" in
-  *github.com[:/]*/ozl-private|*github.com[:/]*/ozl-private.git) ;;
-  *) die "원격이 ozl-private 가 아니다: ${URL:-없음}" 3 ;;
+  *github.com[:/]*/[Oo][Zz][Ll]-private|*github.com[:/]*/[Oo][Zz][Ll]-private.git) ;;
+  *) die "원격이 OZL-private 가 아니다: ${URL:-없음}" 3 ;;
 esac
 SLUG="$(printf '%s' "$URL" | sed -E 's#^.*github\.com[:/]##; s#\.git$##')"
 PRIVATE="$(gh repo view "$SLUG" --json isPrivate -q .isPrivate 2>/dev/null)" || die "원격 공개 범위를 확인하지 못했다" 3
