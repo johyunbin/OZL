@@ -6,6 +6,7 @@ import re
 import shlex
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -14,6 +15,11 @@ FOLDER = Path(__file__).resolve().parents[1] / ".claude/skills/ozl/make"
 NODE = shutil.which("node")
 pytestmark = pytest.mark.skipif(not NODE, reason="node 없음")
 WORKFLOWS = pytest.mark.parametrize("kind", ["make", "revise"])
+
+
+def _here(script):
+    """만든 명령의 '.venv/bin/python' 을 지금 시험을 돌리는 파이썬으로 바꾼다(CI 에는 저장소의 가상 환경이 없다)."""
+    return script.replace("'.venv/bin/python'", shlex.quote(sys.executable), 1)
 
 HARNESS = """
 const input = JSON.parse(require('fs').readFileSync(0, 'utf8'));
@@ -321,7 +327,7 @@ def test_precheck_command_quotes_paths_and_respects_zero_fix_limit(kind, tmp_pat
     assert out["result"]["fix_rounds"] == 0
     prompt = out["calls"][1]["prompt"]
     script = re.search(r"^```sh\n(.*?)\n```$", prompt, re.M | re.S)[1]
-    cmd = subprocess.run(["/bin/sh", "-c", script], cwd=FOLDER.parents[3], text=True, check=True,
+    cmd = subprocess.run(["/bin/sh", "-c", _here(script)], cwd=FOLDER.parents[3], text=True, check=True,
                          capture_output=True, env=dict(os.environ, OZL_DESK_ROOT="", OZL_OPS_RUNNER="0"))
     tag = "r1" if kind == "make" else "r2"
     tool = str(Path("~/.claude/scripts/offload.py").expanduser())
@@ -357,7 +363,7 @@ def test_precheck_refuses_issue_with_hidden_items(kind, tmp_path, hidden):
     (issue / "article.yaml").write_text("title: 지어낸 글\n")
     out = run(kind, review_mode="codex_first", max_fix=0, prechecks=[checked()], desk_root=str(desk), work=str(tmp_path / "w"))
     script = re.search(r"^```sh\n(.*?)\n```$", out["calls"][1]["prompt"], re.M | re.S)[1]
-    cmd = subprocess.run(["/bin/sh", "-c", script], cwd=FOLDER.parents[3], text=True, capture_output=True,
+    cmd = subprocess.run(["/bin/sh", "-c", _here(script)], cwd=FOLDER.parents[3], text=True, capture_output=True,
                          env=dict(os.environ, OZL_DESK_ROOT="", OZL_OPS_RUNNER="0"))
     assert cmd.returncode != 0 and "외부 모델에 보내지 않는 항목" in cmd.stderr and "offload.py" not in cmd.stdout
 
@@ -382,6 +388,6 @@ def test_precheck_allows_issue_without_hidden_items(kind, tmp_path):
     (issue / "article.yaml").write_text("title: 지어낸 글\n")
     out = run(kind, review_mode="codex_first", max_fix=0, prechecks=[checked()], desk_root=str(desk), work=str(tmp_path / "w"))
     script = re.search(r"^```sh\n(.*?)\n```$", out["calls"][1]["prompt"], re.M | re.S)[1]
-    cmd = subprocess.run(["/bin/sh", "-c", script], cwd=FOLDER.parents[3], text=True, capture_output=True,
+    cmd = subprocess.run(["/bin/sh", "-c", _here(script)], cwd=FOLDER.parents[3], text=True, capture_output=True,
                          env=dict(os.environ, OZL_DESK_ROOT="", OZL_OPS_RUNNER="0"))
     assert cmd.returncode == 0 and "offload.py" in cmd.stdout
