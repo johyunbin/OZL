@@ -74,7 +74,7 @@
   - `coverage` 에 0-3 의 결과를 넣는다: `summary`, `searched`(쓴 낱말. 비우면 검사에 걸린다), `videos`(이어지는 영상에 `relation` 과 `gist`. 여덟 편까지).
   - `sensitivity` 는 `GREEN`, 또는 0-2 에서 사용자가 진행을 정한 `YELLOW` 와 사유다.
   - `outline`(예상 구성)은 `tracks/syuka/style/composition_template_v0.md` 의 단계 이름으로 다섯 단계 이상이고 반전을 반드시 넣는다.
-  - `discovery` 에 어디서 온 소재인지 적는다(사용자가 준 소재, 화제 번호).
+  - `discovery` 에 어디서 온 소재인지 적는다(사용자가 준 소재, 화제 번호). 화제 엔진의 이슈 번호(`t20261120-193` 꼴)를 그대로 적는다 — 덱을 만든 뒤 `python -m ozl.render refresh-candidates` 가 이 번호로 후속 기사를 찾는다(`agent/deck.md` 「덱 갱신」). 예측 회차의 소재면 「YYYY-MM-DD 방송 예측」과 story_key 도 적는다.
 - 기록:
   - `status: pending`, `human_verified: false` 로 쓴다. 원문을 열어 맞춰 본 것은 `verifiers.claude` 에 무엇을 봤는지 적는다.
   - `observed` 는 원문에 적힌 표기 그대로다. 완성 절차에서 사본의 문장, 줄, 표의 칸을 통째로 따온 것으로 다시 맞추므로, 처음부터 문장(마침표까지)을 통째로 적어 두면 덜 고친다. 기록 하나에는 대목 하나만 담는다.

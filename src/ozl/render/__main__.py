@@ -2,6 +2,7 @@
 python -m ozl.render build <사양.yaml> [--draft] [--claims-dir <경로>]… [--no-export] [--edition 비공개판|바꾼판]
 python -m ozl.render bundle <사양.yaml> [--out <md>]          # 검토 묶음(ozl.render.bundle)
 python -m ozl.render progress <card_id> [--start|--resume|--mark 단계|--done --final 폴더|--abandon]   # 진행 기록(ozl.render.progress)
+python -m ozl.render refresh-candidates [<card_id>…] [--since YYYY-MM-DD] [--all] [--json] [--db <engine.db>]   # 덱 갱신 후보
 python -m ozl.render norms [--out <폴더>]                   # 원본 방송 슬라이드 집계(ozl.render.norms)
 python -m ozl.render compare <사양.yaml 또는 산출 폴더> [--video <영상 id>] [--out <폴더>] [--edition 비공개판|바꾼판]   # 원본 비교표(ozl.render.compare)
 python -m ozl.render outline --minutes <분>                # style: syuka 덱의 목표 장수와 종류별 배분(ozl.render.style)
@@ -71,6 +72,9 @@ def _opts(argv: list[str]) -> tuple[list[str], bool, bool, list[str], str | None
 
 
 def main(argv: list[str]) -> int:
+    if argv and argv[0] == "refresh-candidates":
+        from ozl.render import refresh
+        return refresh.main(argv[1:])
     if argv and argv[0] in ("bundle", "progress", "norms", "compare", "potx"):   # 하위 명령은 각 모듈이 인자를 읽는다(_opts 는 사양 파일 명령 전용)
         from importlib import import_module
         return import_module(f"ozl.render.{argv[0]}").main(argv[1:])
