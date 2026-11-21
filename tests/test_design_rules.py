@@ -17,9 +17,9 @@ from ozl.analyze import design_rules as rules
 SCHEMA = """
 CREATE TABLE videos(video_id TEXT PRIMARY KEY, title, upload_at, duration_sec, kind);
 CREATE TABLE sd_videos(video_id TEXT PRIMARY KEY, duration_sec, n_slides);
-CREATE TABLE sd_slides(video_id, no, flash, kind, layout, n_graphics, title_color, title, t_first);
+CREATE TABLE sd_slides(video_id, no, flash, kind, layout, n_graphics, title_color, title, t_first, best_frame);
 CREATE TABLE sd_lines(video_id, no, line_no, size_class, color, text);
-CREATE TABLE sd_picture_labels(video_id, no, labeler, primary_kind);
+CREATE TABLE sd_picture_labels(video_id, no, labeler, primary_kind, note);
 CREATE TABLE v3_segments(video_id, seg, start_sec, end_sec, field, field2, korea_level,
                          evergreen, topic_line, question);
 """
@@ -56,18 +56,18 @@ def seed_db(db):
             ("a", 3, 200, 225, "기업·증시", "", "간접", "시사", TOPIC, QUESTION)])
         con.executemany("INSERT INTO sd_videos VALUES(?,?,99)",
                         [("a", 900), ("b", 1200), ("c", 600), ("live", 4000)])
-        con.executemany("INSERT INTO sd_slides VALUES(?,?,?,?,?,?,?,?,?*10)", [
-            ("a", 9, 0, "slide", "image_left", 0, "red", TITLE, 9),
-            ("a", 2, 0, "slide", None, None, None, TITLE, 2),
-            ("a", 5, 1, "slide", "flash", 99, "other", TITLE, 5),
-            ("a", 7, 0, "media", "image_full", 1, "black", TITLE, 7),
-            ("b", 1, 0, "slide", None, None, None, TITLE, 1),
-            ("live", 1, 0, "slide", None, None, None, TITLE, 1)])
+        con.executemany("INSERT INTO sd_slides VALUES(?,?,?,?,?,?,?,?,?*10,'f'||?)", [
+            ("a", 9, 0, "slide", "image_left", 0, "red", TITLE, 9, 9),
+            ("a", 2, 0, "slide", None, None, None, TITLE, 2, 2),
+            ("a", 5, 1, "slide", "flash", 99, "other", TITLE, 5, 5),
+            ("a", 7, 0, "media", "image_full", 1, "black", TITLE, 7, 7),
+            ("b", 1, 0, "slide", None, None, None, TITLE, 1, 1),
+            ("live", 1, 0, "slide", None, None, None, TITLE, 1, 1)])
         con.executemany("INSERT INTO sd_lines VALUES('a',?,?,?,?,?)", [
             (2, 1, "body", None, BODY), (5, 1, "body", "red", BODY),
             (7, 1, "body", "red", BODY), (9, 1, "large", "red", BODY),
             (9, 2, "body", "black", BODY), (9, 3, "body", "mixed", BODY)])
-        con.executemany("INSERT INTO sd_picture_labels VALUES('a',?,?,?)", [
+        con.executemany("INSERT INTO sd_picture_labels VALUES('a',?,?,?,NULL)", [
             (5, "z", "logo"), (7, "a", "chart"), (7, "z", "photo"), (9, "b", "table")])
 
 
@@ -281,3 +281,16 @@ def test_slide_features_by_time(tmp_path):
     assert rules.category("other:꾸며낸 이름") == "other"
     assert rules.category("꾸며낸 출처", "source_type") == rules.UNKNOWN
     assert rules.slide_times([lists], "b") is None
+
+
+def test_picture_label_frame_guard(tmp_path):
+    """라벨에 적힌 대표 프레임 이름이 지금 장의 프레임과 다르면 그 라벨을 쓰지 않는다."""
+    db = tmp_path / "s.db"
+    seed_db(db)
+    with closing(sqlite3.connect(db)) as con, con:
+        con.execute("DELETE FROM sd_picture_labels")
+        con.executemany("INSERT INTO sd_picture_labels VALUES('a',?,?,?,?)",
+                        [(9, "x", "chart", "f9"), (7, "x", "photo", "f_old")])
+    with closing(sqlite3.connect(db)) as con:
+        f = rules.slide_features(con, "a", ["x"])
+    assert f[3]["primary_kind"] == "chart" and f[2]["primary_kind"] is None

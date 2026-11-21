@@ -165,8 +165,12 @@ def slide_features(con, vid, labelers, times=None):
     없으면 반짝 장을 뺀 순번으로 잇는다. 슬라이드 자료를 다시 만들면 순번이 밀리므로 시각이 우선이다."""
     pictures = defaultdict(dict)
     for no, labeler, kind in con.execute("""
-        SELECT no, labeler, primary_kind FROM sd_picture_labels
-        WHERE video_id=? AND primary_kind IS NOT NULL AND primary_kind!='' ORDER BY no, labeler
+        SELECT p.no, p.labeler, p.primary_kind FROM sd_picture_labels p
+        JOIN sd_slides s ON s.video_id=p.video_id AND s.no=p.no
+        WHERE p.video_id=? AND p.primary_kind IS NOT NULL AND p.primary_kind!=''
+          -- note 에 라벨 때의 대표 프레임 이름이 있으면 지금 그 장의 프레임과 같을 때만 쓴다(재생성으로 번호가 밀린 라벨 차단)
+          AND (p.note IS NULL OR p.note='' OR p.note=s.best_frame)
+        ORDER BY p.no, p.labeler
     """, (vid,)):
         pictures[no][labeler] = kind
     rows = con.execute("""
