@@ -216,8 +216,63 @@ GAP = px(48 - INK_DX)  # 그림 오른쪽 변 → 글 기둥 잉크까지 48px
 def new_deck() -> Presentation:
     prs = Presentation()
     prs.slide_width, prs.slide_height = W, H
+    # python-pptx 기본 파일의 4:3 표기(type="screen4x3")가 남아 있었다 — 실제 크기는 16:9 이므로 선택 속성을 지운다(사용자 정의 크기)
+    prs.part._element.find(qn("p:sldSz")).attrib.pop("type", None)
     set_theme_font(prs)
     return prs
+
+
+_AFTER_FONTS = {"cs", "sym", "hlinkClick", "hlinkMouseOver", "rtl", "extLst"}   # 스키마에서 latin·ea 뒤에 오는 요소
+
+
+def set_end_font(rpr, face: str = FONT) -> None:
+    """글자 서식 요소(a:rPr·a:endParaRPr)에 라틴·동아시아 글꼴을 둔다. 스키마 순서대로 cs·sym·링크·extLst 앞에 latin → ea 로 넣는다."""
+    for tag in ("a:latin", "a:ea"):
+        old = rpr.find(qn(tag))
+        if old is not None:
+            rpr.remove(old)
+    latin, ea = etree.Element(qn("a:latin")), etree.Element(qn("a:ea"))
+    latin.set("typeface", face)
+    ea.set("typeface", face)
+    after = next((c for c in rpr if etree.QName(c).localname in _AFTER_FONTS), None)
+    if after is None:
+        rpr.append(latin)
+    else:
+        after.addprevious(latin)
+    latin.addnext(ea)
+
+
+def set_template_text_defaults(prs, size_pt: int = SIZE, lang: str = "ko-KR") -> None:
+    """템플릿에서 새로 만드는 일반 글상자·도형의 기본 글 서식을 본문과 같게 둔다: 26pt, 줄 간격 1.5줄, 한국어.
+
+    python-pptx 기본값은 18pt·en-US 라, 사용자가 템플릿에서 새 글상자를 만들면 본문(26pt 자리표시자)과 다르게 나왔다(2026-11-21).
+    바꾸는 곳은 문서 기본(presentation.xml 의 defaultTextStyle)과 각 마스터의 otherStyle 뿐이다. 제목·본문 자리표시자와
+    글자마다 서식을 정한 기존 글은 그대로다. 덱 생성에는 쓰지 않고 손 템플릿·.potx 를 만들 때만 부른다."""
+    styles = [prs.part._element.find(qn("p:defaultTextStyle"))]
+    styles += [m._element.find(qn("p:txStyles")).find(qn("p:otherStyle")) for m in prs.slide_masters]
+    for st in styles:
+        if st is None:
+            raise ValueError("기본 글 서식(defaultTextStyle·otherStyle)을 찾지 못했다")
+        for ppr in st:
+            if not ppr.tag.lower().endswith("ppr"):      # defPPr, lvl1pPr ~ lvl9pPr
+                continue
+            rpr = ppr.find(qn("a:defRPr"))
+            if rpr is None:                              # 스키마 순서: defRPr 는 extLst 앞
+                rpr = etree.Element(qn("a:defRPr"))
+                ext = ppr.find(qn("a:extLst"))
+                if ext is None:
+                    ppr.append(rpr)
+                else:
+                    ext.addprevious(rpr)
+            rpr.set("lang", lang)
+            if ppr.tag != qn("a:defPPr"):
+                rpr.set("sz", str(int(size_pt * 100)))
+                old = ppr.find(qn("a:lnSpc"))
+                if old is not None:
+                    ppr.remove(old)
+                ln = etree.Element(qn("a:lnSpc"))
+                etree.SubElement(ln, qn("a:spcPct")).set("val", str(int(LINE * 100000)))
+                ppr.insert(0, ln)                        # 스키마 순서: lnSpc 가 pPr 의 첫 자식
 
 
 _THEME_FONT = re.compile(r"(<a:(major|minor)Font>\s*)<a:latin typeface=\"[^\"]*\"/>\s*<a:ea typeface=\"[^\"]*\"/>")

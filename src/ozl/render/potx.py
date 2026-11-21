@@ -205,6 +205,7 @@ def build(out_root: pathlib.Path | None = None, export: bool = True, version: st
         _make_layouts(prs, slides["slides"], source)
         deck.clear_template_props(prs)
         prs.core_properties.title = "OZL 덱 템플릿"
+        deck.set_template_text_defaults(prs)
         _save_template(prs, work / "empty.pptx", work / potx.name)
         _fill_preview(prs, source)
         deck.finish_package(prs)

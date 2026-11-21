@@ -529,6 +529,7 @@ def draw_img(slide, im: Img, prefix: str | None = None):
     for i, (txt, sz, bold) in enumerate([("그림 자리", 14, True), (im.what, 12, False), ((SOURCE_PREFIX if prefix is None else prefix) + im.source, 10, False)]):
         para = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
         para.alignment = PP_ALIGN.CENTER
+        para.line_spacing = 1.0   # 안내 글은 1줄 — 템플릿의 일반 글 기본값(1.5줄, deck.set_template_text_defaults)을 물려받지 않게
         r = para.add_run()
         r.text = txt
         _style_run(r, sz, bold, LIGHT if i == 0 else GREY)
@@ -673,7 +674,9 @@ def draw_table(slide, t: Table, header_rgb=deck.EMPH_RGB):
                 mask = [m or p.bold for m in S.emphasis_mask(p.text, p.emph)]
                 p.lines = S.wrap(p.text, width_pt, t.size, mask) or [(0, 0)]
                 # 문단 끝 표시의 글자 크기도 표 크기로 — 비워 두면 기본 18pt 가 빈 칸의 행 높이를 키워 표가 쪽 아래로 넘친다
-                para._p.get_or_add_endParaRPr().set("sz", str(int(round(t.size * 100))))
+                end = para._p.get_or_add_endParaRPr()
+                end.set("sz", str(int(round(t.size * 100))))
+                deck.set_end_font(end)   # 빈 칸에 새로 쓰는 글도 맑은 고딕(끝 서식에 글꼴이 없으면 테마·기기 글꼴을 따른다)
                 if not part:
                     continue
                 _write_para(para, p, t.size)

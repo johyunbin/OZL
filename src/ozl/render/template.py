@@ -221,6 +221,7 @@ def build(out_root: pathlib.Path | None = None, export: bool = True, version: st
             raise SystemExit("노트 글상자를 찾지 못했다")
         tf.text = head + note + common
     prs.core_properties.title = "슈카 덱 손 템플릿"
+    deck.set_template_text_defaults(prs)
     deck.finish_package(prs)
     prs.save(str(pptx))
     info = {"pptx": str(pptx), "slides": len(spec["slides"])}
