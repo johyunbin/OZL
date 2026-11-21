@@ -873,11 +873,11 @@ def test_ozl_step1_handles_a_given_title_and_a_stop_before_writing():
 
 
 def test_workflows_do_not_claim_the_default_desk_root():
-    """자료 루트 인자를 받지 않은 워크플로가 '기본값(private/desk)이다'라고 단정하지 않는다(환경 변수가 이미 있을 수 있다)."""
+    """자료 루트 인자를 받지 않은 워크플로가 '기본값(private/records/desk)이다'라고 단정하지 않는다(환경 변수가 이미 있을 수 있다)."""
     for name in ("workflow_make.js", "workflow_revise.js"):
         t = text(SKILLS / "ozl" / "make" / name)
-        assert "자료 루트는 기본값(private/desk)이다" not in t, name
-        assert "환경 변수 OZL_DESK_ROOT 가 있으면 그 값이고 없으면 private/desk 다" in t, name
+        assert "자료 루트는 기본값(private/records/desk)이다" not in t, name
+        assert "환경 변수 OZL_DESK_ROOT 가 있으면 그 값이고 없으면 private/records/desk 다" in t, name
 
 
 def test_packet_instruction_warns_about_other_issues_in_the_preview():

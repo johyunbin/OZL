@@ -64,7 +64,7 @@ const shellQuote = value => "'" + value.replace(/'/g, "'\\''") + "'"
 const deskEnv = DESK ? 'env OZL_DESK_ROOT=' + shellQuote(DESK) + ' ' : ''
 const ENV = DESK
   ? '자료 루트는 ' + DESK + ' 다. ozl.issues 명령과 파이썬 스크립트 앞에 OZL_DESK_ROOT=' + DESK + ' 를 둔다.'
-  : '자료 루트 인자를 받지 않았다. 환경 변수 OZL_DESK_ROOT 가 있으면 그 값이고 없으면 private/desk 다. 그 변수를 바꾸지 않는다.'
+  : '자료 루트 인자를 받지 않았다. 환경 변수 OZL_DESK_ROOT 가 있으면 그 값이고 없으면 private/records/desk 다. 그 변수를 바꾸지 않는다.'
 
 const externalBan = '외부 모델(Codex, Gemini, ChatGPT, agy)을 부르지 않는다.'
 const common = externalRule => `

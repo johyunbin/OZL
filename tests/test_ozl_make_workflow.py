@@ -73,8 +73,9 @@ def prompt_hash(calls):
 @WORKFLOWS
 def test_default_calls_prompts_and_schemas_unchanged(kind):
     # HEAD 4a0a93d의 두 스크립트를 위 하네스로 실행한 지문. opts는 스키마 전체와 호출 순서를 포함한다.
-    original = {"make": "231f0911e8636486f8ead83fa01f8a1cf45a1ddf5a64a881a60072349e0c51b3",
-                "revise": "0f06ea15ffd7209ed04d4dbe10bf44c952bce71fb2f8ef1ba286c9863ce1aee4"}
+    # 2026-11-21 사용자 승인: 자료 루트 안내 문구의 기본 경로를 private/desk → private/records/desk 로 바꾼 뒤의 지문(그 한 줄만 바뀜)
+    original = {"make": "66fa5bfaa367c47e82c665ce8dc2cae04c327d07319bbfd7090bb8794955465b",
+                "revise": "b33be7d0a9053b4f1ed2c4432fbdfe4b67504901e796b14ac1c65c76126f369b"}
     original_opts = {"make": "b8db1fb3ba2af89cb68b9ed4081b31d904e163a525c5d0732aea8b49bc7431d6",
                      "revise": "71c6fb8cbbc33d667678d5db3e44284a3cf5f14d98302bacc711b922eab53e6a"}
     out = run(kind)
