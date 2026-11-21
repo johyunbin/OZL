@@ -93,7 +93,7 @@ def _objections(reviews: list, h: str) -> list[dict]:
 
 
 def _inherited(issue, evidences, reviews, h, drafted, legacy) -> bool:
-    """수정 확인은 지적받은 칸만 고쳤을 때 인정한다. 적용 기준은 이전 해시가 아니라 지금 판의 승인 이력이다."""
+    """수정 확인은 남은 지적을 모두 가리키고 지적받은 칸만 고쳤을 때 인정한다. 적용 기준은 지금 판의 승인 이력이다."""
     by_id = {r.get("id"): r for r in reviews}
     for r in reviews:
         after = r.get("after_hash") or r.get("content_hash")
@@ -102,8 +102,10 @@ def _inherited(issue, evidences, reviews, h, drafted, legacy) -> bool:
             continue
         hb = r["before_hash"]
         snap = snapshot_file(issue.get("issue_id"), hb)
-        if not isinstance(hb, str) or not _full(reviews, hb, drafted, legacy) or not snap.is_file() \
-                or any(x.get("result") == "반려" for x in _objections(reviews, hb)):   # 반려된 내용은 이어받지 않는다
+        if not isinstance(hb, str) or not _full(reviews, hb, drafted, legacy) or not snap.is_file():
+            continue
+        addresses = r.get("addresses") or []
+        if any(x.get("result") == "반려" or x.get("id") not in addresses for x in _objections(reviews, hb)):
             continue
         try:
             before = model.load_yaml(snap)
@@ -112,7 +114,7 @@ def _inherited(issue, evidences, reviews, h, drafted, legacy) -> bool:
         if digest.snapshot_hash(before) != hb:          # 사본을 바꿔치기했으면 이어받지 않는다
             continue
         # 지적은 같은 이전 내용(before_hash)을 본 검토의 것만, 그리고 더할 때 적은 지문과 맞는 것만 믿는다
-        fields = {str(f.get("field")) for a in r.get("addresses") or [] for f in _findings(by_id.get(a), hb)
+        fields = {str(f.get("field")) for a in addresses for f in _findings(by_id.get(a), hb)
                   if isinstance(f, dict) and f.get("field")}
         changed = digest.changed_paths(before, digest.snapshot_view(issue, evidences))
         if changed and all(any(p == f or p.startswith(f + ".") for f in fields) for p in changed):

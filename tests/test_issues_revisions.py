@@ -108,7 +108,7 @@ def test_approve_requires_reviews(real):
     assert revisions.review_state(*load(I1)) == "검토 대기"
     ready(I1)
     assert approve(I1)["code"] == 0
-    # 이어받기: 지적한 칸만 고친 수정은 수정 확인 한 줄로 넘어간다. 지적은 검토를 더할 때 적는다(나중에 고친 지적은 믿지 않는다).
+    # 이어받기: 수정 확인 한 줄이 남은 지적을 모두 가리켜야 한다.
     h0 = ready(I2)
     sentence = add_review(I2, "문장 대조", "Claude Sonnet", "anthropic", "지적",
                findings=[{"field": "claims.c3.would_decide", "note": "범위를 좁힌다"}])
@@ -116,14 +116,58 @@ def test_approve_requires_reviews(real):
     edit(I2, lambda i: claim(i, "c3").update(would_decide="대법원의 확정 판결"))
     assert revisions.review_state(*load(I2)) == "검토 대기"
     add_review(I2, "수정 확인", "Claude Sonnet", "anthropic", "통과", before_hash=h0, addresses=[sentence["id"]])
+    assert revisions.review_state(*load(I2)) == "검토 대기"
+    assert approve(I2)["code"] == 1
+    both = [sentence["id"], interpretation["id"]]
+    add_review(I2, "수정 확인", "Claude Sonnet", "anthropic", "통과", before_hash=h0, addresses=both)
     assert revisions.review_state(*load(I2)) == "검토 완료"
     assert approve(I2)["code"] == 0
+    # 두 번째 지적(claims.c1)의 하위 칸까지 고쳐도 두 지적의 범위 안이다.
+    edit(I2, lambda i: claim(i, "c1").update(gist="회수 대상은 1만 2천 개이고, 모두 국내용이다."))
+    add_review(I2, "수정 확인", "Claude Sonnet", "anthropic", "통과", before_hash=h0, addresses=both)
+    assert revisions.review_state(*load(I2)) == "검토 완료"
     # 지적과 무관한 칸(다른 주장의 요지)까지 바뀌면 같은 이어받기로는 다시 검토 대기
+    edit(I2, lambda i: claim(i, "c2").update(gist="회사가 공시한 교환 비용 추산치는 30억 원이다."))
+    add_review(I2, "수정 확인", "Claude Sonnet", "anthropic", "통과", before_hash=h0, addresses=both)
+    assert revisions.review_state(*load(I2)) == "검토 대기"
+
+
+def test_inherited_requires_only_unresolved_objections(desk):
+    h0 = ready(I1)
+    sentence = add_review(I1, "문장 대조", "Claude Sonnet", "anthropic", "지적",
+                          findings=[{"field": "what_new", "note": "문장을 줄인다"}])
+    interpretation = add_review(I1, "해석 점검", "가상 모델 G", "openai", "지적",
+                                findings=[{"field": "what_new", "note": "해석의 범위를 확인한다"}])
+    edit(I1, lambda i: i.update(what_new="시험으로 줄인 문장이다."))
+    add_review(I1, "수정 확인", "Claude Sonnet", "anthropic", "통과", before_hash=h0, addresses=[sentence["id"]])
+    assert revisions.review_state(*load(I1)) == "검토 대기"  # 같은 칸이라도 두 번째 지적이 남아 있다
+    add_review(I1, "해석 점검", "가상 모델 G", "openai", "통과", content_hash=h0, addresses=[interpretation["id"]])
+    assert revisions.review_state(*load(I1)) == "검토 완료"
+
+
+def test_inherited_scope_is_only_addressed_findings(desk):
+    """이미 풀려 가리키지 않은 지적의 칸은 이어받기 범위가 아니다 — 그 칸까지 바꾸면 다시 검토 대기."""
+    h0 = ready(I2)
+    sentence = add_review(I2, "문장 대조", "Claude Sonnet", "anthropic", "지적",
+                          findings=[{"field": "claims.c3.would_decide", "note": "범위를 좁힌다"}])
+    interpretation = add_review(I2, "해석 점검", "가상 모델 G", "openai", "지적", findings=[{"field": "claims.c1", "note": "요지를 고친다"}])
+    add_review(I2, "해석 점검", "가상 모델 G", "openai", "통과", content_hash=h0, addresses=[interpretation["id"]])
+    edit(I2, lambda i: claim(i, "c3").update(would_decide="대법원의 확정 판결"))
+    add_review(I2, "수정 확인", "Claude Sonnet", "anthropic", "통과", before_hash=h0, addresses=[sentence["id"]])
+    assert revisions.review_state(*load(I2)) == "검토 완료"
     edit(I2, lambda i: claim(i, "c1").update(gist="회수 대상은 1만 2천 개이고, 모두 국내용이다."))
     add_review(I2, "수정 확인", "Claude Sonnet", "anthropic", "통과", before_hash=h0, addresses=[sentence["id"]])
     assert revisions.review_state(*load(I2)) == "검토 대기"
-    add_review(I2, "수정 확인", "Claude Sonnet", "anthropic", "통과", before_hash=h0, addresses=[sentence["id"], interpretation["id"]])
-    assert revisions.review_state(*load(I2)) == "검토 완료"
+
+
+def test_inherited_refuses_rejected_before_even_if_addressed(desk):
+    """앞 판의 반려는 수정 확인이 가리켜도 이어받지 않는다 — 고친 판은 검토를 처음부터 다시 받는다."""
+    h0 = ready(I2)
+    rejected = add_review(I2, "해석 점검", "가상 모델 G", "openai", "반려",
+                          findings=[{"field": "claims.c3.would_decide", "note": "판정이 근거를 넘는다"}])
+    edit(I2, lambda i: claim(i, "c3").update(would_decide="대법원의 확정 판결"))
+    add_review(I2, "수정 확인", "Claude Sonnet", "anthropic", "통과", before_hash=h0, addresses=[rejected["id"]])
+    assert revisions.review_state(*load(I2)) == "검토 대기"
 
 
 def test_test_approval_rules(desk, monkeypatch, tmp_path):
