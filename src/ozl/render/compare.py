@@ -6,10 +6,10 @@
 
 읽는 것(읽기만 한다):
   우리 덱: 사양의 slides(종류, seconds, title). 장 모양은 style.layout_of(종류와 그림 자리)로 원본 7종에 맞춘다.
-  원본 한 편: private/slides_label/<영상>.json 의 장마다 layout(라벨) · dwell_sec · title. --video 가 없으면
+  원본 한 편: private/data/derived/slides_label/<영상>.json 의 장마다 layout(라벨) · dwell_sec · title. --video 가 없으면
              편 길이(duration_sec)가 우리 덱의 말할 시간(seconds 합)에 가장 가까운 편을 고른다.
-  원본 전체: private/slides_dense/*.json — 편마다 같은 잣대로 잰 값의 중앙값(반짝 지나간 장은 뺀다, 장 모양은 norms 와 같이
-             private/frames_dense/ 의 대표 프레임을 slide_layout.classify 로 다시 판정한다).
+  원본 전체: private/data/derived/slides_dense/*.json — 편마다 같은 잣대로 잰 값의 중앙값(반짝 지나간 장은 뺀다, 장 모양은 norms 와 같이
+             private/data/raw/frames_dense/ 의 대표 프레임을 slide_layout.classify 로 다시 판정한다).
 잣대: 장수, 길이, 30분 환산 장수, 장당 초(중앙값 · 평균), 장 모양 7종 분포, 그림 든 장 비율(장 모양이 '글만'이 아닌 장),
       제목 글자 수 중앙값(공백 제외, 제목 있는 장), 제목 끝맺음 분포(norms.title_ending), 첫 세 장의 꼴(장 모양).
 원본 쪽은 수와 갈래 이름만 낸다. 제목과 본문의 문구는 담지 않는다(제목은 글자 수와 끝맺음 갈래로만 센다).
@@ -225,7 +225,7 @@ def to_md(spec_path: pathlib.Path, card: str, deck: dict, one: dict, corpus: dic
         L.append("| " + " | ".join(c.replace("|", "/") for c in r) + " |")
     L += ["", "## 읽을 때 주의", "",
           "- 원본 장당 초는 장이 화면에 머문 초(3초 표본), 우리 덱은 사양의 `seconds`(말할 초)다.",
-          "- 원본 한 편의 장 모양은 slide_structure 의 라벨(`private/slides_label/`), 원본 전체는 대표 프레임 자동 판정(`norms` 와 같은 `slide_layout.classify`)이라 잣대가 조금 다르다. 우리 덱은 `style.KIND_LAYOUT` 의 대응표다.",
+          "- 원본 한 편의 장 모양은 slide_structure 의 라벨(`private/data/derived/slides_label/`), 원본 전체는 대표 프레임 자동 판정(`norms` 와 같은 `slide_layout.classify`)이라 잣대가 조금 다르다. 우리 덱은 `style.KIND_LAYOUT` 의 대응표다.",
           "- 원본 전체의 비율 칸은 편마다 잰 비율의 중앙값이라 칸을 더해도 100%가 되지 않는다.",
           "- 대표 프레임도 저장된 장 모양도 없는 장은 모양을 모르는 장으로 따로 세고, 장 모양 비율과 그림 든 장 비율의 분모에서 뺐다('글만'으로 세지 않는다).",
           "- 제목 끝맺음은 원본이 문자 인식 결과라 오차가 있다.", ""]

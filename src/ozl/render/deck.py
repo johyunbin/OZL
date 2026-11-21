@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """슈카월드 스타일 템플릿 덱 + 시제품 생성 (Phase 1A-4 D+3 게이트 / Phase 4 스캐폴딩).
 
-토큰 v1(2026-11-10 · 대표 30편 정밀 측정 + 폰트 대조 — tracks/syuka/analysis/style_measure_syukaworld.md · private/style/style-guide.md §9):
+토큰 v1(2026-11-10 · 대표 30편 정밀 측정 + 폰트 대조 — tracks/syuka/analysis/style_measure_syukaworld.md · private/data/derived/style/style-guide.md §9):
   맑은 고딕 26pt(제목·본문 같은 크기 · 13.333in 슬라이드 기준) · 1.5줄 · 제목/강조 진한 빨강 #C00000 · 본문 검정 · 강조 = 빨강 / 굵게 / 빨강 굵게 · 배경 흰색.
 슬라이드 타입: title_hook · image_text(좌 이미지/우 텍스트) · quote_translation(영문 원문→한글 번역) · two_images(2장+캡션) · compare_table · closing.
 이미지는 Phase 4 전까지 출처 표기 플레이스홀더(회색 박스). python-pptx 1.0.2 — 베이스는 .pptx.
 
-    python -m ozl.render.deck prototype   # private/decks/drafts/prototype_<ts>.pptx + .pdf + png/
+    python -m ozl.render.deck prototype   # private/outputs/decks/drafts/prototype_<ts>.pptx + .pdf + png/
 """
 from __future__ import annotations
 

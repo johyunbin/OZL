@@ -1,11 +1,11 @@
-"""3판 추출 양식(영상 → 토막)과 검사기. 지침: `private/syuka/extract_guide_v3.md`.
+"""3판 추출 양식(영상 → 토막)과 검사기. 지침: `private/data/derived/syuka/extract_guide_v3.md`.
 
-파일: `private/syuka/extract_v3/<video_id>.json` 한 편에 하나.
+파일: `private/data/derived/syuka/extract_v3/<video_id>.json` 한 편에 하나.
 
     {"video_id", "schema_version": 3, "model", "seconds", "read_to_end": true, "transcript_chars",
      "summary", "ad_disclosure", "n_segments", "notes", "segments": [토막, ...]}
 
-2판에서 바뀐 것(까닭은 `private/out/슈카_표본_20261114.md` 6절):
+2판에서 바뀐 것(까닭은 `private/outputs/out/슈카_표본_20261114.md` 6절):
 - 생방송에서 주제 하나를 고르지 않고 주제마다 토막으로 나눈다(주제 고르기가 갈렸다).
 - 인물과 기관은 중심 하나(`main_person`, `main_org`)를 따로 적고 목록은 8개까지(목록 통째 일치가 빡빡했다).
 - 다룬 시기는 중심 사건의 시작과 끝(`core_start`, `core_end`)과 배경 연도(`background_years`)로 나눈다
@@ -20,7 +20,7 @@ import re
 from . import schema
 
 SCHEMA_VERSION = 3
-EXTRACT_DIR = "extract_v3"  # private/syuka/ 아래
+EXTRACT_DIR = "extract_v3"  # private/data/derived/syuka/ 아래
 
 FIELDS = tuple(schema.FIELDS)
 INTRO_STYLES = schema.INTRO_STYLES

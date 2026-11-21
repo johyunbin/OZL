@@ -13,7 +13,7 @@ verdict() 는 줄의 값이 '불명'이고 policy 의 조건이 맞을 때만 '�
 어느 쪽에서 나온 허용인지는 verdict_source() 가 알려 준다(보고서에 '운영 판단'이라고 밝히는 데 쓴다).
 
 사용자 결정(user_override): 대장이 허용하지 않는 쓰임을 사용자가 범위와 기한을 정해 직접 풀 수 있다. 비공개 파일
-(private/ops/ledger_overrides.yaml)에 적고, 손으로 돌리는 도구가 부르는 require() 만 이 파일을 본다. allowed() 와 verdict() 는
+(private/state/ops/ledger_overrides.yaml)에 적고, 손으로 돌리는 도구가 부르는 require() 만 이 파일을 본다. allowed() 와 verdict() 는
 보지 않으므로 자동 수집과 점수 계산은 대장의 판정만 따른다. 풀린 채로 요청할 때마다 그 사실을 표준 오류에 적는다.
 
 시험은 PATH 를 지어낸 대장 파일로 바꿔 끼운다(monkeypatch.setattr(ledger, "PATH", ...)) 또는 path 인자를 넘긴다.

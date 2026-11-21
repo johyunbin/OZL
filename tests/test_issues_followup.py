@@ -1,4 +1,4 @@
-"""실제 이슈를 만들며 찾은 검사기의 빈틈과 오탐(private/plan/issues_followup_20261114_0545.md 1~9절) 회귀 시험.
+"""실제 이슈를 만들며 찾은 검사기의 빈틈과 오탐(private/records/plan/issues_followup_20261114_0545.md 1~9절) 회귀 시험.
 자료는 전부 지어낸 것이다(가상의 한빛시, 가상의 누리전자). 네트워크를 쓰지 않는다."""
 from __future__ import annotations
 

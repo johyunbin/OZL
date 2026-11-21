@@ -4,7 +4,7 @@
 연도×길이 층화 5편을 골라 오디오(m4a)를 받고 whisper.cpp(Metal)로 전사한 뒤,
 기존 다글로 전사와 정규화 문자열 유사도·숫자 토큰 일치율·처리 시간·최대 메모리를 기록한다.
 부하 규칙: nice 19 · 스레드 6 · 순차 1편씩 · yt-dlp sleep.
-출력: private/pilot/<video_id>/{audio.m4a, whisper.txt, whisper.vtt, daglo.txt, compare.json} + private/pilot/report.md
+출력: private/records/runs/pilot/<video_id>/{audio.m4a, whisper.txt, whisper.vtt, daglo.txt, compare.json} + private/records/runs/pilot/report.md
 """
 from __future__ import annotations
 
@@ -136,7 +136,7 @@ def main() -> int:
             lines.append(f"| {r['video_id']} | - | - | 실패 | | | | | {r['error'][:60]} | |")
             continue
         lines.append(f"| {r['video_id']} | {r['upload_at'][:10]} | {r['duration_sec']//60}분 | {r['elapsed_sec']}s | {r['speed_x_realtime']}x | {r['max_rss_gb']}GB | {r['char_similarity']} | {r['numbers_jaccard']} | {len(r['numbers_only_in_daglo'])} | {len(r['numbers_only_in_whisper'])} |")
-    lines += ["", "※ 문자 유사도는 공백·구두점 제거 후 앞 2만 자 SequenceMatcher. 숫자 집합은 전문 기준. 수동 10분 구간 대조는 `private/pilot/<id>/{daglo,whisper}.txt` 로 별도 수행."]
+    lines += ["", "※ 문자 유사도는 공백·구두점 제거 후 앞 2만 자 SequenceMatcher. 숫자 집합은 전문 기준. 수동 10분 구간 대조는 `private/records/runs/pilot/<id>/{daglo,whisper}.txt` 로 별도 수행."]
     (PILOT / "report.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
     print("\n".join(lines))
     return 0

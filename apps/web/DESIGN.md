@@ -227,7 +227,7 @@
 ### 2-1. 어디서 읽나
 
 - 빌드 때 환경 변수 `OZL_SITE_DATA` 가 가리키는 폴더를 읽는다. 기본값 `apps/web/sample-data/`(지어낸 예시, 저장소에 둔다).
-- 실제 자료는 내보내기로 `private/out/site_data/` 에 만들고(`python -m ozl.issues export --preview|--public --out …`), 그 경로를 `OZL_SITE_DATA` 로 준다. 저장소 안의 다른 곳에 실제 자료를 복사하지 않는다.
+- 실제 자료는 내보내기로 `private/outputs/out/site_data/` 에 만들고(`python -m ozl.issues export --preview|--public --out …`), 그 경로를 `OZL_SITE_DATA` 로 준다. 저장소 안의 다른 곳에 실제 자료를 복사하지 않는다.
 - 읽는 코드는 `src/lib/data.ts` 한 곳이다. 쪽 파일은 JSON 을 직접 열지 않는다.
 
 ### 2-2. 두 빌드
@@ -236,7 +236,7 @@
 |---|---|---|
 | 명령 | `npm run build:preview` | `npm run build:public` |
 | 기준 경로 | `/preview/` | `/` |
-| 결과 폴더 | `OZL_WEB_OUT`, 없으면 저장소의 `private/out/web_preview/` (스크립트가 `../../private/out/web_preview` 를 절대 경로로 풀어 쓴다) | `OZL_WEB_OUT`, 없으면 `apps/web/dist/` |
+| 결과 폴더 | `OZL_WEB_OUT`, 없으면 저장소의 `private/outputs/out/web_preview/` (스크립트가 `../../private/outputs/out/web_preview` 를 절대 경로로 풀어 쓴다) | `OZL_WEB_OUT`, 없으면 `apps/web/dist/` |
 | `OZL_BUILD_MODE` | `preview` | `public` |
 | 상태 꼬리표, 미리보기 줄, `internal` | 그린다 | 출력하지 않는다 |
 | `trend_now` | `trend` 가 없을 때 "작업본 기준, 승인 전 값" 표시와 함께 쓴다 | 쓰지 않는다 |
@@ -259,7 +259,7 @@
 | 공개용인데 연락처(`OZL_REPORT_CONTACT` 가 있으면 그것, 없으면 `meta.report_contact`)가 비었다 | "신고 연락처가 비어 있어 공개용 빌드를 멈춘다" | 2 |
 | 공개용인데 신고 처리 절차 글(`src/content/report-procedure.md`)이 없다 | "신고 처리 절차 글이 없다" | 2 |
 | 공개용인데 `meta.test` 가 참이거나 `example: true` 이슈가 있고, 결과 폴더가 `apps/web/dist/` 다 | "시험 자료는 시험 폴더에만 만든다. OZL_WEB_OUT 을 주라" | 3 |
-| 미리보기용인데 결과 폴더가 `apps/web/` 안이다 | "미리보기 결과는 저장소 밖(private/out/web_preview)에만 쓴다" | 3 |
+| 미리보기용인데 결과 폴더가 `apps/web/` 안이다 | "미리보기 결과는 저장소 밖(private/outputs/out/web_preview)에만 쓴다" | 3 |
 
 - 빌드 안에서 생기는 실패(공개용에 제외 항목이 옴, 판정 값이 넷 밖인데 공개용임)는 `astro build` 가 예외로 멈추고 0이 아닌 코드로 끝난다.
 - 시험(8-3절)은 공개용을 `meta.test: true` 인 예시 자료와 `OZL_REPORT_CONTACT=test@example.invalid`, `OZL_WEB_OUT=<임시 폴더>` 로 만들어 코드 0을 보고, 같은 조건에서 연락처만 빼 코드 2를 본다. 공개용 출력 자리(`dist/`)에는 아무것도 남기지 않는다.
@@ -714,7 +714,7 @@ Pagefind 는 한국어 형태소를 나누지 않고 띄어쓰기로만 낱말�
 
 ### 7-4. 1년치 가짜 자료
 
-계획 5-5절 "빌드 예산"과 "밤 5" 기준(파일 수와 빌드 시간 측정)을 위해 `scripts/make-year-data.mjs` 가 `sample-data/` 의 이슈를 틀로 날짜와 slug 만 바꿔 365일 × 하루 1건, 365일 × 하루 3건 두 벌을 운영체제 임시 폴더에 만든다(저장소에 두지 않는다). 각 벌로 공개용 빌드(시험 연락처, 임시 결과 폴더)를 돌려 파일 수(검색 색인 포함), 빌드 시간을 잰다. 결과를 `private/out/screens/<타임코드>/budget.json` 에 적는다. 무료 한도(파일 20,000개, 빌드 20분)의 75%를 넘으면 실패로 적는다.
+계획 5-5절 "빌드 예산"과 "밤 5" 기준(파일 수와 빌드 시간 측정)을 위해 `scripts/make-year-data.mjs` 가 `sample-data/` 의 이슈를 틀로 날짜와 slug 만 바꿔 365일 × 하루 1건, 365일 × 하루 3건 두 벌을 운영체제 임시 폴더에 만든다(저장소에 두지 않는다). 각 벌로 공개용 빌드(시험 연락처, 임시 결과 폴더)를 돌려 파일 수(검색 색인 포함), 빌드 시간을 잰다. 결과를 `private/outputs/out/screens/<타임코드>/budget.json` 에 적는다. 무료 한도(파일 20,000개, 빌드 20분)의 75%를 넘으면 실패로 적는다.
 
 ---
 
@@ -738,7 +738,7 @@ Pagefind 는 한국어 형태소를 나누지 않고 띄어쓰기로만 낱말�
 | 소개 | `<기준>about/` |
 | 카드 | `<기준>i/hanbit-bus-fare-400/cards/` |
 
-폭 360, 390, 768, 1280(높이 800). 전체 쪽 스크린샷 24장을 `private/out/screens/<YYYYMMDD_HHMMSS>/<화면>_<폭>.png` 에 남긴다. 밝은 화면 24장이 기준이고, 어두운 화면(`colorScheme: "dark"`)은 같은 24장을 `_dark` 로 더 찍는다.
+폭 360, 390, 768, 1280(높이 800). 전체 쪽 스크린샷 24장을 `private/outputs/out/screens/<YYYYMMDD_HHMMSS>/<화면>_<폭>.png` 에 남긴다. 밝은 화면 24장이 기준이고, 어두운 화면(`colorScheme: "dark"`)은 같은 24장을 `_dark` 로 더 찍는다.
 
 각 화면·폭에서 잰다:
 1. **가로 스크롤**: `document.documentElement.scrollWidth <= window.innerWidth` 가 참.
@@ -767,7 +767,7 @@ Pagefind 는 한국어 형태소를 나누지 않고 띄어쓰기로만 낱말�
 3. 공개용에 미리보기 모양 자료(`meta.mode: preview`, `test: false` 로 고친 사본) → 코드 3. 공개용에 제외 항목이 남은 자료 → 0이 아님.
 4. 공개용 결과에 `data-status`, "게시 대기", "검토 대기", "작성 중", "미리보기" 낱말이 없다. 미리보기 결과에는 있다.
 5. **깨진 안쪽 링크 0**: `scripts/check-links.mjs <결과 폴더> <기준>` 이 모든 HTML 의 `href`, `src` 가운데 기준 경로로 시작하는 것을 결과 폴더 안의 파일(`…/index.html` 포함)로 바꿔 있는지 본다. 쪽 안 조각(`#revisions`)은 그 쪽에 같은 `id` 가 있는지까지 본다. 한글 주소는 `decodeURI` 뒤 비교.
-6. **실제 낱말 0건**: `scripts/check-real-words.mjs <결과 폴더>` 가 `private/out/site_data/`(있을 때만)의 `index.json` 제목과 키워드, `keywords.json` 의 키, 출처 `by` 를 낱말 목록으로 삼아 공개용 결과의 모든 글(HTML 과 Pagefind 색인 조각을 푼 글)에서 찾는다. 1건이라도 있으면 실패. 실제 자료가 없는 기기에서는 "건너뜀"을 적고 0으로 끝낸다.
+6. **실제 낱말 0건**: `scripts/check-real-words.mjs <결과 폴더>` 가 `private/outputs/out/site_data/`(있을 때만)의 `index.json` 제목과 키워드, `keywords.json` 의 키, 출처 `by` 를 낱말 목록으로 삼아 공개용 결과의 모든 글(HTML 과 Pagefind 색인 조각을 푼 글)에서 찾는다. 1건이라도 있으면 실패. 실제 자료가 없는 기기에서는 "건너뜀"을 적고 0으로 끝낸다.
 7. 검색 시험(5-3절 10개)은 Playwright 로 `search/?q=…` 를 열어 결과 3위 안에 기대 제목이 있는지 센다. 9개 이상이면 통과, 몇 개였는지 적는다.
 
 ### 8-4. 모양 맞추기 `scripts/check-shape.mjs`

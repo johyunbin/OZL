@@ -486,7 +486,7 @@ def test_syuka_ad_inputs_table_checks_and_plan():
     inputs = body.split("## 받는 것 (여섯)", 1)[1].split("\n## ", 1)[0]
     rows = [l.split("|")[1].strip() for l in inputs.splitlines() if l.startswith("| ") and not l.startswith("| 받는 것 |")]
     assert rows == ["카드 번호", "광고 종류", "광고주 이름", "광고주 제공 자료 폴더", "광고 구간의 위치와 길이", "표시 문구"], rows
-    assert "`private/desk/sponsor/<card_id>/`" in inputs
+    assert "`private/records/desk/sponsor/<card_id>/`" in inputs
     table = body.split("### 1. 광고주 자료 대조표", 1)[1].split("### 2.", 1)[0]
     cols = [l.split("|")[1].strip() for l in table.splitlines() if l.startswith("| ") and not l.startswith("| 칸 |")]
     assert cols == ["번호", "광고주 자료의 주장", "자료의 자리", "수치가 있는가", "찾은 원문", "기록 번호", "판정", "까닭"], cols
@@ -963,7 +963,7 @@ def test_syuka_deck_instruction_covers_what_the_walkthrough_tripped_on():
     card = syuka("deck/01_card.md")
     for piece in ("이 독립 검증과 완성 절차 4단계의 재대조는 다른 일이고 둘 다 한다",
                   "**사양에 지난 방송을 적지 않는다.**", "\"실렸다\"가 나오면(종료 코드 1) 그 묶음을 어디에도 보내지 않는다",
-                  ".venv/bin/python .claude/skills/syuka/deck/bundle_guard.py private/desk/builds/<card_id>/reviews/bundle_<타임코드>.md",
+                  ".venv/bin/python .claude/skills/syuka/deck/bundle_guard.py private/records/desk/builds/<card_id>/reviews/bundle_<타임코드>.md",
                   "그 장의 `conversions` 에 화면 표기(`shown`), 원문 표기(`source`), 기록 번호, 근거(`basis`",
                   "본 세션이 글자 그대로 `recheck` 칸에 옮긴다", "재대조 값을 본 뒤에 고쳤다는 것을",
                   "## 이어 받기", "이름은 앞 세션의 것을 그대로 쓴다", "`by` 칸에 있다", "임대를 여섯 시간 새로 늘린다",
@@ -1064,7 +1064,7 @@ def test_composition_template_reads_every_item_of_the_criteria():
                   "\"겹침 판정 기록 없음\"으로 모자람이다",
                   "원본 비교표(기준에 다5 가 있을 때).", "장수(30분 환산), 장당 초, 장 모양 분포, 제목 끝맺음, 첫 세 장의 꼴",
                   "까닭을 찾지 못한 칸이 있으면 모자람이다", "\"비교표 없음\"으로 적고 충족으로 세지 않는다",
-                  "`{BUILD}/원본_비교표_*.md`", "`private/desk/cards/{CARD}.yaml` 의 `coverage` 칸"):
+                  "`{BUILD}/원본_비교표_*.md`", "`private/records/desk/cards/{CARD}.yaml` 의 `coverage` 칸"):
         assert piece in body, piece
     assert "기준에 항목이 늘면 `composition.md` 의 할 일 1번에 적힌 번호 범위도 함께 고친다" in review("README.md")
 

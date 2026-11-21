@@ -8,7 +8,7 @@
 - 러닝시트: `{BUILD}/` 의 러닝시트 md
 - 평가 기준: `{CRITERIA}` 의 나(구성) 절과 다(화면) 절. 항목의 번호와 문장은 이 파일에서 읽는다. 기준 판마다 항목이 다르므로 이 지시서에 적힌 번호만 보고 끝내지 마라.
 - 원본 비교표, 링크 목록, 그림 검수 대장(`style: syuka` 사양에만 있다): `{BUILD}/원본_비교표_*.md`, `{BUILD}/links_*.md`, `{BUILD}/그림_검수대장_*.md`
-- 겹침 판정: 카드 `private/desk/cards/{CARD}.yaml` 의 `coverage` 칸(`summary`, `searched`, `videos` 의 `relation` 과 `gist`)
+- 겹침 판정: 카드 `private/records/desk/cards/{CARD}.yaml` 의 `coverage` 칸(`summary`, `searched`, `videos` 의 `relation` 과 `gist`)
 - 구성 틀: `tracks/syuka/style/composition_template_v0.md`
 
 ## 이전 판에서 지적된 것(이번 판이 풀었는지 본다)

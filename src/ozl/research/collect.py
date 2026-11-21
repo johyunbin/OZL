@@ -4,8 +4,8 @@
     python -m ozl.research collect --slot am            # 최근 24시간
     python -m ozl.research collect --slot pm --hours 14
 
-산출(비공개): private/desk/<날짜>_<회차>/candidates.json(전체) · candidates.md(사람·모델이 읽는 요약) ·
-private/desk/latest_uploads.json(슈카월드 최신 업로드 — 커버리지 대조에 합쳐 쓴다).
+산출(비공개): private/records/desk/<날짜>_<회차>/candidates.json(전체) · candidates.md(사람·모델이 읽는 요약) ·
+private/records/desk/latest_uploads.json(슈카월드 최신 업로드 — 커버리지 대조에 합쳐 쓴다).
 피드가 죽어도 나머지는 계속 받고, 실패는 요약본 맨 위 표에 남긴다(조용히 빠지지 않게).
 """
 from __future__ import annotations

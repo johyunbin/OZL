@@ -39,7 +39,7 @@ REAL_REGISTRY = PIC.REGISTRY                # 모듈을 읽을 때의 값(아래
 
 @pytest.fixture(autouse=True)
 def _tmp_registry(tmp_path, monkeypatch):
-    """시험은 실제 비공개 등록 대장(private/decks/private_only_registry.jsonl)을 읽지도 쓰지도 않는다."""
+    """시험은 실제 비공개 등록 대장(private/outputs/decks/private_only_registry.jsonl)을 읽지도 쓰지도 않는다."""
     monkeypatch.setattr(PIC, "REGISTRY", tmp_path / "registry_for_test.jsonl")
     monkeypatch.delenv(PIC.REGISTRY_ENV, raising=False)
 

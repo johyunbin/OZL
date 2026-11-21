@@ -6,7 +6,7 @@
     python -m ozl.ops runner --once [--desk-root P] [--dry-run]
     python -m ozl.ops queue list | show <job_id> | set <job_id> --state <상태> [--issue <이슈 번호>] [--note <한 줄>]
 
-서버는 127.0.0.1(또는 ::1)에만 묶는다. tailnet 이름은 `private/ops/server.json` 의 allow_hosts 나 --allow-host 로 준다.
+서버는 127.0.0.1(또는 ::1)에만 묶는다. tailnet 이름은 `private/state/ops/server.json` 의 allow_hosts 나 --allow-host 로 준다.
 이 기기 밖(tailnet 이름)으로 들어온 읽기는 로그인을 거친다. 풀려면 server.json 의 open_read_hosts 에 그 이름을 적는다.
 토큰은 `token --show` 만 터미널에 찍는다. 서버는 토큰을 출력하지 않는다.
 """

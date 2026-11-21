@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """OZL 이슈 브리핑 명령줄.
 
-    python -m ozl.briefs candidates --slot pm [--hours 14] [--top 30]   # 이슈 후보 → private/briefs/<날짜>/<회차>/candidates.md
+    python -m ozl.briefs candidates --slot pm [--hours 14] [--top 30]   # 이슈 후보 → private/outputs/briefs/<날짜>/<회차>/candidates.md
     python -m ozl.briefs ids --slot pm -n 3                              # 새 덱 번호
     python -m ozl.briefs check <덱.yaml>… | --date <날짜>                  # 덱 검사
     python -m ozl.briefs list [--date <날짜>]                             # 덱 목록(JSON)

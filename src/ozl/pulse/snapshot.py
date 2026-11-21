@@ -1,6 +1,6 @@
 """매시 실행 한 번 — 피드 수집 → 저장 → 최근 6시간 묶음 → 주제 추적 → 신호·점수 → now.json.
 
-    python -m ozl.pulse run            # 수집하고 private/pulse/out/now.json 을 새로 쓴다
+    python -m ozl.pulse run            # 수집하고 private/live/pulse/out/now.json 을 새로 쓴다
     python -m ozl.pulse run --no-fetch # 수집 없이 저장된 항목으로만 다시 계산(점검용)
     python -m ozl.pulse run --community # 회차(하루 2회) — 피드에 더해 국내 커뮤니티 인기글·실시간 검색어(community.py)도 받는다
 

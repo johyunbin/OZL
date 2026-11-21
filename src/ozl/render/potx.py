@@ -32,7 +32,7 @@ from ozl import paths as ozlpaths
 from ozl.render import build as renderer
 from ozl.render import deck, style, template
 
-OUT = ozlpaths.at("결과물", "16_템플릿v1")
+OUT = ozlpaths.at("templates", "16_템플릿v1")
 
 
 def _placeholder_type(shape):

@@ -9,7 +9,7 @@
   zip 꼴인데 목록이 깨졌다)도 '덱이 아님'으로 넘기지 않고 '검사 불가'로 실패한다(2026-11-15 재확인 지적).
 - 덱: 비공개 판의 덱이면 실패(deck_public_errors — ozl.render.pictures.public_check 를 부른다). 보는 것은 문서 속성 keywords 의
   ozl:private-only · ozl:edition=private, 안에 든 파일(ppt/media/* 등)의 sha256 과 파일 sha256 이 비공개 등록 대장
-  (private/decks/private_only_registry.jsonl)에 있는가. 같은 폴더에 공개_가부.json 이 있으면 그 폴더도 본다(폴더 안의 모든 파일, 하위 폴더까지).
+  (private/outputs/decks/private_only_registry.jsonl)에 있는가. 같은 폴더에 공개_가부.json 이 있으면 그 폴더도 본다(폴더 안의 모든 파일, 하위 폴더까지).
   노트만 지운 사본은 keywords 로, keywords 까지 지운 사본은 안에 든 그림의 해시로 잡는다. ozl 을 불러오지 못하면 '검사 불가'로 실패한다(통과시키지 않는다).
   public_check 가 실패 코드를 내면 메시지가 없어도 실패로 센다.
 - 그 밖의 모든 파일(pdf · png · jpg · 글 파일 · 모르는 확장자 · 확장자 없는 이름): 파일 sha256 이 비공개 등록 대장에 있으면 실패
@@ -23,9 +23,9 @@
   부호화한 파일(base64 등)이나 zip 이 아닌 방식으로 암호를 건 파일 안의 것, zip 의 덧글과 항목 사이 빈틈에 넣은 내용.
   해시가 같은 파일과 문서 속성이 남은 덱만 잡는다.
 - 등록 대장이 없거나 빈 기기(대장은 비공개판을 만든 기기에만 있다)에서는 해시를 견주지 못한다. 종료 코드는 그대로이고 끝에 알림 한 줄을 stderr 로 낸다.
-- md: 비공개 전사 코퍼스(private/transcripts/**/*.json 의 text, private/pilot/**/*.txt)와 연속 N자(정규화) 일치하면 실패
-  · 코퍼스 셔글은 private/.gate_shingles.pkl 에 캐시(index.csv mtime 기준 무효화)
-- md: 비공개 슬라이드 문구(문자 인식 결과 — private/slides_dense/*.json 의 title·body, private/ocr/*.jsonl)와 연속 N_SLIDE자 일치해도 실패
+- md: 비공개 전사 코퍼스(private/data/raw/transcripts/**/*.json 의 text, private/records/runs/pilot/**/*.txt)와 연속 N자(정규화) 일치하면 실패
+  · 코퍼스 셔글은 private/state/cache/.gate_shingles.pkl 에 캐시(index.csv mtime 기준 무효화)
+- md: 비공개 슬라이드 문구(문자 인식 결과 — private/data/derived/slides_dense/*.json 의 title·body, private/data/derived/ocr/*.jsonl)와 연속 N_SLIDE자 일치해도 실패
   · 슬라이드 줄은 짧아서(제목 중앙값 27자) 전사보다 짧은 창을 쓴다. 화면 필기 도구의 대화상자 문구(UI 글자)는 코퍼스에서 뺀다
 """
 from __future__ import annotations
@@ -176,7 +176,7 @@ def registry_notice() -> str:
     if rows or problems:
         return ""
     return ("[publish-gate] 알림: 비공개 등록 대장이 없거나 비어 있어 파일 해시를 견주지 못했다 — 덱의 문서 속성, 공개_가부.json, 노트, "
-            "전사와 슬라이드 문구만 봤다. 대장은 비공개판을 만든 기기에만 있다(private/decks/private_only_registry.jsonl)")
+            "전사와 슬라이드 문구만 봤다. 대장은 비공개판을 만든 기기에만 있다(private/outputs/decks/private_only_registry.jsonl)")
 
 
 def _corpus_signature() -> str:

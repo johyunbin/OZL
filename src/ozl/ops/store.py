@@ -1,6 +1,6 @@
 """운영 자료 파일 — 폴더, 잠금, JSON 원자적 쓰기, jsonl 덧붙이기, 요청 번호 색인(설계 2절).
 
-자료 루트는 부를 때마다 `paths.desk_root()` 로 읽는다. 모듈 수준 상수로 박지 않는다(시험이 실제 private/desk 에 쓰지 않게).
+자료 루트는 부를 때마다 `paths.desk_root()` 로 읽는다. 모듈 수준 상수로 박지 않는다(시험이 실제 private/records/desk 에 쓰지 않게).
 잠금 순서는 늘 "운영 잠금 → 이슈 잠금"이다.
 """
 from __future__ import annotations
@@ -24,7 +24,7 @@ def ops_dir() -> pathlib.Path:
     return paths.desk_root() / "ops"
 
 
-ALIAS_MSG = ("자료 루트가 실제 자료 루트(private/desk)와 같은 폴더를 다른 철자나 링크로 가리킨다. "
+ALIAS_MSG = ("자료 루트가 실제 자료 루트(private/records/desk)와 같은 폴더를 다른 철자나 링크로 가리킨다. "
              "실제 자료 루트는 OZL_DESK_ROOT 없이, 시험은 다른 폴더로 준다.")
 
 

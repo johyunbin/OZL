@@ -25,6 +25,7 @@ from ozl.issues import paths
 from ozl.issues import reviews as RV
 from ozl.ops import __main__ as M
 from ozl.ops import approvals, auth, queue, runner, server, store
+from ozl import paths as ozlpaths  # noqa: E402
 
 pytestmark = pytest.mark.usefixtures("real_untouched")
 NOW = datetime(2099, 1, 1, 3, 0, tzinfo=timezone.utc)
@@ -135,11 +136,11 @@ def test_runner_denies_approve_token_codex(desk):
     assert deny and deny == runner.disallowed()
     must = ["Bash(*ozl.issues approve*)", "Bash(*ozl.issues withdraw*)", "Bash(*export*--public*)", "Bash(*ozl.ops token*)",
             "Bash(*mm_request*codex*)", "Bash(*surface*codex*)", "Bash(codex*)", "mcp__hyunbin-multimodel__multimodel_request",
-            "Read(private/ops/**)", "Edit(private/ops/**)", "Write(private/ops/**)",
-            "Edit(private/desk/issues/manifest.json)", "Write(private/desk/issues/manifest.json)",
-            "Edit(private/desk/issues/*/revisions/**)", "Edit(private/desk/ops/**)",
+            "Read(private/state/ops/**)", "Edit(private/state/ops/**)", "Write(private/state/ops/**)",
+            "Edit(private/records/desk/issues/manifest.json)", "Write(private/records/desk/issues/manifest.json)",
+            "Edit(private/records/desk/issues/*/revisions/**)", "Edit(private/records/desk/ops/**)",
             f"Edit(/{paths.real_root().resolve()}/issues/manifest.json)", f"Edit(/{desk.resolve()}/issues/manifest.json)",
-            f"Read(/{paths.ROOT / 'private' / 'ops'}/**)"]
+            f"Read(/{ozlpaths.real_at('ops')}/**)"]
     for r in must:
         assert r in deny, r
     allowed = cmd[cmd.index("--allowedTools") + 1:-1]

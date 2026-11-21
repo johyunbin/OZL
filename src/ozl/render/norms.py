@@ -3,8 +3,8 @@
     python -m ozl.render norms [--out <폴더>] [--no-frames] [--no-pdf]
 
 읽는 것(읽기만 한다):
-  private/slides_dense/<영상>.json   장마다 머문 초, 제목 상자, 본문 글줄 상자, 흰 바탕 비율, 대표 프레임 이름
-  private/frames_dense/<영상>/<프레임>.png   장마다 고른 대표 프레임
+  private/data/derived/slides_dense/<영상>.json   장마다 머문 초, 제목 상자, 본문 글줄 상자, 흰 바탕 비율, 대표 프레임 이름
+  private/data/raw/frames_dense/<영상>/<프레임>.png   장마다 고른 대표 프레임
 장 모양은 `ozl.analyze.slide_layout.classify`(그 모듈은 고치지 않는다)를 대표 프레임마다 다시 불러 센다.
 반짝 지나간 장(flash)은 세지 않는다(slide_structure.label_input 과 같다).
 

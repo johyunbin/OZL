@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """슬라이드 프레임 → 스타일 토큰 (Phase 2A).
 
-입력: private/frames/<video_id>/*.png (슬라이드 영역 크롭, 1080p 원본 기준)
+입력: private/data/raw/frames/<video_id>/*.png (슬라이드 영역 크롭, 1080p 원본 기준)
 측정:
   - 배경: 흰색 비율(밝기 ≥ 245) — 슬라이드 프레임 판별(흰 배경 ≥ 55%)
   - 색 팔레트: 비배경 픽셀을 32단계로 양자화해 상위 색(hex, 비율) — 제목 적갈색·강조 빨강·본문 검정 후보
   - 제목 밴드: 상단 0~14% 영역의 비배경 주색 → 제목 색 후보
   - 레이아웃: 좌/우 절반의 '잉크'(비배경) 밀도 → 좌 이미지·우 텍스트 비율, 상단 여백(첫 잉크 행 위치), 좌측 여백
   - 전환 리듬: index.json 의 전환 시각 간격 분포(장당 체류 초)
-출력: tracks/syuka/analysis/style_tokens_syukaworld.md (집계) · private/style/style_tokens_raw.json
+출력: tracks/syuka/analysis/style_tokens_syukaworld.md (집계) · private/data/derived/style/style_tokens_raw.json
 """
 from __future__ import annotations
 

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """clean 프레임 전체를 macOS Vision 으로 문자 인식 (Phase 2A-2 재료).
 
-입력: private/style/style_measure_raw.json(프레임 분류) · tools/ocr/ocr(swiftc 로 빌드: `swiftc -O tools/ocr/ocr.swift -o tools/ocr/ocr`)
-출력: private/ocr/<video_id>.jsonl — 프레임당 한 줄 {"file", "w", "h", "lines":[{text, conf, x, y, w, h}]} (슬라이드 문구 = 비공개)
+입력: private/data/derived/style/style_measure_raw.json(프레임 분류) · tools/ocr/ocr(swiftc 로 빌드: `swiftc -O tools/ocr/ocr.swift -o tools/ocr/ocr`)
+출력: private/data/derived/ocr/<video_id>.jsonl — 프레임당 한 줄 {"file", "w", "h", "lines":[{text, conf, x, y, w, h}]} (슬라이드 문구 = 비공개)
 이미 끝난 영상은 건너뛴다(재개 가능). 부하: nice 19 · 순차.
 
     python -m ozl.analyze.slide_ocr

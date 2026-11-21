@@ -45,6 +45,6 @@ def _permissive_ledger(request, monkeypatch):
 
 @pytest.fixture(autouse=True)
 def _no_user_overrides(tmp_path_factory, monkeypatch):
-    """시험은 실제 사용자 결정 파일(private/ops/ledger_overrides.yaml)을 읽지 않는다."""
+    """시험은 실제 사용자 결정 파일(private/state/ops/ledger_overrides.yaml)을 읽지 않는다."""
     monkeypatch.setattr(ledger, "OVERRIDES_PATH", tmp_path_factory.getbasetemp() / "no_overrides.yaml")
 

@@ -1,6 +1,6 @@
 # OZL Pulse
 
-매시 5분에 피드를 읽고, 최근 6시간 기사를 사건별로 묶어 신호 네 가지로 순위를 매기는 비공개 도구다. 결과는 `private/pulse/out/now.json` 에 쓰고, 웹 화면과 iOS 앱이 이 파일을 읽는다. 검증 전 신호여서 공개 문서와 사이트에 옮기지 않는다.
+매시 5분에 피드를 읽고, 최근 6시간 기사를 사건별로 묶어 신호 네 가지로 순위를 매기는 비공개 도구다. 결과는 `private/live/pulse/out/now.json` 에 쓰고, 웹 화면과 iOS 앱이 이 파일을 읽는다. 검증 전 신호여서 공개 문서와 사이트에 옮기지 않는다.
 
 ## 웹 화면
 
@@ -27,7 +27,7 @@
 .venv/bin/python -m ozl.pulse prune        # 90일 지난 기록 정리
 ```
 
-예약 실행은 launchd `com.hyunbin.ozl-pulse` 가 `scripts/pulse_run.sh` 를 매시 5분에 부른다. 로그는 `private/pulse/logs/`. 모델은 부르지 않는다.
+예약 실행은 launchd `com.hyunbin.ozl-pulse` 가 `scripts/pulse_run.sh` 를 매시 5분에 부른다. 로그는 `private/live/pulse/logs/`. 모델은 부르지 않는다.
 
 ## 무엇을 읽나
 

@@ -1,4 +1,4 @@
-"""python -m ozl.issues … — 이슈 기록 명령(설계 12절). 자료 루트는 OZL_DESK_ROOT(없으면 private/desk).
+"""python -m ozl.issues … — 이슈 기록 명령(설계 12절). 자료 루트는 OZL_DESK_ROOT(없으면 private/records/desk).
 
     check [번호 …] [--all] [--public] [--articles 파일] [--json]   0 통과, 1 오류, 2 사용 오류
     new --date YYYY-MM-DD --slug s [--example] [--title …]           번호를 받아 빈 뼈대를 쓴다

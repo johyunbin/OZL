@@ -6,7 +6,7 @@ style_tokens.py(32단계 양자화 집계)가 못 잡는 것을 잰다.
   - clean 프레임만: 제목 줄(위치·글자 높이·심지 색) · 본문 줄(글자 높이·줄 간격·색·획 굵기) · 그림 영역(좌표·폭) · 레이아웃 유형
 좌표계: 프레임(1152×680) = 1080p 화면의 좌상단 0.60×0.63 크롭. 슬라이드 캔버스 = 화면 좌상단 1218×686px(1080p 전체 프레임 2장 실측 · 16:9)
        → 13.333×7.5in 슬라이드로 보면 1px = 960pt/1218 = 0.788pt. 프레임은 캔버스의 왼쪽 94.6%·위쪽 99.1%를 담는다.
-출력: private/style/style_measure_raw.json(프레임별) · tracks/syuka/analysis/style_measure_syukaworld.md(집계만 · 공개)
+출력: private/data/derived/style/style_measure_raw.json(프레임별) · tracks/syuka/analysis/style_measure_syukaworld.md(집계만 · 공개)
 
     python -m ozl.analyze.style_measure
 """

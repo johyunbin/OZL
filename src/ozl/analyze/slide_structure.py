@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""촘촘 표본 슬라이드 목록(private/slides_dense) → 레이아웃 판정 · 라벨 입력 · 공개 집계 (Phase 2A).
+"""촘촘 표본 슬라이드 목록(private/data/derived/slides_dense) → 레이아웃 판정 · 라벨 입력 · 공개 집계 (Phase 2A).
 
 1) 대표 프레임에 slide_layout.classify 를 돌려 layout 을 채운다(문자 인식 글 상자를 뺀 잉크 = 그림).
-2) 구성 라벨용 입력 private/slides_label/<video_id>.json: 3초 미만 순간 화면을 빼고 1..N 으로 번호를 다시 매긴 가벼운 목록.
+2) 구성 라벨용 입력 private/data/derived/slides_label/<video_id>.json: 3초 미만 순간 화면을 빼고 1..N 으로 번호를 다시 매긴 가벼운 목록.
 3) 공개 집계 tracks/syuka/analysis/slide_structure_syukaworld.md (슬라이드 문구는 싣지 않는다).
 
     python -m ozl.analyze.slide_structure
@@ -173,7 +173,7 @@ def main(argv=None) -> int:
         _write_inputs(p, r)
         vids.append(r)
     if not vids:
-        print("private/slides_dense 비어 있음 — python -m ozl.analyze.slide_dense 먼저", file=sys.stderr)
+        print("private/data/derived/slides_dense 비어 있음 — python -m ozl.analyze.slide_dense 먼저", file=sys.stderr)
         return 1
     V = len(vids)
     per_video = []

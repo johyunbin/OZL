@@ -43,7 +43,7 @@ if (mode === "public") {
   }
   if ((meta.test === true || hasExample) && inside(out, PUBLIC_DIST)) fail(3, "시험 자료는 시험 폴더에만 만든다. OZL_WEB_OUT 을 주라");
 } else {
-  if (inside(out, WEB_ROOT)) fail(3, "미리보기 결과는 저장소 밖(private/out/web_preview)에만 쓴다");
+  if (inside(out, WEB_ROOT)) fail(3, "미리보기 결과는 저장소 밖(private/outputs/out/web_preview)에만 쓴다");
 }
 
 // 지우기 전 안전 검사. 결과 폴더가 저장소, 웹 폴더, 홈, 자료 폴더 자신이거나 그것을 품으면 거부한다.

@@ -8,7 +8,7 @@
     python -m ozl.render progress <card_id> --done --final <완성본 폴더> [--spec <최종 사양>] [--by 이름] [--note 글] [--force]
     python -m ozl.render progress <card_id> --abandon [--by 이름] [--note 사유] [--force]
 
-자리 = private/desk/builds/<card_id>/state.yaml(비공개 백업 대상). 단계마다 카드·기록 지문(cards.content_digest)과,
+자리 = private/records/desk/builds/<card_id>/state.yaml(비공개 백업 대상). 단계마다 카드·기록 지문(cards.content_digest)과,
 사양을 주면 그 sha256 을 남긴다 — 이어 할 때 마지막 단계 뒤에 카드나 기록이 바뀌었으면 알린다.
 
 - 같은 카드를 두 번 만들지 않는다: 진행 중(만료 전)이면 --start 를 거부하고 --resume 을 안내한다. 완성본이 이미 있으면
@@ -41,6 +41,8 @@ import pathlib
 import sys
 import tempfile
 from datetime import datetime, timedelta, timezone
+
+from ozl import paths as ozlpaths
 
 import yaml
 
@@ -419,13 +421,22 @@ def abandon(card_id: str, note: str = "", at: datetime | None = None, by: str = 
         return st
 
 
+def _shown(stored) -> str:
+    """기록에 적힌 경로를 지금 위치로 풀어 저장소 기준으로 보인다(기록은 고쳐 쓰지 않는다 — 폴더를 옮겨도 안내가 맞게)."""
+    p = ozlpaths.resolve(stored)
+    try:
+        return str(p.relative_to(ozlpaths.ROOT))
+    except ValueError:
+        return str(p)
+
+
 def summary(st: dict, card_id: str, spec: str | None = None) -> str:
     if not st:
         return f"{card_id}: 진행 기록 없음"
     steps = run_steps(st)
     last = steps[-1] if steps else None
     lines = [f"{card_id}: {st.get('status', '')}" + (f" · {st.get('by')}" if st.get("by") else "")
-             + (f" · 만료 {st['lease_until']}" if st.get("lease_until") else "") + (f" · 완성본 {st['final']}" if st.get("final") else "")]
+             + (f" · 만료 {st['lease_until']}" if st.get("lease_until") else "") + (f" · 완성본 {_shown(st['final'])}" if st.get("final") else "")]
     if last:
         lines.append(f"마지막 단계: {last['step']} ({last['at']})" + (f" — {last['note']}" if last.get("note") else ""))
         now_d = digest(card_id)

@@ -1,5 +1,5 @@
 """화제 엔진: Codex 두 모델 검토(2026-11-14)의 재현 입력. 지적마다 고치기 전 코드에서 틀린 결과를 냈던 입력을 그대로 넣는다.
-제목·이름은 전부 지어낸 것이다. 검토 원문과 결정: private/out/night_20261114/engine/review/(비공개).
+제목·이름은 전부 지어낸 것이다. 검토 원문과 결정: private/outputs/out/night_20261114/engine/review/(비공개).
 """
 from __future__ import annotations
 

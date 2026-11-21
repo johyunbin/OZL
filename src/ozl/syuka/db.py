@@ -1,4 +1,4 @@
-"""영상 자료 DB `private/syuka/syuka.db` (수집 DB `private/pulse/pulse.db` 와 다른 파일).
+"""영상 자료 DB `private/data/derived/syuka/syuka.db` (수집 DB `private/live/pulse/pulse.db` 와 다른 파일).
 
 표: videos(영상 목록) · records(모델별 추출 자료) · merged(두 모델을 합친 최종 자료). 통계 칸은 없다.
 같은 입력을 두 번 넣어도 행이 늘지 않는다(기본 키로 덮어쓴다).

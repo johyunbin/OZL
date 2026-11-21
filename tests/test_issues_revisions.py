@@ -32,7 +32,7 @@ def add_review(iid, kind, by_model, family, result, **kw):
 
 @pytest.fixture
 def real(desk, monkeypatch):
-    """시험 폴더를 실제 자료 루트로 흉내 낸다(실제 private/desk 는 건드리지 않는다)."""
+    """시험 폴더를 실제 자료 루트로 흉내 낸다(실제 private/records/desk 는 건드리지 않는다)."""
     monkeypatch.setattr(paths, "real_root", lambda: desk)
     assert paths.is_real_root()
     return desk

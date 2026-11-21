@@ -1,16 +1,16 @@
 """슈카월드 영상 자료 명령줄.
 
     python -m ozl.syuka catalog              # 영상 목록을 만들어 DB 에 넣고 수를 찍는다
-    python -m ozl.syuka sample               # 표본 60편 → private/syuka/sample_60.json
+    python -m ozl.syuka sample               # 표본 60편 → private/data/derived/syuka/sample_60.json
     python -m ozl.syuka put <model> <파일>   # 추출 자료 한 건을 검사해 넣는다(걸리면 종료 코드 1). model=merged 면 합친 자료
                                              # 파일은 그 판의 폴더(schema.EXTRACT_DIRS)/<model>/<video_id>.json 이어야 한다
     python -m ozl.syuka agree [a b] [--schema-version N]
-                                             # 두 모델 일치율(기본 opus sonnet, 최신 판) → private/syuka/agree_v<N>.json
+                                             # 두 모델 일치율(기본 opus sonnet, 최신 판) → private/data/derived/syuka/agree_v<N>.json
                                              # 계산은 늘 최신 판 계산이다. 1판 자료에 --schema-version 1 이면 '새 계산만 적용한 값'
     python -m ozl.syuka status
 
-3판(영상 → 토막, 지침 private/syuka/extract_guide_v3.md):
-    python -m ozl.syuka pilot-v3             # 시험 30편 → private/syuka/pilot30_v3.json
+3판(영상 → 토막, 지침 private/data/derived/syuka/extract_guide_v3.md):
+    python -m ozl.syuka pilot-v3             # 시험 30편 → private/data/derived/syuka/pilot30_v3.json
     python -m ozl.syuka mark-v3 <video_id> [--start N --length M]
                                              # 전사를 글자 위치·시각 표시와 함께 찍는다(토막 위치를 적을 때)
     python -m ozl.syuka validate-v3 <파일>    # 검사. 오류를 한 줄씩(걸리면 종료 코드 1)
@@ -33,7 +33,7 @@
     python -m ozl.syuka hits [PID] [--event-set ES] [--json] [--include-retro]
     python -m ozl.syuka hits --profile [--include-retro]
 
-1판의 원래 일치율 파일(1판 계산)은 private/syuka/agree.json 과 사본 agree_20261114_0602.json 이다. 덮어쓰지 않는다.
+1판의 원래 일치율 파일(1판 계산)은 private/data/derived/syuka/agree.json 과 사본 agree_20261114_0602.json 이다. 덮어쓰지 않는다.
 """
 from __future__ import annotations
 

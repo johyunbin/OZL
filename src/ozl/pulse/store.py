@@ -1,4 +1,4 @@
-"""Pulse 저장소 — SQLite 한 파일(private/pulse/pulse.db). 제목·링크·매체·시각만 둔다(본문·전사 없음).
+"""Pulse 저장소 — SQLite 한 파일(private/live/pulse/pulse.db). 제목·링크·매체·시각만 둔다(본문·전사 없음).
 
 시각은 전부 UTC ISO 문자열. 항목 키는 (매체, 정규화한 제목) — 같은 매체가 같은 제목을 다시 내면 한 건.
 """
@@ -36,6 +36,9 @@ CREATE TABLE IF NOT EXISTS topic_hours (
 
 def connect(path: pathlib.Path | None = None) -> sqlite3.Connection:
     path = path or DB
+    if str(path).startswith("file:"):   # 읽기 전용 URI 를 쓰기용 열기에 넘기면 'file:private/...' 폴더가 생긴다(2026-11-15 흔적)
+        raise ValueError(f"쓰기용 연결에 URI 를 넘겼다: {path} — 읽기는 sqlite3.connect(uri, uri=True) 로 연다")
+    path = pathlib.Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     con = sqlite3.connect(path)
     con.row_factory = sqlite3.Row

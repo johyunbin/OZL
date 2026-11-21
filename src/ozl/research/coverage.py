@@ -8,8 +8,8 @@
 --fulltext 는 기준 시각에서 14일 안에 올라온 영상 가운데 전사가 없는 것도 따로 찍는다 — 그런 영상과 닿는 소재는
 "겹침 없음"이 아니라 "판정 못 함"이다(절차서 §1 3단계). 최신 업로드 목록은 짧은 영상을 가르는 칸이 없어 섞여 나온다.
 
-읽는 것(전부 비공개): private/meta/catalog_syukaworld.csv · private/desk/latest_uploads.json(수집기가 받은 최신 업로드) ·
-private/transcripts/trading_export/**.json. 전사 문장은 돌려주지 않는다 — 영상 식별자·제목·날짜·횟수만.
+읽는 것(전부 비공개): private/data/raw/meta/catalog_syukaworld.csv · private/records/desk/latest_uploads.json(수집기가 받은 최신 업로드) ·
+private/data/raw/transcripts/trading_export/**.json. 전사 문장은 돌려주지 않는다 — 영상 식별자·제목·날짜·횟수만.
 """
 from __future__ import annotations
 

@@ -1,6 +1,6 @@
 """이슈 글(읽는 층) — `<자료 루트>/issues/<이슈 번호>/article.yaml` 읽기, 빈 뼈대, 검사, 공개 자료로 옮기기.
 
-형식과 검사 규칙의 정본은 글 형식 명세(private/plan/글형식_명세_20261114.md) 2절과 3절이다. 검증 기록(issue.yaml, evidence/)은
+형식과 검사 규칙의 정본은 글 형식 명세(private/records/plan/글형식_명세_20261114.md) 2절과 3절이다. 검증 기록(issue.yaml, evidence/)은
 뒤쪽 층으로 그대로 두고, 글의 각주(본문의 `[^n]`)가 가리키는 출처(sources)는 가능하면 근거 기록 번호(evidence)로 이어진다.
 글은 model.load_issue 가 issue["article"] 로 붙여 읽고(저장할 때는 떼어 낸다), 승인 지문(digest)과 고정 사본에 함께 든다.
 """

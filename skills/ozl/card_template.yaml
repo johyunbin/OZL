@@ -1,4 +1,4 @@
-# 소재 카드 양식 — private/desk/cards/<card_id>.yaml (값은 전부 지어낸 예시)
+# 소재 카드 양식 — private/records/desk/cards/<card_id>.yaml (값은 전부 지어낸 예시)
 card_id: 2026-01-02-am-01          # YYYY-MM-DD-{am|pm|wk}-NN · 한번 준 번호는 바꾸지 않는다
 date: "2026-01-02"
 slot: am

@@ -1,8 +1,8 @@
 # /syuka predict — 토요일에 그 주 일요 생방송의 예측을 고정한다 (본 세션용)
 
-일요 생방송이 다룰 이야기를 방송 전에 골라 한 파일로 고정하고 해시를 남긴다. 고정한 파일은 고치지 않는다. 월요일의 채점은 `score.md`(`/syuka score`)다. 계획의 정본은 `~/.claude/plans/system-reminder-you-are-unified-beacon.md` 의 6절 P1, 7절, 8절이다. 첫 실제 회차는 `private/syuka/predictions/2026-11-22/`(손으로 고정한 판, 해시 `2d81feb0…5fc43`)이고, 같은 꼴로 한다.
+일요 생방송이 다룰 이야기를 방송 전에 골라 한 파일로 고정하고 해시를 남긴다. 고정한 파일은 고치지 않는다. 월요일의 채점은 `score.md`(`/syuka score`)다. 계획의 정본은 `~/.claude/plans/system-reminder-you-are-unified-beacon.md` 의 6절 P1, 7절, 8절이다. 첫 실제 회차는 `private/data/derived/syuka/predictions/2026-11-22/`(손으로 고정한 판, 해시 `2d81feb0…5fc43`)이고, 같은 꼴로 한다.
 
-자리표시: `PY` 는 `.venv/bin/python`(저장소에서 부른다). `<D>` 는 방송 날짜(`YYYY-MM-DD`), `<W>` 는 작업 폴더 `private/syuka/predictions/<D>/`.
+자리표시: `PY` 는 `.venv/bin/python`(저장소에서 부른다). `<D>` 는 방송 날짜(`YYYY-MM-DD`), `<W>` 는 작업 폴더 `private/data/derived/syuka/predictions/<D>/`.
 
 ## 받는 것과 내는 것
 
@@ -36,11 +36,11 @@
 ### 1. 판 고정과 입력 만들기 (코드)
 
 ```bash
-mkdir -p private/syuka/predictions/<D>/input private/syuka/predictions/<D>/work
+mkdir -p private/data/derived/syuka/predictions/<D>/input private/data/derived/syuka/predictions/<D>/work
 ```
 
 ```bash
-.venv/bin/python -m ozl.signals board --out private/syuka/predictions/<D>/input/board_<타임코드>.json
+.venv/bin/python -m ozl.signals board --out private/data/derived/syuka/predictions/<D>/input/board_<타임코드>.json
 ```
 
 - 매시 :03~:08 에는 돌리지 않는다(`agent/ops.md`). 판은 운영 판을 덮지 않게 `--out` 으로 작업 폴더에 쓴다.
@@ -50,7 +50,7 @@ mkdir -p private/syuka/predictions/<D>/input private/syuka/predictions/<D>/work
 
 - 계획 8절은 중복 묶기를 코드 몫으로 적었지만 지금 코드에는 이야기 묶기가 없어, P0-가 처럼 이 단계의 외부 레인이 묶음(`clusters`)까지 낸다. 기준선 A·B 는 그 묶음으로 중복을 지운다. 묶기를 코드로 옮기면 이 줄을 고친다.
 
-- 지시문은 `private/syuka/predictions/2026-11-22/input/prompt_codex_cluster.txt` 를 본으로 날짜, 판 번호, 건수만 바꿔 `<W>/input/prompt_codex_cluster.txt` 에 쓴다. 산출 꼴(`stories` 30건과 `clusters`)을 바꾸지 않는다.
+- 지시문은 `private/data/derived/syuka/predictions/2026-11-22/input/prompt_codex_cluster.txt` 를 본으로 날짜, 판 번호, 건수만 바꿔 `<W>/input/prompt_codex_cluster.txt` 에 쓴다. 산출 꼴(`stories` 30건과 `clusters`)을 바꾸지 않는다.
 - `python3 ~/.claude/scripts/offload.py run --task extract --caller ozl:syuka-predict --prompt-file <W>/input/prompt_codex_cluster.txt --in <W>/input/candidates_compact.json <W>/input/recent_titles_8w.txt --out <W>/work/codex_cluster.json --expect json`
 - 결과의 근거 id 가 후보 목록에 있는지 코드로 확인한다(없는 id 를 쓴 이야기는 버린다).
 
@@ -66,13 +66,13 @@ mkdir -p private/syuka/predictions/<D>/input private/syuka/predictions/<D>/work
 
 ### 5. 고정 전 반박 (외부 레인, 한 번)
 
-- 초안과 30건 목록만 보내 반박을 받는다(지시문 본: `private/syuka/predictions/2026-11-22/work/prompt_rebut.txt`). `offload.py run --task verify --lane chatgpt --caller ozl:syuka-predict --author-family anthropic … --out <W>/work/rebut.json --expect json`.
+- 초안과 30건 목록만 보내 반박을 받는다(지시문 본: `private/data/derived/syuka/predictions/2026-11-22/work/prompt_rebut.txt`). `offload.py run --task verify --lane chatgpt --caller ozl:syuka-predict --author-family anthropic … --out <W>/work/rebut.json --expect json`.
 - 받아들인 것과 받아들이지 않은 것을 까닭과 함께 초안의 `process.rebuttal_accepted`, `rebuttal_rejected` 에 적는다. 반박을 받지 못하면 그 사실을 `process` 에 적고 고정한다(방송 전 고정이 반박보다 먼저다).
 
 ### 6. 고정과 장부 등록 (코드)
 
 ```bash
-.venv/bin/python -m ozl.syuka predict fix private/syuka/predictions/<D>/work/selection_draft.json --date <D>
+.venv/bin/python -m ozl.syuka predict fix private/data/derived/syuka/predictions/<D>/work/selection_draft.json --date <D>
 ```
 
 ```bash

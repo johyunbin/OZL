@@ -1,6 +1,6 @@
 """게시 승인 화면과 승인 요청(설계 5절, 11절) — 지어낸 이슈(tests/fixtures/issues)와 지어낸 화제 목록만 쓴다.
 
-승인은 화면의 폼 값 그대로 보낸다. 시험 자료 루트라 승인한 쪽은 늘 '시험'이고, 실제 private/desk 의 발행 목록은 시험 앞뒤로 같다.
+승인은 화면의 폼 값 그대로 보낸다. 시험 자료 루트라 승인한 쪽은 늘 '시험'이고, 실제 private/records/desk 의 발행 목록은 시험 앞뒤로 같다.
 """
 from __future__ import annotations
 

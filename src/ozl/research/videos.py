@@ -12,8 +12,8 @@
     python -m ozl.research.videos notion-csv                                # Notion 가져오기용 CSV(비공개)
     python -m ozl.research.videos aggregate                                 # 공개 집계 문서(분야×연도 편수만)
 
-읽는 것(전부 비공개): private/meta/catalog_syukaworld.csv · private/transcripts/trading_export/syuka/<video_id>.json(앞부분만).
-쓰는 것: private/meta/video_tags_syukaworld.csv(정본) · private/meta/video_tags_work/(묶음 입출력) ·
+읽는 것(전부 비공개): private/data/raw/meta/catalog_syukaworld.csv · private/data/raw/transcripts/trading_export/syuka/<video_id>.json(앞부분만).
+쓰는 것: private/data/raw/meta/video_tags_syukaworld.csv(정본) · private/data/raw/meta/video_tags_work/(묶음 입출력) ·
 공개는 tracks/syuka/analysis/topics_syukaworld.md 하나(편수만 — 제목·video_id 를 넣지 않는다).
 태그 칸: video_id,category,category2,keywords,gist,basis,tagged_at — 분야 1개 + 보조 0~1개(cards.CATEGORIES),
 핵심어 최대 4개(`|` 구분, keywords.yaml 로 표기 통일), 요지 40자 이내(자기 말 · 전사 문장을 옮기지 않는다), basis = auto|human.

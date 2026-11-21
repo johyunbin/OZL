@@ -20,7 +20,7 @@ feeds:
   #    사용자를 대신해 읽는 AI 에이전트(Claude-User·Claude-Code)도 막지 않은 곳. 학습용 수집기(ClaudeBot·GPTBot·CCBot)만
   #    막은 곳은 위의 연합·매경·서경과 같은 기준으로 넣었다. 뺀 곳: 한겨레(Claude-User·Claude-Code 차단) · MBC·YTN(피드 경로
   #    전체 차단) · 중앙·KBS·JTBC(피드 주소를 안내 쪽에서 찾지 못함). 이용 조건은 개인의 비상업적 구독(동아·경향·SBS 안내 쪽) —
-  #    기사 제목은 후보 발굴에만 쓰고 공개 쪽에는 옮기지 않는다. 확인표 = private/desk/trials/feeds_kr_*.md
+  #    기사 제목은 후보 발굴에만 쓰고 공개 쪽에는 옮기지 않는다. 확인표 = private/records/desk/trials/feeds_kr_*.md
   - {id: chosun_economy, outlet: 조선일보, url: "https://www.chosun.com/arc/outboundfeeds/rss/category/economy/?outputType=xml", tier: T3, lang: ko, kind: news, section: 경제}
   - {id: chosun_international, outlet: 조선일보, url: "https://www.chosun.com/arc/outboundfeeds/rss/category/international/?outputType=xml", tier: T3, lang: ko, kind: news, section: 국제}
   - {id: donga_economy, outlet: 동아일보, url: "https://rss.donga.com/economy.xml", tier: T3, lang: ko, kind: news, section: 경제}
@@ -33,7 +33,7 @@ feeds:
   - {id: yonhaptv_international, outlet: 연합뉴스TV, url: "https://www.yonhapnewstv.co.kr/category/news/international/feed/", tier: T3, lang: ko, kind: news, section: 국제}
   # ── 국내 언론의 정치, 사회, 연예, 스포츠, 문화 RSS (T3 · 2026-11-15 추가) — 위와 같은 매체의 RSS 안내 쪽에 실린 주소다.
   #    robots 를 먼저 보고 한 번씩 받아 응답 200, 항목 수, 발행 시각 파싱을 확인한 것만 켰다. 대장 줄 = 같은 매체의 기존 줄과 같은 근거.
-  #    스포츠동아는 rss.donga.com RSS 안내 쪽에 함께 실린 동아 계열 피드다(계열은 signals/data/outlet_family.yaml). 확인 기록 = private/out/rebuild_20261114_2045/streams/signals_sources_*.md
+  #    스포츠동아는 rss.donga.com RSS 안내 쪽에 함께 실린 동아 계열 피드다(계열은 signals/data/outlet_family.yaml). 확인 기록 = private/outputs/out/rebuild_20261114_2045/streams/signals_sources_*.md
   - {id: yna_politics, outlet: 연합뉴스, url: "https://www.yna.co.kr/rss/politics.xml", tier: T3, lang: ko, kind: news, section: 정치}
   - {id: yna_society, outlet: 연합뉴스, url: "https://www.yna.co.kr/rss/society.xml", tier: T3, lang: ko, kind: news, section: 사회}
   - {id: yna_entertainment, outlet: 연합뉴스, url: "https://www.yna.co.kr/rss/entertainment.xml", tier: T3, lang: ko, kind: news, section: 연예}

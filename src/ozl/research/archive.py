@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """카드 원장(비공개)과 발행 카드 색인(공개).
 
-- 원장   private/desk/ledger.csv  모든 카드 한 줄씩 — 상태·배지·발행 여부·채택/발행 시각·클레임 수. 엑셀에서 열리게 utf-8-sig 로 쓴다
+- 원장   private/records/desk/ledger.csv  모든 카드 한 줄씩 — 상태·배지·발행 여부·채택/발행 시각·클레임 수. 엑셀에서 열리게 utf-8-sig 로 쓴다
 - 색인   daily/index.json          발행본 목록과 `publishable()` 을 통과한 카드만 — 사이트 「기록」 쪽이 이 파일 하나로 만들어진다
 색인에는 생성 시각처럼 돌릴 때마다 바뀌는 값을 넣지 않는다(같은 카드면 같은 파일이 나와야 차이가 내용 변화만 보인다).
 경로는 부를 때 계산한다 — 테스트가 cards·report 의 경로를 바꿔 끼운다.
@@ -168,7 +168,7 @@ def build_index(include: list[tuple[str, str]] | tuple = (), path: pathlib.Path 
             old = [r for r in prior["reports"] if r["date"] == date and r["slot"] == slot]
             if not old:
                 raise FileNotFoundError(f"{rel} 는 있는데 {date} {slot} 비공개 카드가 0장이고 기존 색인에도 그 회차가 없다 — "
-                                        "private/desk/cards/ 가 있는 기기에서 다시 돌린다(보고서·색인 모두 쓰지 않았다)")
+                                        "private/records/desk/cards/ 가 있는 기기에서 다시 돌린다(보고서·색인 모두 쓰지 않았다)")
             print(f"경고: {date} {slot} 비공개 카드가 0장이다 — 기존 색인의 그 회차 항목을 그대로 넘겨 쓴다", file=sys.stderr)
             reports.append(old[0])
             cards += [c for c in prior["cards"] if c["date"] == date and c["slot"] == slot and c["card_id"] not in private_ids]

@@ -114,7 +114,7 @@ def test_purge_apply_clears_only_expired_stats(tmp_path):
 
     # 원본 사본은 남기지 않고 기록만 남긴다
     assert not (tmp_path / "archive").exists()
-    logs = list((tmp_path / "out").glob("youtube_stats_purge_*.json"))
+    logs = list(ozlpaths.under(tmp_path, "out").glob("youtube_stats_purge_*.json"))
     assert len(logs) == 1
     log = json.loads(logs[0].read_text(encoding="utf-8"))
     assert log["cells_purged"] == 3 + 2 + 3 + 1 + 1
@@ -137,7 +137,7 @@ def test_apply_refused_on_real_private(monkeypatch, capsys, tmp_path):
     if not real.is_dir():
         pytest.skip("이 기기에는 private 폴더가 없다")
     assert yr.apply_refusal(real)
-    # 상위 폴더·private 하위(out 밖)도 거부, private/out 아래는 허용
+    # 상위 폴더·private 하위(out 밖)도 거부, private/outputs/out 아래는 허용
     assert yr.apply_refusal(ROOT)
     assert yr.apply_refusal(ozlpaths.under(real, "meta"))
     assert yr.apply_refusal(ozlpaths.under(real, "out", "trial")) == ""

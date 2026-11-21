@@ -2,7 +2,7 @@
 
 읽기만 하는 것: 후보 판, 만들기 대기열, 이슈 기록(번호, 상태, 제목). 쓰는 것: <자료 루트>/find/ 의 고르기 기록뿐이다.
 수집을 돌리지 않는다. 판이 2시간보다 오래됐으면 그렇게 알리기만 한다. 자료 루트는 ozl.issues.paths 가 정한다
-(OZL_DESK_ROOT, 없으면 private/desk).
+(OZL_DESK_ROOT, 없으면 private/records/desk).
 
     .venv/bin/python .claude/skills/ozl/find/board_view.py [--board 경로] [--top 15] [--category 분야] [--match 낱말] [--all] [--json]
     .venv/bin/python .claude/skills/ozl/find/board_view.py note [--pick t… …] [--drop t… …] [--add "제목"]
@@ -242,7 +242,7 @@ def save_record(p: pathlib.Path, r: dict) -> None:
 
 def require_safe_root() -> None:
     if paths.is_alias_of_real_root():
-        raise Stop("자료 루트가 실제 자료 루트(private/desk)와 같은 폴더를 다른 철자나 링크로 가리킨다. 기록을 쓰지 않는다.")
+        raise Stop("자료 루트가 실제 자료 루트(private/records/desk)와 같은 폴더를 다른 철자나 링크로 가리킨다. 기록을 쓰지 않는다.")
 
 
 # ── 이미 만든 글 ──────────────────────────────────────────────────────────
@@ -402,7 +402,7 @@ def cmd_view(argv) -> int:
     ap = argparse.ArgumentParser(prog="board_view.py", description="후보 판을 큰 이야기 순서의 표로 찍는다(읽기만).",
                                  epilog="하위 명령: note(고르기 기록 쓰기), picks(최근 기록과 남은 건), result(만들기 결과 적기). "
                                         "각각 --help 가 있다.")
-    ap.add_argument("--board", help="후보 판 파일(기본: 저장소의 private/pulse/out/board.json)")
+    ap.add_argument("--board", help="후보 판 파일(기본: 저장소의 private/live/pulse/out/board.json)")
     ap.add_argument("--top", type=int, default=15, help="보일 줄 수(기본 15)")
     ap.add_argument("--category", help="분야 하나만(판에 적힌 분야 이름 그대로)")
     ap.add_argument("--match", help="제목, 다른 이름, 대표 기사 제목에 이 낱말이 든 줄만")

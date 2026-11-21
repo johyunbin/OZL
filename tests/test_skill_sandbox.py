@@ -157,10 +157,10 @@ def test_make_sandbox_builds_a_copy_that_runs_its_own_code(tmp_path):
     before = real_db.stat().st_mtime_ns if real_db.exists() else None
     box = m.build(tmp_path / "사본", git=False)
     for rel in ("src/ozl/issues/paths.py", "tracks", "skills/ozl/SKILL.md", ".claude/skills/ozl/SKILL.md", "agent/issues.md",
-                "CLAUDE.md", "README.md", "docs/how-it-works.md", "tests/fixtures/issues/i20990101-01/issue.yaml", "private/pulse/out/board.json",
+                "CLAUDE.md", "README.md", "docs/how-it-works.md", "tests/fixtures/issues/i20990101-01/issue.yaml", "private/live/pulse/out/board.json",
                 "private/test_desk/issues/i20990101-02/issue.yaml", "kit/README.md", "kit/event_garam/official_1_notice.html",
-                "private/syuka/syuka.db", "private/meta/catalog_syukaworld.csv", "private/meta/video_tags_syukaworld.csv",
-                "private/transcripts/trading_export/index.csv", "private/transcripts/trading_export/syuka/fakeSYK0002.json"):
+                "private/data/derived/syuka/syuka.db", "private/data/raw/meta/catalog_syukaworld.csv", "private/data/raw/meta/video_tags_syukaworld.csv",
+                "private/data/raw/transcripts/trading_export/index.csv", "private/data/raw/transcripts/trading_export/syuka/fakeSYK0002.json"):
         assert (box / rel).exists(), rel
     assert (box / ".venv").is_symlink() and not (box / ".git").exists()
     assert not (ozlpaths.under(box / "private", "desk")).exists()                    # 실제 자료 루트 자리는 비워 둔다

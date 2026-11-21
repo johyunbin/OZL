@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """비공개 기록 백업 묶음 — 수집 DB 스냅숏, 근거 해시 목록, 올릴 목록 검사, 복원본 검사.
 
-  python scripts/private_bundle.py snapshot-db         # 수집 DB 를 일관되게 떠서 private/backup/ 에 덤프(gz)로 둔다
-  python scripts/private_bundle.py manifest            # 카드·기록 파일의 해시 목록을 private/desk/evidence_manifest.json 에 쓴다
+  python scripts/private_bundle.py snapshot-db         # 수집 DB 를 일관되게 떠서 private/archive/backup/ 에 덤프(gz)로 둔다
+  python scripts/private_bundle.py manifest            # 카드·기록 파일의 해시 목록을 private/records/desk/evidence_manifest.json 에 쓴다
   python scripts/private_bundle.py check-staged        # 올리려는 목록에 원문 사본이나 유튜브 통계가 섞였는지 본다
   python scripts/private_bundle.py verify <복원 폴더>   # 원격에서 다시 받은 묶음을 검사한다
 

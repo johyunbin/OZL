@@ -2,7 +2,7 @@
 
 토요일에 고정한 예측(`/syuka predict`, `predict.md`)을 일요 생방송의 고유 사건과 짝지어 적중을 잰다. 재는 법의 정본은 `~/.claude/plans/system-reminder-you-are-unified-beacon.md` 7절이다. 코드는 `src/ozl/syuka/hits.py` 이고, 지어낸 입력의 시험과 11-15 소급 시험 자료로 경로를 확인했다.
 
-자리표시: `PY` 는 `.venv/bin/python`. `<D>` 는 방송 날짜, `<W>` 는 `private/syuka/predictions/<D>/`, `<S>` 는 `<W>/score/`, `<PID>` 는 `PY -m ozl.syuka predict list` 가 보여 주는 그 주의 예측 번호, `<LIVE>` 는 그 생방송의 영상 번호.
+자리표시: `PY` 는 `.venv/bin/python`. `<D>` 는 방송 날짜, `<W>` 는 `private/data/derived/syuka/predictions/<D>/`, `<S>` 는 `<W>/score/`, `<PID>` 는 `PY -m ozl.syuka predict list` 가 보여 주는 그 주의 예측 번호, `<LIVE>` 는 그 생방송의 영상 번호.
 
 ## 받는 것과 내는 것
 
@@ -35,14 +35,14 @@
 
 ### 0. 전사와 목록 확인
 
-- 생방송 전사가 Trading 내보내기에 들어왔는지 본다. 목록을 갱신한다: `PY -m ozl.syuka catalog`(갱신 전에 `private/syuka/syuka.db` 를 같은 폴더에 `syuka.db.bak_<타임코드>` 로 복사한다).
+- 생방송 전사가 Trading 내보내기에 들어왔는지 본다. 목록을 갱신한다: `PY -m ozl.syuka catalog`(갱신 전에 `private/data/derived/syuka/syuka.db` 를 같은 폴더에 `syuka.db.bak_<타임코드>` 로 복사한다).
 - `<LIVE>` 를 찾는다: `videos` 표에서 종류가 '생방송 전체'이고 올린 날이 `<D>` 인 영상. 전사가 없으면 채점하지 않는다. 실행 기록에 "판정 불가(전사 없음)"와 그 주 본편 제목으로 확인한 소재 목록만 적고 끝낸다.
 - 생방송과 주중 본편의 대응표를 갱신한다: `PY -m ozl.analyze.catalog livemap`, 그다음 `PY -m ozl.analyze.live_align`. 결과가 0행이면 두 명령은 기존 파일을 그대로 두고 종료 코드 1로 멈춘다. 그때는 대응표 갱신 없이 다음 단계로 간다.
 
 ### 1. 3판 토막과 고유 사건 (후보를 보지 않은 레인)
 
-- 작업 폴더는 예측 폴더와 따로 둔다: `<B>` = `private/syuka/broadcasts/<D>/`. 사건을 만드는 레인에는 예측 파일, 후보 목록, `private/syuka/predictions/` 아래 무엇도, 이 문서도 넘기지 않는다. 서브에이전트로 띄울 때는 "`private/syuka/predictions/` 를 읽지 않는다, `<B>` 에만 쓴다"를 지시문 첫 줄에 적는다.
-- 넘기는 것은 3판 지침(`private/syuka/extract_guide_v3.md`), `PY -m ozl.syuka mark-v3 <LIVE>` 로 찍은 전사(`<B>/marked_<LIVE>.txt`), 그리고 아래 두 가지 산출 요청뿐이다. 외부 레인이 긴 전사를 한 번에 받지 못하면 6만 자 아래 조각으로 나눠 보내고, 조각의 토막 합치기도 같은 레인에 맡긴다.
+- 작업 폴더는 예측 폴더와 따로 둔다: `<B>` = `private/data/derived/syuka/broadcasts/<D>/`. 사건을 만드는 레인에는 예측 파일, 후보 목록, `private/data/derived/syuka/predictions/` 아래 무엇도, 이 문서도 넘기지 않는다. 서브에이전트로 띄울 때는 "`private/data/derived/syuka/predictions/` 를 읽지 않는다, `<B>` 에만 쓴다"를 지시문 첫 줄에 적는다.
+- 넘기는 것은 3판 지침(`private/data/derived/syuka/extract_guide_v3.md`), `PY -m ozl.syuka mark-v3 <LIVE>` 로 찍은 전사(`<B>/marked_<LIVE>.txt`), 그리고 아래 두 가지 산출 요청뿐이다. 외부 레인이 긴 전사를 한 번에 받지 못하면 6만 자 아래 조각으로 나눠 보내고, 조각의 토막 합치기도 같은 레인에 맡긴다.
   1. 3판 파일 `<B>/v3/<LIVE>.json`(지침의 꼴 그대로).
   2. 고유 사건 묶기 `<B>/grouping.json`: `{"merge": [[3,4], …], "minor": [7, …], "why": "한두 문장"}`. 같은 사건을 이어서 다룬 토막은 묶고, 몇 분 안 되는 짧은 언급은 minor 로 둔다.
 - `PY -m ozl.syuka validate-v3 <B>/v3/<LIVE>.json` 이 통과할 때까지 같은 레인에게 오류 줄만 돌려주어 고치게 한다(두 번 돌려도 걸리면 경로표의 claude 줄로 넘긴다). 통과하면 `PY -m ozl.syuka load-v3 <B>/v3`.
@@ -53,23 +53,23 @@
 ```
 
 - `score events` 는 그때의 3판 원본을 장부에 따로 보존한다(`load-v3` 가 나중에 같은 영상의 토막을 바꿔도 판정 장부의 사건은 그대로다).
-- 3판 경로가 두 레인 모두에서 막히면 11-15 소급 시험의 방식으로 대신한다: 경로표 `--task longread` 의 외부 레인에 전사를 6만 자 아래 조각으로 나눠 사건 요약을 받고, 조각 경계의 병합도 같은 외부 레인에 맡긴 뒤(`private/syuka/retro/2026-11-15/work/prompt_events_*.txt`, `prompt_events_merge.txt` 가 본), `score events <PID> --from-json <B>/events_merged.json`. 이 세션이 사건을 합치거나 고치지 않는다. 어느 길로 했는지 실행 기록에 적는다.
+- 3판 경로가 두 레인 모두에서 막히면 11-15 소급 시험의 방식으로 대신한다: 경로표 `--task longread` 의 외부 레인에 전사를 6만 자 아래 조각으로 나눠 사건 요약을 받고, 조각 경계의 병합도 같은 외부 레인에 맡긴 뒤(`private/data/derived/syuka/retro/2026-11-15/work/prompt_events_*.txt`, `prompt_events_merge.txt` 가 본), `score events <PID> --from-json <B>/events_merged.json`. 이 세션이 사건을 합치거나 고치지 않는다. 어느 길로 했는지 실행 기록에 적는다.
 
 ### 2. 가림 묶음과 두 판정
 
 ```bash
-.venv/bin/python -m ozl.syuka score packet <PID> --out private/syuka/predictions/<D>/score --clusters private/syuka/predictions/<D>/work/codex_cluster.json
+.venv/bin/python -m ozl.syuka score packet <PID> --out private/data/derived/syuka/predictions/<D>/score --clusters private/data/derived/syuka/predictions/<D>/work/codex_cluster.json
 ```
 
 - 두 판정자에게 같은 `prompt_judge_<PID>_<ES>.txt` 하나만 따로 보낸다(`offload.py run --task verify --lane <레인> --prompt-file <S>/prompt_judge_<PID>_<ES>.txt --out … --expect json`, `--in` 은 주지 않는다). 서로의 답을 보여 주지 않는다. 답은 `<S>/judge_codex.json`, `<S>/judge_gemini.json` 에 받는다(`--expect json`).
 - 장부에 싣는다:
 
 ```bash
-.venv/bin/python -m ozl.syuka score judge <PID> --judge codex private/syuka/predictions/<D>/score/judge_codex.json
+.venv/bin/python -m ozl.syuka score judge <PID> --judge codex private/data/derived/syuka/predictions/<D>/score/judge_codex.json
 ```
 
 ```bash
-.venv/bin/python -m ozl.syuka score judge <PID> --judge gemini private/syuka/predictions/<D>/score/judge_gemini.json
+.venv/bin/python -m ozl.syuka score judge <PID> --judge gemini private/data/derived/syuka/predictions/<D>/score/judge_gemini.json
 ```
 
 - 검사에 걸리면(빠진 후보, 없는 사건 번호) 그 판정자에게 오류 줄만 돌려주고 다시 받는다. 다시 받은 횟수를 기록한다.
@@ -77,7 +77,7 @@
 ### 3. 확정과 중재
 
 ```bash
-.venv/bin/python -m ozl.syuka score finalize <PID> --out private/syuka/predictions/<D>/score
+.venv/bin/python -m ozl.syuka score finalize <PID> --out private/data/derived/syuka/predictions/<D>/score
 ```
 
 - 종료 코드 2 는 두 판정이 갈렸다는 뜻이다. 만들어진 `arbitrate_<PID>_<ES>.json` 만 중재 레인에 보내 갈린 건마다 하나의 판정을 받고(`<S>/judge_chatgpt.json`), `score judge <PID> --judge chatgpt …` 뒤에 `finalize` 를 다시 부른다.

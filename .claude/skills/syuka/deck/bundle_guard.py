@@ -9,7 +9,7 @@
 
 걸리는 것(하나라도 있으면 종료 코드 1. 그 묶음은 보내지 않는다):
   - 카드 coverage.videos 의 영상 번호, 제목, 올린 날(연도가 붙은 날짜 표기. 각주와 인용 줄, 검증 기록 절은 날짜를 보지 않는다)
-  - 영상 목록(private/meta/catalog_syukaworld.csv)에 있는 영상 번호
+  - 영상 목록(private/data/raw/meta/catalog_syukaworld.csv)에 있는 영상 번호
   - 유튜브 영상 주소(검증 기록 절의 출처 주소는 영상 목록에 있는 번호일 때만)
   - 영상 번호 꼴(11자)이 "방송(…)", "영상(…)", "video_id: …" 자리에 있는 것
 
@@ -160,7 +160,7 @@ def report(res: dict) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="검토 묶음에 지난 방송을 가리키는 것(영상 번호, 제목, 올린 날)이 실렸는지 본다. 읽기만 한다")
-    ap.add_argument("bundle", help="검토 묶음 파일(private/desk/builds/<card_id>/reviews/bundle_<타임코드>.md). 채운 머리말 파일도 받는다(--card 와 함께)")
+    ap.add_argument("bundle", help="검토 묶음 파일(private/records/desk/builds/<card_id>/reviews/bundle_<타임코드>.md). 채운 머리말 파일도 받는다(--card 와 함께)")
     ap.add_argument("--card", help="카드 번호. 없으면 묶음의 첫 줄에서 읽는다")
     ap.add_argument("--json", action="store_true", help="결과를 JSON 으로 찍는다")
     a = ap.parse_args(argv)

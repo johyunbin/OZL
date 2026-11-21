@@ -19,7 +19,7 @@ ACTIVE = (WAITING, RUNNING)
 JOB_ID = re.compile(r"m[0-9]{8}-[0-9]{4}")          # \d 는 유니코드 숫자도 받으므로 ASCII 만 쓴다
 ISSUE_ID = re.compile(r"i[0-9]{8}-[0-9]{2}")
 TOPIC_ID = re.compile(r"t[0-9]{8}-[0-9]{3,4}")    # 화제 엔진의 이슈 번호. 옛 수집기의 주제 번호(정수)도 받는다
-BROKEN_MSG = "대기열 파일이 깨졌다 — private/desk/ops/make_queue.json 확인"
+BROKEN_MSG = "대기열 파일이 깨졌다 — private/records/desk/ops/make_queue.json 확인"
 
 
 class QueueBroken(ValueError):

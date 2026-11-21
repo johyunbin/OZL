@@ -7,7 +7,7 @@ OZL 이슈 기록을 정적 사이트로 만든다(Astro). 화면, 자료, 색, 
 ```sh
 cd apps/web
 npm ci
-npm run build:preview   # 기준 경로 /preview/ · 결과 ../../private/out/web_preview (OZL_WEB_OUT 로 바꿀 수 있다). 끝에 HTML 안전 검사
+npm run build:preview   # 기준 경로 /preview/ · 결과 ../../private/outputs/out/web_preview (OZL_WEB_OUT 로 바꿀 수 있다). 끝에 HTML 안전 검사
 npm run build:public    # 기준 경로 / · 결과 dist/ (신고 연락처와 처리 절차 글이 없으면 멈춘다)
 npm run preview:serve   # 미리보기 결과를 127.0.0.1:4321/preview/ 에 띄운다
 node scripts/check-links.mjs <결과 폴더> <기준 경로>   # 깨진 안쪽 링크
@@ -15,7 +15,7 @@ npm run check:shape     # 예시 자료와 내보내기의 칸 이름 비교(목
 npm run cards           # 카드 그림(아래 절)
 npm run check:offline   # 서비스 워커 저장분과 내림(아래 절)
 npm run check:csp       # 공개용 빌드의 콘텐츠 보안 정책(아래 절)
-node checks/visual.mjs  # 화면 점검(카드 화면 포함). 결과 private/out/screens/web_<타임코드>/
+node checks/visual.mjs  # 화면 점검(카드 화면 포함). 결과 private/outputs/out/screens/web_<타임코드>/
 node checks/article.mjs --build <결과 폴더> --shots <사진 폴더>   # 글 화면과 첫 화면(넘침, 대비, 각주, 접힘, 분야 칩)과 사진
 ```
 
@@ -29,7 +29,7 @@ node checks/article.mjs --build <결과 폴더> --shots <사진 폴더>   # 글 
 
 빌드 전 검사(`scripts/guard.mjs`)의 종료 코드: 1 자료 형식, 2 신고 연락처나 처리 절차 글이 없음, 3 자료와 결과 폴더가 맞지 않음(미리보기 자료로 공개용, 시험 자료를 `dist/` 에, 미리보기 결과를 저장소 안에). 처리 절차 글 `src/content/report-procedure.md` 는 아직 없다. 그래서 지금은 `dist/` 로 가는 공개용 빌드가 늘 멈추고, 시험 자료(`meta.test: true`)를 시험 폴더로 만드는 공개용 빌드만 경고를 내고 지나간다.
 
-guard.mjs 는 결과 폴더를 비우기 전에, 그 폴더가 저장소, 웹 폴더, 홈, 자료 폴더이거나 그것을 품으면 거부한다. 이미 있는 폴더는 비었거나 빌드가 남긴 표식 파일 `.ozl-web-out` 이 있거나 기본 폴더(`dist/`, `private/out/web_preview/`)일 때만 비운다.
+guard.mjs 는 결과 폴더를 비우기 전에, 그 폴더가 저장소, 웹 폴더, 홈, 자료 폴더이거나 그것을 품으면 거부한다. 이미 있는 폴더는 비었거나 빌드가 남긴 표식 파일 `.ozl-web-out` 이 있거나 기본 폴더(`dist/`, `private/outputs/out/web_preview/`)일 때만 비운다.
 
 공개용인지 아닌지는 `meta.json` 의 `mode`·`test` 와 이슈의 `example` 표시로만 가른다. 내보내기가 공개용 `index.json` 행에 승인 표식을 아직 주지 않아서, 이 검사가 미승인 이슈가 공개용에 실리는 것을 막는 유일한 선이다. 미리보기 내보내기에 `test: true` 를 붙여 시험 폴더로 공개용 빌드를 하면 미승인 이슈 쪽도 만들어진다(내부 칸은 지운다). 시험 폴더 밖으로 내보내지 않는다.
 
@@ -37,8 +37,8 @@ guard.mjs 는 결과 폴더를 비우기 전에, 그 폴더가 저장소, 웹 �
 
 ```sh
 cd <저장소>
-.venv/bin/python -m ozl.issues export --preview --out private/out/site_data
-cd apps/web && OZL_SITE_DATA=../../private/out/site_data npm run build:preview
+.venv/bin/python -m ozl.issues export --preview --out private/outputs/out/site_data
+cd apps/web && OZL_SITE_DATA=../../private/outputs/out/site_data npm run build:preview
 ```
 
 ## 넘겨 보는 카드와 카드 그림
@@ -53,7 +53,7 @@ npm run cards                                             # 결과 폴더 기본
 npm run cards -- --build <결과 폴더> --out <그림 폴더> <slug> ...
 ```
 
-- 그림 자리: `<그림 폴더>/<slug>/r<판>/NN.png` 와 `cards.json`(장마다 파일 이름, 실린 글과 그 글이 자료에서 왔는지 화면이 붙인 머리인지, 판정, 출처, 판 번호). 그림 폴더 기본값은 `private/out/cards/`, `OZL_CARDS_OUT` 이나 `--out` 으로 바꾼다. 결과 폴더는 `OZL_WEB_OUT` 이나 `--build`, 대조할 자료는 `OZL_SITE_DATA` 나 `--data`.
+- 그림 자리: `<그림 폴더>/<slug>/r<판>/NN.png` 와 `cards.json`(장마다 파일 이름, 실린 글과 그 글이 자료에서 왔는지 화면이 붙인 머리인지, 판정, 출처, 판 번호). 그림 폴더 기본값은 `private/outputs/out/cards/`, `OZL_CARDS_OUT` 이나 `--out` 으로 바꾼다. 결과 폴더는 `OZL_WEB_OUT` 이나 `--build`, 대조할 자료는 `OZL_SITE_DATA` 나 `--data`.
 - 찍은 뒤 스스로 확인한다: 파일 크기 0 아님과 1080×1350, 카드 안에서 넘친 상자 0개, 그림 장 수와 카드 화면 장 수가 같음, 자료에서 온 문장과 판정, 출처, 판 번호, 판정 집계가 그 판의 사본(`issues/<slug>/r/<판>.json`, 판 사본이 없는 작업본은 최신 본문 — `cards.json` 의 `copy: "latest"`)과 같음. 하나라도 어긋나면 종료 코드 1.
 - 고정 주소는 사이트 주소를 모르면 경로만 적는다. `OZL_SITE_ORIGIN=https://…` 를 주면 앞에 붙인다.
 - 그림 전용 화면은 공개용 빌드에 만들지 않는다. 공개 사이트에 같은 내용의 쪽을 하나 더 두지 않고, 무료 호스팅의 파일 수를 늘리지 않으려는 것이다. 미리보기 빌드는 모든 쪽이 noindex 이고 robots.txt 가 전부 막으며, 그림 전용 화면에는 검색 색인 표시(`data-pagefind-body`)가 없다.

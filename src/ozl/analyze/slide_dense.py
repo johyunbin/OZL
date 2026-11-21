@@ -5,10 +5,10 @@
      정답 대조(slide_boundary_check) 결과 한 편에서 제목 68장 중 26장(38%)을 놓쳤다 → 일정 간격으로 전부 뽑아 제목 문장으로 가른다.
 흐름(영상 1편): yt-dlp 720p → ffmpeg 3초마다 슬라이드 영역(1152×680 으로 맞춤) → 프레임 분류·제목 줄 측정(style_measure.measure)
      → clean 프레임 문자 인식(직전 인식 프레임과 거의 같으면 재사용) → 제목이 같은 표본을 한 장으로 묶음 → 장마다 대표 프레임 1장 보관 → 영상·임시 프레임 삭제.
-출력(비공개): private/dense/<video_id>.json(표본 열) · private/slides_dense/<video_id>.json(슬라이드 — slide_timeline 과 같은 꼴) · private/frames_dense/<video_id>/s<no>_<t>.png
+출력(비공개): private/data/derived/dense/<video_id>.json(표본 열) · private/data/derived/slides_dense/<video_id>.json(슬라이드 — slide_timeline 과 같은 꼴) · private/data/raw/frames_dense/<video_id>/s<no>_<t>.png
 부하: nice 19 · yt-dlp sleep. 재개 가능(끝난 영상은 건너뜀).
 
-    python -m ozl.analyze.slide_dense private/meta/sample30_syukaworld.csv [--part 0/2]
+    python -m ozl.analyze.slide_dense private/data/raw/meta/sample30_syukaworld.csv [--part 0/2]
     python -m ozl.analyze.slide_dense rebuild      # 저장된 표본 열로 슬라이드 목록만 다시 묶기
 """
 from __future__ import annotations
@@ -197,7 +197,7 @@ def process(vid: str) -> dict:
 
 
 def rebuild() -> int:
-    """저장된 표본 열(private/dense/*.json)만으로 슬라이드 목록을 다시 묶는다 — 묶음 로직을 고쳤을 때 영상을 다시 받지 않기 위함.
+    """저장된 표본 열(private/data/derived/dense/*.json)만으로 슬라이드 목록을 다시 묶는다 — 묶음 로직을 고쳤을 때 영상을 다시 받지 않기 위함.
     대표 프레임은 이미 저장된 것 중 그 슬라이드의 표본 시각과 맞는 것을 다시 잇는다(없으면 비움)."""
     n = 0
     for p in sorted(DENSE.glob("*.json")):

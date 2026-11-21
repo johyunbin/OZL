@@ -7,7 +7,7 @@ export const REPO_ROOT = path.resolve(WEB_ROOT, "../..");
 export const PUBLIC_DIST = path.join(WEB_ROOT, "dist");
 // 사용하는 이름만 둔다. 값의 정본은 src/ozl/paths.py 의 LAYOUT 이다.
 const LAYOUT = {
-  out: "out",
+  out: "outputs/out",
 };
 
 const CHECKOUT_PRIVATE = path.join(REPO_ROOT, "private");

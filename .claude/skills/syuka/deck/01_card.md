@@ -67,7 +67,7 @@
 ```
 
 - 번호는 이 명령으로만 받는다. 부를 때마다 번호가 소비되고 지운 번호도 다시 쓰지 않으니 한 번만 부른다. 회차 칸(`am`)은 번호의 한 부분일 뿐이라 어느 때 불려도 `am` 으로 받는다.
-- 양식 둘을 본떠 쓴다: 카드는 `skills/ozl/card_template.yaml` 을 본떠 `private/desk/cards/<card_id>.yaml`, 기록은 `skills/ozl/claim_template.yaml` 을 본떠 `private/desk/claims/<날짜>/<card_id>-cN.yaml`(날짜는 카드 번호의 날짜).
+- 양식 둘을 본떠 쓴다: 카드는 `skills/ozl/card_template.yaml` 을 본떠 `private/records/desk/cards/<card_id>.yaml`, 기록은 `skills/ozl/claim_template.yaml` 을 본떠 `private/records/desk/claims/<날짜>/<card_id>-cN.yaml`(날짜는 카드 번호의 날짜).
 - 카드:
   - `depth: full`, `data` 는 세 개 이상이고 전부 T1 이나 T2 이며 항목마다 `claim_id` 가 있다. 보도(T3)는 `sources` 에만 올린다(숫자의 근거가 아니다).
   - `category` 는 양식에 적힌 여섯 가운데 하나, `topic` 은 자유 표기다.
@@ -125,20 +125,20 @@
 - **사양에 지난 방송을 적지 않는다.** 사양의 메모(`notes`)까지 검토 묶음에 실려 다른 모델 계열로 나간다. 영상 번호, 영상 제목, 올린 날, 지난 방송이 한 말과 쓴 수치는 사양의 어느 칸에도 적지 않고 카드의 `coverage` 와 진행 기록의 메모에만 둔다. 후속편에서 "전에 이 주제를 다룬 적이 있다"는 한 마디는 말로 할 문장에 써도 된다. 묶음을 만든 뒤, 문장 대조와 해석 점검에 넘기기 전에 아래 검사를 돌린다(`ozl.render` 의 묶음 명령과 검사 명령은 이것을 잡지 않는다). "실렸다"가 나오면(종료 코드 1) 그 묶음을 어디에도 보내지 않는다. 알려 준 줄의 대목을 사양에서 지우고 묶음을 다시 만든 뒤 검사를 다시 돌린다. "검사하지 못했다"(종료 코드 2)도 보내지 않는 쪽이다. 걸리는 것은 카드의 `coverage.videos` 에 적힌 영상 번호, 제목, 올린 날(각주와 인용 줄, 검증 기록 절의 날짜는 보지 않는다), 영상 목록에 있는 영상 번호, 유튜브 영상 주소, "방송(…)" 꼴 자리의 영상 번호다. 지난 방송이 한 말과 쓴 수치는 이 검사가 잡지 못하므로 적지 않는 것으로 지킨다.
 
   ```bash
-  .venv/bin/python .claude/skills/syuka/deck/bundle_guard.py private/desk/builds/<card_id>/reviews/bundle_<타임코드>.md
+  .venv/bin/python .claude/skills/syuka/deck/bundle_guard.py private/records/desk/builds/<card_id>/reviews/bundle_<타임코드>.md
   ```
 - **검토 지시서를 채울 때.** 틀은 `skills/ozl/review/` 에 있고 자리표시의 뜻은 그 폴더의 `README.md` 에 있다. 구성과 화면 평가(`skills/ozl/review/composition.md`)의 `{CRITERIA}` 에는 5절 첫 문단이 정한 평가 기준 파일을 넣는다. 그 평가는 기준의 나 절과 다 절 항목을 전부 보고, 지난 방송과의 겹침(나7)은 카드의 `coverage` 로 본다. 그 답의 D 절(겹침의 근거)에는 영상 번호와 올린 날이 적힌다. 다른 계열에 보내는 머리말(`skills/ozl/review/external_head.md`)의 `{PREV}` 와 `{PRESS}` 에는 D 절과 지난 방송을 가리키는 것을 옮기지 않는다. 채운 머리말도 보내기 전에 위 검사에 `--card <card_id>` 를 붙여 돌린다(머리말에는 카드 번호 줄이 없다). 문장 대조(`skills/ozl/review/sentence.md`)의 `{PRESS_DIR}` 에는 인용한 기사를 받아 둔 폴더를 넣는다. 받아 둔 것이 없으면 "없음"이라고 적는다. 그러면 `refs` 가 달린 문장이 "대조하지 못함"(중간)으로 올라오고, 기사를 받아 다시 대조하거나 그 문장을 빼기 전에는 문장 대조가 끝난 것이 아니다.
 - **표의 칸을 따온 기록을 화면에 쓸 때.** 칸에는 값만 있고 단위는 열 머리에 있다(`observed` 가 `42`, 화면은 "42억"). 숫자 대조는 `observed` 와 `text` 의 표기만 받으므로, 그 장의 `conversions` 에 화면 표기(`shown`), 원문 표기(`source`), 기록 번호, 근거(`basis`. 열 머리의 단위)를 적는다. 칸의 뜻은 `agent/deck.md` 의 숫자 규칙에 있다.
-- **재대조의 답을 기록에 옮길 때.** 재대조 쪽에는 `observed` 를 보이지 않으므로 기록 파일을 열게 하지 않는다. 그쪽의 답(기록마다 찾은 대목과 맥락 칸)을 받은 그대로 `private/desk/builds/<card_id>/reviews/` 에 저장하고, 본 세션이 글자 그대로 `recheck` 칸에 옮긴다. 값을 고쳐 옮기지 않는다.
+- **재대조의 답을 기록에 옮길 때.** 재대조 쪽에는 `observed` 를 보이지 않으므로 기록 파일을 열게 하지 않는다. 그쪽의 답(기록마다 찾은 대목과 맥락 칸)을 받은 그대로 `private/records/desk/builds/<card_id>/reviews/` 에 저장하고, 본 세션이 글자 그대로 `recheck` 칸에 옮긴다. 값을 고쳐 옮기지 않는다.
 - **기준 시점이 갈릴 때.** 날짜가 없는 일정이나 계획 문장은 기준 시점을 발표일로 볼지 시행일로 볼지 정한 규칙이 없다. 쓴 쪽과 재대조 쪽의 값이 갈려 `machine-verify` 가 올리지 않으면 원문을 다시 읽어 정하고, 재대조 값을 본 뒤에 고쳤다는 것을 그 기록과 진행 기록의 메모에 적는다. 추측으로 맞추지 않는다.
 
 ## 이어 받기
 
 앞선 세션이 완성 절차의 중간에서 멈춘 카드를 다시 불렀을 때다(진행 기록이 '진행 중').
 
-- 이름은 앞 세션의 것을 그대로 쓴다. 진행 기록(`private/desk/builds/<card_id>/state.yaml`)의 `by` 칸에 있다. 임대(마지막 기록에서 여섯 시간)가 살아 있는 동안 다른 이름은 `--force` 없이는 받지 않는다.
+- 이름은 앞 세션의 것을 그대로 쓴다. 진행 기록(`private/records/desk/builds/<card_id>/state.yaml`)의 `by` 칸에 있다. 임대(마지막 기록에서 여섯 시간)가 살아 있는 동안 다른 이름은 `--force` 없이는 받지 않는다.
 - `.venv/bin/python -m ozl.render progress <card_id> --resume --by <그 이름>` 이 마지막으로 지난 단계를 알려 준다. 그 뒤에 카드나 기록이 바뀌었으면 "주의:" 줄이 나오고, 바뀌지 않았으면 그 줄이 없다. 이 명령은 임대를 여섯 시간 새로 늘린다(이어 받고 곧 멈추는 세션도 그만큼 잡아 둔다).
-- 마지막으로 지난 단계가 '사양'이면 검토 폴더(`private/desk/builds/<card_id>/reviews/`)를 연다. 판마다 어느 검토의 답이 있는지 파일로 본다. 답이 없는 검토부터 잇는다.
+- 마지막으로 지난 단계가 '사양'이면 검토 폴더(`private/records/desk/builds/<card_id>/reviews/`)를 연다. 판마다 어느 검토의 답이 있는지 파일로 본다. 답이 없는 검토부터 잇는다.
 - 같은 카드 폴더에 `ad/` 가 있으면 광고 회차다(`ad.md`). 기록 셋을 읽고, 사양에 광고 칸이 아직 없으면 다음 판에 넣는다.
 - 이을 단계가 해석 점검인데 보낼 수 없는 세션이면 그 자리에서 멈춘다. 사양의 사본 해시가 진행 기록의 값과 같은지는 `.venv/bin/python -c "import hashlib,sys; print(hashlib.sha256(open(sys.argv[1],'rb').read()).hexdigest())" <사양>` 으로 본다.
 

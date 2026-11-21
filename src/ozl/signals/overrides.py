@@ -1,4 +1,4 @@
-"""사람의 합치기·가르기 판단(§4-4). 파일 private/pulse/engine_overrides.yaml 을 읽기만 한다. at ≤ asof 인 항목만 쓴다."""
+"""사람의 합치기·가르기 판단(§4-4). 파일 private/live/pulse/engine_overrides.yaml 을 읽기만 한다. at ≤ asof 인 항목만 쓴다."""
 from __future__ import annotations
 
 import hashlib

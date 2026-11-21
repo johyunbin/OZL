@@ -3,7 +3,7 @@
 python -m ozl.render.template [--template v1|v2] [--out <폴더>] [--no-export]
 
 - 견본집(style.samples)과 같은 그리기 경로(build.build_pptx, style: syuka)를 쓴다. 글꼴, 색, 크기, 좌표는 렌더러의 값 그대로다
-  (맑은 고딕 26pt, 줄 간격 1.5, 제목 #C00000, 좌 그림 4.20×4.12in — private/style/style-guide.md).
+  (맑은 고딕 26pt, 줄 간격 1.5, 제목 #C00000, 좌 그림 4.20×4.12in — private/data/derived/style/style-guide.md).
 - 화면 글은 자리 안내뿐이다. 숫자를 쓰지 않는다(숫자는 검증 기록과 이어져야 하는 화면 수치로 읽힌다). 분량 숫자는 노트에 적는다.
 - 사용자는 파워포인트에서 장을 복제해 글을 바꾸고 회색 자리를 그림으로 바꿔 쓴다. 산출물은 private/결과물/ 아래 v1은 12_템플릿/, v2는 20_템플릿v2/에 둔다.
 """
@@ -22,7 +22,7 @@ from ozl.render import spec as S
 from ozl.render import style as ST
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
-OUT = ozlpaths.at("결과물", "12_템플릿")
+OUT = ozlpaths.at("templates", "12_템플릿")
 OUT_V2 = OUT.parent / "20_템플릿v2"
 
 TITLE = "여기에 제목: 한 문장으로"

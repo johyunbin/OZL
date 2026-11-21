@@ -1,4 +1,4 @@
-# 클레임 레코드 양식 — private/desk/claims/<날짜>/<card_id>-cN.yaml (값은 전부 지어낸 예시 · 규칙 정본 docs/methodology.md §2~§4)
+# 클레임 레코드 양식 — private/records/desk/claims/<날짜>/<card_id>-cN.yaml (값은 전부 지어낸 예시 · 규칙 정본 docs/methodology.md §2~§4)
 claim_id: 2026-01-02-am-01-c1
 card_id: 2026-01-02-am-01
 text: "지어낸 주장 문장(무엇이·언제·얼마)"

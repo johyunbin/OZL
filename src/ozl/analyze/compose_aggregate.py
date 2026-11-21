@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""구성 라벨(private/compose/*.json) + 슬라이드 타임라인 → 구성 템플릿 v0 집계 (Phase 2A-2).
+"""구성 라벨(private/data/derived/compose/*.json) + 슬라이드 타임라인 → 구성 템플릿 v0 집계 (Phase 2A-2).
 
-입력: private/compose/<video_id>.json(서브에이전트 라벨 — SCHEMA.md v2) · private/slides_label/<video_id>.json
+입력: private/data/derived/compose/<video_id>.json(서브에이전트 라벨 — SCHEMA.md v2) · private/data/derived/slides_label/<video_id>.json
 출력: tracks/syuka/analysis/composition_syukaworld.md(집계만 · 공개) · tracks/syuka/style/composition_template_v0.json(공개 스타일 자산)
 슬라이드 문구·전사는 싣지 않는다(제목 첫 어절·어미 같은 형태 통계만).
 

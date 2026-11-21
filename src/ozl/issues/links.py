@@ -1,6 +1,6 @@
 """옛 자료 건수 집계와 연결 검사 — 카드 → 기록 → 원문 사본 → 덱 → 공개 주소(설계 14절).
 
-실제 private/desk 와 공개 저장소의 claims/, daily/ 를 읽기만 한다(자료 루트 OZL_DESK_ROOT 와 무관하게 옛 카드 자리를 본다).
+실제 private/records/desk 와 공개 저장소의 claims/, daily/ 를 읽기만 한다(자료 루트 OZL_DESK_ROOT 와 무관하게 옛 카드 자리를 본다).
 대응표(legacy_map.json)는 write_map() 으로만 쓰고, 실제 자료 루트에서만 쓴다.
 """
 from __future__ import annotations

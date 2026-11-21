@@ -260,7 +260,7 @@ def test_strict_mode_rechecks_evidence_every_time(desk):
     forged = base_claim()
     forged["status"] = "verified"
     forged["verification"] = {"method": "machine",
-                              "capture": {"url": URL, "fetched_at": "t", "sha256": "0" * 64, "path": "private/desk/captures/none/source.html", "kind": "html"},
+                              "capture": {"url": URL, "fetched_at": "t", "sha256": "0" * 64, "path": "private/records/desk/captures/none/source.html", "kind": "html"},
                               "match": {"found": True}, "author": {"by": "agent-a"}, "recheck": recheck(), "verified_at": "t"}
     assert C.machine_struct_errors(forged) == [] and C.grade_label(forged) == "원문 일치"     # 구조만 보면 통과한다
     errs, _ = S.claim_state_errors([CID], {CID: forged})

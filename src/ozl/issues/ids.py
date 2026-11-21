@@ -1,7 +1,7 @@
 """번호 규칙과 발급 대장.
 
 이슈 `i20261114-01` · 근거 `i20261114-01-e3` · 항목 `c1`·`f1`·`w1`·`s1`·`g1`·`q1`(작은 주장 `p1`, 검토 `r1`).
-대장 `<자료 루트>/issues/issued_ids.json` 은 옛 카드 대장(private/desk/issued_ids.json)과 다른 파일이다.
+대장 `<자료 루트>/issues/issued_ids.json` 은 옛 카드 대장(private/records/desk/issued_ids.json)과 다른 파일이다.
 한번 준 번호는 파일을 지워도 다시 주지 않는다. 대장을 읽지 못하면 예외로 멈춘다(빈 대장으로 넘기지 않는다).
 """
 from __future__ import annotations

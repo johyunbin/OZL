@@ -6,7 +6,7 @@ python -m ozl.signals board [--asof 시각] [--out 경로]  — 계산된 것으
 python -m ozl.signals explain <이슈 번호> [--asof 시각] [--json]   — 점수 내역, 날짜별 그룹과 기사(매체·제목·주소), 잇기 근거
 python -m ozl.signals prune [--db 경로] [--no-vacuum]   — 확정된 날의 확정 전 행 가운데 다시 쓰이지 않는 것을 지운다
 
-경로: 인자 > 환경 변수(OZL_PULSE_DB, OZL_ENGINE_DB, OZL_BOARD_OUT, OZL_ENGINE_OVERRIDES) > 기본값(private/pulse/…).
+경로: 인자 > 환경 변수(OZL_PULSE_DB, OZL_ENGINE_DB, OZL_BOARD_OUT, OZL_ENGINE_OVERRIDES) > 기본값(private/live/pulse/…).
 """
 from __future__ import annotations
 

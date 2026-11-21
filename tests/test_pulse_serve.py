@@ -61,7 +61,7 @@ def test_topic_history_and_unknown(server):
     assert code == 200 and len(d["history"]) == 1 and d["current"]["topic_id"] == tid
     assert get(base + "/api/topic/999999")[0] == 404
     assert get(base + "/api/topic/abc")[0] == 404
-    assert get(base + "/../private/pulse/pulse.db")[0] == 404   # 정적 파일 경로를 따라 밖으로 나가지 않는다
+    assert get(base + "/../private/live/pulse/pulse.db")[0] == 404   # 정적 파일 경로를 따라 밖으로 나가지 않는다
 
 
 def test_health_fresh_then_stale(server, monkeypatch):

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """일일 보고서 렌더 — 카드 YAML 에서 세 문서를 만든다.
 
-- 전체본(비공개)  private/daily/YYYY/MM/<날짜>_<회차>.md        모든 카드 · 내부 메모 포함
-- 검증 시트(비공개) private/daily/YYYY/MM/<날짜>_<회차>_검증시트.md  기록마다 원문 표기·위치·링크·등급(사람 대조 '확인' / 프로그램 대조 「원문 일치」)
+- 전체본(비공개)  private/outputs/daily/YYYY/MM/<날짜>_<회차>.md        모든 카드 · 내부 메모 포함
+- 검증 시트(비공개) private/outputs/daily/YYYY/MM/<날짜>_<회차>_검증시트.md  기록마다 원문 표기·위치·링크·등급(사람 대조 '확인' / 프로그램 대조 「원문 일치」)
 - 발행본(공개)    daily/YYYY/MM/<날짜>_<회차>.md                공개 이력이 있는 회차만 — 승인된 카드는 전문, 나머지는 번호·상태만
 공개 규칙의 정본은 docs/methodology.md §8 — 공개는 사용자가 승인한 카드만, 공개 이력이 없는 회차는 발행본을 쓰지 않는다(keeps_public_page).
 """
@@ -294,7 +294,7 @@ def keeps_public_page(cards: list[dict]) -> bool:
 def render_all(date: str, slot: str) -> dict:
     cards = C.cards_for(date, slot)
     if not cards:
-        raise FileNotFoundError(f"{date} {slot} 카드가 없다 — private/desk/cards/")
+        raise FileNotFoundError(f"{date} {slot} 카드가 없다 — private/records/desk/cards/")
     errs = []
     for c in cards:
         errs += C.validate_card(c, C.claims_for(c["card_id"]))

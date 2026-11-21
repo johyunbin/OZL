@@ -52,14 +52,14 @@ description: 슈카월드 자료와 덱 — "/syuka find <낱말…>"(슈카월�
 
 - 2단계의 순서는 `skills/ozl/SKILL.md` 5절이 정본이고 이 스킬에 옮겨 적지 않았다. 5절과 `agent/deck.md` 를 처음부터 읽고 그대로 따른다. 이 문서와 어긋나면 그쪽을 따른다.
 - 말할 시간을 받지 못했으면 10분으로 잡고 그렇게 알린다(`deck/01_card.md` 의 0단계).
-- 해석 점검(5절 7단계의 다른 계열 검토)은 사람이 있는 대화 세션에서만 보낸다. 답을 받지 못하면 5절대로 그 단계에서 멈추고, 완성본으로 내지 않는다. 멈출 때는 끝난 검토(문장 대조, 구성과 화면 평가)의 지시서와 답을 `private/desk/builds/<card_id>/reviews/` 에 판 번호와 타임코드를 붙여 저장하고, 어느 검토가 끝났고 어느 것이 남았는지를 사용자에게 알린다. 진행 기록에는 검토 셋 가운데 일부만 끝난 상태를 적는 단계가 없다. 이어 받는 세션은 그 폴더의 파일로 안다.
+- 해석 점검(5절 7단계의 다른 계열 검토)은 사람이 있는 대화 세션에서만 보낸다. 답을 받지 못하면 5절대로 그 단계에서 멈추고, 완성본으로 내지 않는다. 멈출 때는 끝난 검토(문장 대조, 구성과 화면 평가)의 지시서와 답을 `private/records/desk/builds/<card_id>/reviews/` 에 판 번호와 타임코드를 붙여 저장하고, 어느 검토가 끝났고 어느 것이 남았는지를 사용자에게 알린다. 진행 기록에는 검토 셋 가운데 일부만 끝난 상태를 적는 단계가 없다. 이어 받는 세션은 그 폴더의 파일로 안다.
 - 이어 받을 때(`/syuka deck <card_id>` 로 다시 불렸고 진행 기록이 '진행 중'일 때)는 `deck/01_card.md` 의 「이어 받기」를 따른다.
 - 끝나면 산출 폴더와 `검증_요약.md` 의 자리, 확인하지 못한 것을 두세 줄로 알린다. 공개는 사용자가 그렇게 말했을 때만 한다.
 - 광고주나 협업 기관이 준 소재면 1단계 뒤, 사양을 쓰기 전에 `/syuka ad` 의 일을 한다.
 
 ## /syuka predict 와 /syuka score — 주간 예측과 채점
 
-본 세션이 한다. 순서는 `predict.md`(토요일)와 `score.md`(월요일)에 있다. 먼저 읽는다. 명령은 `PY -m ozl.syuka predict|score|hits` 이고 장부는 `private/syuka/syuka.db` 의 `predictions`, `prediction_items`, `broadcast_events`, `hit_judgments`, `weekly_metrics` 다. 모델 배정은 두 문서가 경로표(`lanes.py route`)를 부르는 방식으로 적었다. 방송 뒤에 만든 판은 소급 시험(`--retro`)으로만 싣는다.
+본 세션이 한다. 순서는 `predict.md`(토요일)와 `score.md`(월요일)에 있다. 먼저 읽는다. 명령은 `PY -m ozl.syuka predict|score|hits` 이고 장부는 `private/data/derived/syuka/syuka.db` 의 `predictions`, `prediction_items`, `broadcast_events`, `hit_judgments`, `weekly_metrics` 다. 모델 배정은 두 문서가 경로표(`lanes.py route`)를 부르는 방식으로 적었다. 방송 뒤에 만든 판은 소급 시험(`--retro`)으로만 싣는다.
 
 ## /syuka ad — 광고와 협업 회차
 
@@ -106,13 +106,13 @@ for cid in CLAIMS:
 EOF
 ```
 
-- 위 조각은 여러 줄이라 하네스에서는 그대로 돌지 않는다. 자리표시를 채운 본문을 사본 안의 `.py` 파일(예: `private/desk/builds/<card_id>/local_capture.py`)로 쓰고 `.venv/bin/python <그 파일>` 로 돌린다. `kit/README.md` 의 표가 주소와 로컬 파일의 짝이다.
+- 위 조각은 여러 줄이라 하네스에서는 그대로 돌지 않는다. 자리표시를 채운 본문을 사본 안의 `.py` 파일(예: `private/records/desk/builds/<card_id>/local_capture.py`)로 쓰고 `.venv/bin/python <그 파일>` 로 돌린다. `kit/README.md` 의 표가 주소와 로컬 파일의 짝이다.
 - 시험용 원문 파일은 글이 넉넉해야 한다. 공백을 뺀 글자가 80자보다 적은 문서는 "프로그램 대조 불가"가 되어 `observed` 가 그 안에 있어도 "못 찾음"으로 나온다.
 - 그 뒤의 재대조 칸 채우기와 `PY -m ozl.research machine-verify <claim_id…>` 는 사본에서 그대로 돈다(저장한 사본 파일을 다시 읽는 명령이다).
 - 원본 비교표(`PY -m ozl.render compare`)는 사본에 원본 슬라이드 분석 자료가 없어 "라벨이 있는 편이 없다"로 멈춘다. 평가 기준에서 그 표를 보는 항목은 "시험 사본이라 비교표 없음"으로 적는다.
 - 타임코드와 시각은 `date +%Y%m%d_%H%M%S` 로 받는다(하네스의 허용 패턴이 받는 명령이다).
-- 광고 갈래: 광고 표시의 근거 문서(공정거래위원회 심사지침)의 사본은 `kit/` 에 없다. 절차 문서의 요약에 기댔다고 표시 계획에 적는다. 광고주 자료는 `kit/sponsor/` 의 파일을 `private/desk/sponsor/<card_id>/` 에 둔 것으로 쓴다.
+- 광고 갈래: 광고 표시의 근거 문서(공정거래위원회 심사지침)의 사본은 `kit/` 에 없다. 절차 문서의 요약에 기댔다고 표시 계획에 적는다. 광고주 자료는 `kit/sponsor/` 의 파일을 `private/records/desk/sponsor/<card_id>/` 에 둔 것으로 쓴다.
 - 웹에서 다시 받는 명령(`capture`, 5절 10단계의 `capture --refetch-check`)은 시험 사본에서 돌리지 않는다. 그 단계는 "시험 사본이라 하지 않음"으로 적는다. 전사 사본을 채우는 명령(`find.md` 3단계)도 돌리지 않는다.
 - `make_sandbox.py` 가 만든 사본에는 지어낸 영상 5편의 3판 자료, 영상 목록, 주제 태그, 전사 3편이 들어 있다. 지어낸 영상의 날짜는 2097~2098년이고 `kit/` 의 문서는 2099년 1월 1일과 2일이다. 전사 본문 찾기(`coverage`)는 오늘을 끝으로 기간을 세므로, 사본에서는 `--asof 2099-01-02T12:00` 을 주어야 지어낸 영상이 기간에 든다(주지 않으면 0편이다). `find-v3` 와 주제 태그 찾기는 그대로 돈다.
 - 번호(`ids`)의 날짜는 실제 오늘이다. 카드와 기록의 내용(기준 시점, 문서의 날짜)은 `kit/` 의 문서대로 적는다.
-- 사본에 슈카 자료(`private/syuka/`, `private/meta/`, `private/transcripts/`)를 넣지 않았으면 `find-v3` 는 "3판 자료 0편 기준"으로 끝나고, 주제 태그와 전사 본문 찾기는 영상 목록 파일이 없다는 오류(`FileNotFoundError`)로 끝난다. 그때 겹침은 "판정 못 함(시험 사본에 자료 없음)"으로 적고 넘어간다.
+- 사본에 슈카 자료(`private/data/derived/syuka/`, `private/data/raw/meta/`, `private/data/raw/transcripts/`)를 넣지 않았으면 `find-v3` 는 "3판 자료 0편 기준"으로 끝나고, 주제 태그와 전사 본문 찾기는 영상 목록 파일이 없다는 오류(`FileNotFoundError`)로 끝난다. 그때 겹침은 "판정 못 함(시험 사본에 자료 없음)"으로 적고 넘어간다.

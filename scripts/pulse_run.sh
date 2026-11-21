@@ -1,6 +1,6 @@
 #!/bin/zsh
 # OZL Pulse 매시 실행 — launchd(com.hyunbin.ozl-pulse)가 매시 5분에 부른다. 모델 호출 없음(결정적 코드만).
-# 로그: <pulse>/logs/run_YYYYMM.log(지금 private/pulse/logs) · 새벽 4시대 실행에서 90일 지난 기록을 정리한다.
+# 로그: <pulse>/logs/run_YYYYMM.log(지금 private/live/pulse/logs) · 새벽 4시대 실행에서 90일 지난 기록을 정리한다.
 set -u
 cd "${0:A:h}/.." || exit 1
 # 로그 폴더는 src/ozl/paths.py 가 정한다(폴더를 옮겨도 이 파일은 그대로다). 위치를 못 받으면 수집을 하지 않는다.

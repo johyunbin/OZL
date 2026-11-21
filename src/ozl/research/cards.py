@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """소재 카드·클레임 레코드 — 저장 위치·스키마 검증·배지 계산·상태 전이.
 
-정본(비공개): private/desk/cards/<card_id>.yaml · private/desk/claims/<날짜>/<card_id>-cN.yaml
+정본(비공개): private/records/desk/cards/<card_id>.yaml · private/records/desk/claims/<날짜>/<card_id>-cN.yaml
 공개(발행 승인된 카드만): daily/YYYY/MM/<날짜>_<회차>.md · claims/<날짜>/<card_id>-cN.yaml
 규칙의 정본은 docs/methodology.md §2~§4·§7·§8 이고, 여기는 그것을 기계가 검사하게 옮긴 것이다.
 

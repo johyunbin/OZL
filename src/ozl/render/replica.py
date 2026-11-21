@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """원본 프레임 한 장을 측정 좌표 그대로 재현해 렌더와 겹쳐 보는 검증 (Phase 2A 검증 항목).
 
-  build   : private/style/replica_spec.json(프레임·줄 좌표·문구 — 비공개) → private/style/replica/replica_<ts>.pptx
+  build   : private/data/derived/style/replica_spec.json(프레임·줄 좌표·문구 — 비공개) → private/data/derived/style/replica/replica_<ts>.pptx
   compare : 렌더 PDF(파워포인트 내보내기) → 캔버스 해상도(1218×686) PNG → 원본 프레임과 줄 단위 대조 + 겹침 이미지
 보정값(글상자 변 → 첫 글자 잉크까지의 거리)은 compare 결과로 정해 deck.py 상수에 반영한다.
 

@@ -3,11 +3,11 @@
     python -m ozl.pulse serve [--port 8765]
 
     GET /                  대시보드(web/index.html)
-    GET /api/now           private/pulse/out/now.json 그대로
+    GET /api/now           private/live/pulse/out/now.json 그대로
     GET /api/topic/<id>    주제 하나의 지난 24시간 추이(실행마다 순위·점수·매체 수) + now.json 의 그 주제
     GET /api/health        마지막 실행 시각·성공 여부 — 앱이 "갱신 멈춤"을 표시하는 데 쓴다
     GET /deck?id=<id>      이슈 브리핑 덱 화면(web/deck.html · 한 장 한 문장 스와이프)
-    GET /api/brief/<id>    덱 1건(YAML → JSON). deck-sample = 형식 예시(skills/ozl-news/deck_example.yaml), 그 밖은 private/briefs/<날짜>/<id>.yaml
+    GET /api/brief/<id>    덱 1건(YAML → JSON). deck-sample = 형식 예시(skills/ozl-news/deck_example.yaml), 그 밖은 private/outputs/briefs/<날짜>/<id>.yaml
 
 DB 는 읽기 전용 모드로 연다. 쓰는 일은 매시 실행(snapshot)만 한다.
 """

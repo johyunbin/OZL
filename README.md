@@ -101,3 +101,29 @@
 | `apps/ios/` | 비공개 서버를 읽는 iOS 앱(실험) |
 
 원본 영상, 전사, 캡처 화면, 원문 사본, 승인 전 카드, 슬라이드 초안과 완성본은 이 저장소에 없습니다.
+
+### 구조도
+
+```
+OZL/
+  README.md CLAUDE.md AGENTS.md   안내와 작업 규칙(일마다의 세부는 agent/)
+  src/ozl/                        코드. 비공개 자료의 위치는 src/ozl/paths.py 한 곳에서 정한다
+  tests/                          시험(실제 비공개 자료에 쓰지 않는다)
+  scripts/                        공개 검사, 백업, 매시 수집 실행 스크립트
+  apps/web/  apps/ios/            정적 사이트와 iOS 앱
+  daily/  claims/  docs/          공개 사이트가 읽는 공개 산출물
+  tracks/  skills/  .claude/      분석 결과(집계), 절차서, 대화 명령
+  agent/                          일마다 먼저 읽는 작업 규칙
+  tools/                          문자 인식 도구 같은 보조 프로그램
+  결과물 -> private/결과물        사용자가 여는 입구(링크)
+  private/                        비공개 자료(저장소에 없음, 별도 비공개 백업)
+    결과물/  templates/            사용자가 여는 결과물, 바로 쓰는 덱 템플릿
+    live/                          매시 수집이 쓰는 DB, 후보 판, 로그
+    data/                          원자료(raw), 원자료에서 뽑은 것(derived), 전사 모델(models)
+    outputs/                       자동으로 만든 덱, 미리보기, 보고서
+    records/                       카드·이슈 장부, 계획, 인계 문서, 시험 실행 기록
+    state/                         운영 화면 설정과 대기열, 캐시
+    archive/                       지금 쓰지 않는 보관본과 수집 DB 스냅숏
+```
+
+`private/` 의 칸마다 무엇이 들고 무엇이 백업되는지는 `private/README.md` 에 있습니다.

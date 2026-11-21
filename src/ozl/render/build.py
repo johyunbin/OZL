@@ -6,7 +6,7 @@
 그림은 내려받지 않는다 — 회색 자리에 '무엇을 · 어느 공식 출처에서'만 적거나, 검수 대장(사양 pictures)에 오른 로컬 그림 파일을 넣는다.
 엄격 모드 빌드는 밈 그림을 빼고(pictures.drop_memes) 뺀 것을 빌드 출력과 러닝시트 머리에 적는다.
 막는 그림(판정 '비공개 판에서만' 또는 권리 확인 대기)이 든 사양은 엄격 모드에서 두 판을 같은 타임코드로 함께 낸다(pictures.py 머리말의 「두 판과 공개 차단」):
-  private/decks/drafts/<card_id>_<ts>_비공개판/ 과 <card_id>_<ts>_바꾼판/ — 판마다 pptx · PDF · 쪽 PNG · 러닝시트 · 링크 목록(style: syuka) ·
+  private/outputs/decks/drafts/<card_id>_<ts>_비공개판/ 과 <card_id>_<ts>_바꾼판/ — 판마다 pptx · PDF · 쪽 PNG · 러닝시트 · 링크 목록(style: syuka) ·
   그림 검수 대장(「바꾼 장」 표) · 공개_가부.json(edition · pair · swaps) · 그 판의 사양 사본(spec_<ts>_<판>.yaml).
   한 판이라도 검사에 실패하면 어느 폴더도 만들지 않는다. 끝에 public_check 가 비공개판 1 · 바꾼판 0 이 아니면 멈춘다.
   비공개판을 만들면 막는 그림 파일과 그 판의 pptx · PDF · 막는 그림이 든 쪽의 PNG 의 sha256 을 비공개 등록 대장(registry_file)에 덧붙인다
@@ -18,7 +18,7 @@ style: syuka 빌드는 차트 그림 안의 '출처:' 줄을 그리지 않는다
 광고 회차(사양 맨 위 sponsorship)는 구간의 장마다 오른쪽 위에 띠(표시 문구 · 광고주)를 그리고, 러닝시트 머리에 광고 구간 줄을,
 링크 목록에 「광고주 제공 자료」 절을 둔다(검사는 spec.sponsorship_errors).
 
-    python -m ozl.render build <사양.yaml> [--edition 비공개판|바꾼판]   # private/decks/drafts/<card_id>_<ts>[_<판>]/
+    python -m ozl.render build <사양.yaml> [--edition 비공개판|바꾼판]   # private/outputs/decks/drafts/<card_id>_<ts>[_<판>]/
 """
 from __future__ import annotations
 
@@ -1597,7 +1597,7 @@ def write_picture_files(sp: dict, outdir: pathlib.Path, led_md: pathlib.Path, ts
 
 def registry_file() -> pathlib.Path:
     """빌드가 덧붙이는 비공개 등록 대장 — 산출 폴더(DRAFTS)의 윗 폴더에 둔다. 기본 자리에서는 pictures.REGISTRY 와 같다
-    (private/decks/private_only_registry.jsonl). 시험이 DRAFTS 를 임시 폴더로 바꾸면 대장도 그 옆으로 간다(실제 대장을 건드리지 않는다)."""
+    (private/outputs/decks/private_only_registry.jsonl). 시험이 DRAFTS 를 임시 폴더로 바꾸면 대장도 그 옆으로 간다(실제 대장을 건드리지 않는다)."""
     from ozl.render import pictures as PIC
     return DRAFTS.parent / PIC.REGISTRY_NAME
 

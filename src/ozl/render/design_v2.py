@@ -1,6 +1,6 @@
 """덱과 원본 방송의 설계 규칙 비교 — 2026-11-21 집계.
 
-출처: private/p3/rules/{slides_by_duration,stage_mix,skeletons,labeler_compare}.json.
+출처: private/records/runs/p3/rules/{slides_by_duration,stage_mix,skeletons,labeler_compare}.json.
 실행할 때 원자료를 읽지 않는다. 원본은 줄 색을 쟀으므로, 우리 덱도 넘침 검사와
 같이 나눈 본문 줄 중 문단 자체가 빨강인 줄만 센다. 검정 문단의 빨강 낱말은 제외한다.
 """

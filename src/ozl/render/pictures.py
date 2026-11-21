@@ -54,7 +54,7 @@
     초안 모드는 판을 가르지 않는다(swap 은 모양만 보고 떼어 낸 연습용 판 하나 — 바꾼 판의 초안은 --edition 바꾼판 으로 본다).
   - 권리 확인 대기(결정 라): RIGHTS_PENDING_HOSTS 의 호스트(지금 korea.kr)를 찍은 원문 화면 갈무리와 rights_pending: "<까닭>" 칸을 적은 그림은
     판정은 그대로('쓴다')이고 공개만 막는다(public_block). 권리가 확실해지면 표의 그 줄(또는 칸)을 지우고 등록 대장에서 그 그림의 줄을 지운다(사람이 정한다).
-  - 비공개 등록 대장(REGISTRY — private/decks/private_only_registry.jsonl): 빌드가 비공개판을 만들 때 막는 그림 파일과 그 판의 pptx · PDF ·
+  - 비공개 등록 대장(REGISTRY — private/outputs/decks/private_only_registry.jsonl): 빌드가 비공개판을 만들 때 막는 그림 파일과 그 판의 pptx · PDF ·
     막는 그림이 든 쪽의 PNG 의 sha256 을 한 줄씩 덧붙인다(그 밖의 쪽 PNG 는 바꾼판의 같은 쪽과 바이트가 같아 적지 않는다).
     막는 그림이 든 초안 모드의 연습용 판도 같은 방식으로 등록한다. public_check 가 pptx 문서 속성(keywords), 공개_가부.json(edition), pptx 안 미디어 해시, 파일 해시를 이 대장과 견준다
     — keywords 를 지운 사본도 그림 해시로 잡는다. 환경 변수 OZL_PRIVATE_REGISTRY 는 더 볼 대장을 더할 뿐이다(기본 대장은 늘 본다).
@@ -148,7 +148,7 @@ PRIVATE_KEYWORD = "ozl:private-only"   # 공개 불가 덱의 pptx 문서 속성
 #     거리는 큰 바뀜(좌우 뒤집기 30~32, 아래 띠, 넓은 자르기)을 잡는 둘째 기준으로 8 을 그대로 둔다(4 로 낮춰도 더 잡히는 사본은 216개 가운데 2개).
 PHASH_MAX = 8        # origin_check 의 지각 해시 거리 상한(64비트 중) — 넘으면 잘리거나 덧칠된 사본으로 본다
 LOCAL_DIFF_MAX = 35.0   # origin_check 의 구역 차이 상한(0~255) — 넘으면 한 곳이 덧칠되거나 잘리거나 바뀐 사본으로 본다
-ORIGIN_SURVEY_FILE = "private/decks/규칙/왜곡사본_거리_실측_20261115_054129.md"
+ORIGIN_SURVEY_FILE = "private/outputs/decks/규칙/왜곡사본_거리_실측_20261115_054129.md"
 LOCAL_SIDE = 256     # 구역 차이를 잴 때 두 그림을 맞추는 한 변(픽셀)
 LOCAL_ZONES = 16     # 한 변의 구역 수 — 구역 하나는 16×16 픽셀(그림 넓이의 약 0.4%)
 
@@ -1964,7 +1964,7 @@ def backfill_rows(pptx: pathlib.Path) -> tuple[list[dict], list[str]]:
 
 def register_main(argv: list[str]) -> int:
     """python -m ozl.render register-private [<폴더 또는 덱 파일>…] [--dry-run]
-    이미 만들어진 비공개 판을 비공개 등록 대장(REGISTRY)에 채운다. 인자가 없으면 대장이 있는 폴더(private/decks) 아래를 다 본다.
+    이미 만들어진 비공개 판을 비공개 등록 대장(REGISTRY)에 채운다. 인자가 없으면 대장이 있는 폴더(private/outputs/decks) 아래를 다 본다.
     덱은 파일 안을 보고 찾고(확장자와 무관), 문서 속성 keywords 에 비공개 판 표시(ozl:private-only · ozl:edition=private)가 있는 것만 적는다.
     적는 것은 backfill_rows 의 줄이다. 대장에 이미 있는 해시는 건너뛴다. 파일을 지우거나 옮기지 않는다. --dry-run 은 적지 않고 세기만 한다.
     종료 코드: 0 = 끝까지 봤다, 1 = 가리지 못했거나 열지 못한 덱이 있다(그 덱은 적지 못했다) 또는 보지 못한 폴더 · 링크가 있다

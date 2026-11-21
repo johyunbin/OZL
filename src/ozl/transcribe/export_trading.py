@@ -2,7 +2,7 @@
 """Trading 원장(trading.db youtube_content + contents/youtube/<ch>/*.json)의 전사를 OZL 로 읽기 전용 export.
 
 - 텍스트는 DB, 세그먼트(start/end/text)는 md_path 가 가리키는 Trading JSON 에서 가져온다(없으면 text만).
-- 산출: private/transcripts/trading_export/<channel>/<video_id>.json · index.csv (멱등·증분: 기존 파일은 chars 가 같으면 건너뜀)
+- 산출: private/data/raw/transcripts/trading_export/<channel>/<video_id>.json · index.csv (멱등·증분: 기존 파일은 chars 가 같으면 건너뜀)
 - Trading 에는 절대 쓰지 않는다(sqlite 읽기 전용 URI).
 """
 from __future__ import annotations

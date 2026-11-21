@@ -1079,7 +1079,7 @@ def stage_errors(stages: list[str], template: dict, pages: list[int] | None = No
 
 
 # ── 광고 칸(사양 맨 위 sponsorship 과 장의 stage: 광고) ─────────────────────────
-# 기준은 private/decks/규칙/광고_협업_절차_<타임코드>.md 2절(광고 표시)과 4절(덱 구성의 차이)이다. 20% 는 우리가 정한 값이다.
+# 기준은 private/outputs/decks/규칙/광고_협업_절차_<타임코드>.md 2절(광고 표시)과 4절(덱 구성의 차이)이다. 20% 는 우리가 정한 값이다.
 SPONSOR = "sponsorship"
 SPONSOR_STAGE = "광고"                       # 광고 구간의 장 — cards.STAGES 밖이다(단계 순서 검사는 이 장을 빼고 본다)
 SPONSOR_KINDS = ("유료 광고", "협찬", "협업")
@@ -1330,7 +1330,7 @@ def load_spec(path: pathlib.Path) -> dict:
 
 
 def load_claims(ids, claims_dirs=()) -> tuple[dict[str, dict], set[str]]:
-    """사양이 인용한 클레임을 읽는다(읽기만). 정본(private/desk/claims)에 없으면 claims_dirs(대기 폴더)에서 `<claim_id>.yaml` 을 찾는다.
+    """사양이 인용한 클레임을 읽는다(읽기만). 정본(private/records/desk/claims)에 없으면 claims_dirs(대기 폴더)에서 `<claim_id>.yaml` 을 찾는다.
     반환 = (클레임, 대기 폴더에서 온 claim_id). 대기 폴더 기록은 초안 모드에서만 쓸 수 있다(check 가 가른다)."""
     out: dict[str, dict] = {}
     staged: set[str] = set()

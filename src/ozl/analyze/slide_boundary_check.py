@@ -3,7 +3,7 @@
 
 방법: 영상을 720p 로 다시 받아 4초마다 슬라이드 영역을 뽑고(1152×680 으로 맞춤) → clean 프레임만 문자 인식 → 제목 문장 열을 만든다.
        2표본 이상(≥ 8초) 연속으로 보인 제목 = 실제로 화면에 있던 슬라이드. 이것을 slide_timeline 의 고유 슬라이드 제목과 대조한다.
-출력: private/style/slide_boundary_check.md · private/style/boundary/<video_id>.json   (제목 문구 포함 → 비공개)
+출력: private/data/derived/style/slide_boundary_check.md · private/data/derived/style/boundary/<video_id>.json   (제목 문구 포함 → 비공개)
 부하: nice 19 · yt-dlp sleep · 영상은 끝나면 삭제.
 
     python -m ozl.analyze.slide_boundary_check <video_id> [<video_id> ...]

@@ -9,8 +9,8 @@
     python scripts/youtube_stats_retention.py purge --root <폴더> --asof YYYY-MM-DD [--apply]
 
 - 읽는 형식: json · jsonl · csv. 저장소에서 통계가 실제로 나온 형식이 이 셋뿐이다
-  (private/meta 의 *_videos.jsonl·*.summary.json·catalog_*.csv·sample30_*.csv, private/frames 의 summary.json·*/index.json).
-  sqlite(private/pulse/pulse.db)의 views 는 커뮤니티 글 조회수라 유튜브 통계가 아니다. 칸 이름도 views 라 여기 잡히지 않는다.
+  (private/data/raw/meta 의 *_videos.jsonl·*.summary.json·catalog_*.csv·sample30_*.csv, private/data/raw/frames 의 summary.json·*/index.json).
+  sqlite(private/live/pulse/pulse.db)의 views 는 커뮤니티 글 조회수라 유튜브 통계가 아니다. 칸 이름도 views 라 여기 잡히지 않는다.
 - 통계 칸: view_count·like_count·comment_count·subscriber_count·dislike_count·favorite_count 와 그 API 원래 이름(viewCount 등).
   video_count(videoCount)는 같은 묶음에 다른 통계 칸이 있을 때만 통계로 본다(채널 statistics 에서 온 값).
 - 받은 시각을 찾는 순서: 레코드의 fetched_at → 상위 묶음(파일)의 fetched_at → 같은 video_id 의 다른 기록 가운데 가장 이른 받은 시각
@@ -19,7 +19,7 @@
 - 지우는 방법: json·jsonl 은 값을 null 로, csv 는 빈 칸으로 바꾼다. 칸 이름과 다른 칸(영상 ID·제목·게시일 등)은 그대로 둔다.
   원본 사본은 남기지 않는다(지워야 하는 자료의 사본이 되므로). 대신 지운 칸 수와 파일별 요약을
   <root>/out/youtube_stats_purge_<타임코드>.json 에 남긴다.
-- 안전장치: --root 가 저장소의 실제 private/ 이거나 그 상위 폴더, 또는 private/out/ 밖의 private/ 하위 폴더이면 --apply 를 거부한다.
+- 안전장치: --root 가 저장소의 실제 private/ 이거나 그 상위 폴더, 또는 private/outputs/out/ 밖의 private/ 하위 폴더이면 --apply 를 거부한다.
   환경 변수 OZL_YT_PURGE_REAL=1 이 있을 때만 허용한다.
 """
 from __future__ import annotations

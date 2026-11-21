@@ -31,7 +31,7 @@ CODEX_RULES = ["Bash(codex*)", "Bash(*codex_smart*)", "Bash(*codex exec*)", "Bas
                "Bash(*surface*codex*)", "mcp__hyunbin-multimodel__multimodel_request"]
 OFFLOAD_RULES = ["Bash(*offload.py*)", "Bash(*offload_read*)"]
 APPROVE_RULES = ["Bash(*ozl.issues approve*)", "Bash(*ozl.issues withdraw*)", "Bash(*export*--public*)",
-                 "Bash(*ozl.ops token*)", "Bash(*private/ops*)", "Bash(*manifest.json*)", "Bash(*approval.json*)",
+                 "Bash(*ozl.ops token*)", "Bash(*private/ops*)", "Bash(*private/state/ops*)", "Bash(*manifest.json*)", "Bash(*approval.json*)",
                  "Bash(*make_queue.json*)", "Bash(*revisions.approve*)", "Bash(*approve_unit*)"]
 DISALLOWED = CODEX_RULES + OFFLOAD_RULES + APPROVE_RULES      # 자료 루트에 매이지 않는 규칙. 경로 규칙은 disallowed() 가 더한다
 # make 가 쓰는 곳(issue.yaml, evidence/, captures/, reviews/)은 막지 않는다. 막는 곳만 적는다(거부 규칙이 허용보다 앞선다).
@@ -73,11 +73,13 @@ def disallowed() -> list[str]:
                 rules.append(f"{tool}({_abs_rule(r / rel)})")
     for rel in DESK_BLOCK:
         for tool in ("Edit", "Write"):
-            rules.append(f"{tool}(private/desk/{rel})")
+            for name in dict.fromkeys(("desk", ozlpaths.LAYOUT["desk"])):     # 옛 위치(desk)와 지금 위치를 함께 막는다
+                rules.append(f"{tool}(private/{name}/{rel})")
     # 시험용 루트로 돌려도 체크아웃의 운영 파일은 계속 막는다.
     ops_dirs = dict.fromkeys((ozlpaths.at("ops").resolve(), ozlpaths.real_root() / ozlpaths.LAYOUT["ops"]))
     for tool in ("Read", "Edit", "Write"):
-        rules.append(f"{tool}(private/ops/**)")
+        for name in dict.fromkeys(("ops", ozlpaths.LAYOUT["ops"])):
+            rules.append(f"{tool}(private/{name}/**)")
         rules.extend(f"{tool}({_abs_rule(directory)}/**)" for directory in ops_dirs)
     return rules
 

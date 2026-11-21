@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """원본 프레임의 글줄과 후보 폰트 렌더를 겹쳐 폰트·크기를 판별 (Phase 2A).
 
-입력: private/style/font_samples.json — [{"frame": "<video_id>/<file>.png", "top": 행 근사값, "text": "줄 전체 글자", "x_min": 선택}]
+입력: private/data/derived/style/font_samples.json — [{"frame": "<video_id>/<file>.png", "top": 행 근사값, "text": "줄 전체 글자", "x_min": 선택}]
        (슬라이드 문구라 비공개 폴더에 둔다)
 방법: 줄의 잉크 마스크를 얻고(행 근사값 ±8px 안에서 줄 경계 재탐색) 후보 폰트로 같은 문장을 렌더 →
        ① 가로/세로 비율 차(글자 폭 = 폰트 고유) ② 같은 상자로 맞춘 뒤 마스크 IoU(±2px 이동 최대값) ③ 잉크 높이로 역산한 폰트 크기(px·pt)
-출력: private/style/fontmatch/report.json · 비교 이미지 private/style/fontmatch/compare_<n>.png · 표준출력 순위표
+출력: private/data/derived/style/fontmatch/report.json · 비교 이미지 private/data/derived/style/fontmatch/compare_<n>.png · 표준출력 순위표
 
     python -m ozl.analyze.font_match
 """
@@ -71,7 +71,7 @@ def candidates() -> list[tuple[str, callable]]:
                 except Exception:  # noqa: BLE001
                     break
                 c.append((f"{nm[0]} {nm[1]}", lambda s, i=i: ImageFont.truetype(str(office / "gulim.ttc"), s, index=i)))
-    # 추가 폰트 폴더(있으면): private/style/fonts_extra/*.ttf|otf — 내려받은 후보를 넣어 두면 함께 비교
+    # 추가 폰트 폴더(있으면): private/data/derived/style/fonts_extra/*.ttf|otf — 내려받은 후보를 넣어 두면 함께 비교
     extra = ozlpaths.at("style", "fonts_extra")
     if extra.exists():
         for p in sorted(list(extra.glob("*.ttf")) + list(extra.glob("*.otf"))):

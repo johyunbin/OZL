@@ -2,7 +2,7 @@
 
 무엇을 글로 만들지 아직 정하지 않았을 때의 순서다. 매시 수집이 쌓아 둔 후보 판을 표로 보이고, 사용자가 고르고 버리고 직접 넣은 것을 기록한 뒤, 고른 건을 한 건씩 만들기로 넘긴다. 받는 것은 있으면 분야나 낱말 하나다.
 
-자리표시: `BV` 는 `.venv/bin/python .claude/skills/ozl/find/board_view.py`, `<자료 루트>` 는 `OZL_DESK_ROOT` 의 값(없으면 `private/desk`)이다. 시험은 `SKILL.md` 의 「공통」과 「시험 루트에서 돌릴 때」를 따른다: 세션의 환경에 `OZL_DESK_ROOT` 가 이미 있으면 명령 앞에 붙이지 않고, 없으면 `OZL_DESK_ROOT=<시험 루트>` 를 둔다. 시험 사본에서는 사본의 후보 판을 그대로 읽고, 실제 저장소에서 시험 루트만 바꿔 돌릴 때만 `--board tests/fixtures/skills/board.json` 을 준다.
+자리표시: `BV` 는 `.venv/bin/python .claude/skills/ozl/find/board_view.py`, `<자료 루트>` 는 `OZL_DESK_ROOT` 의 값(없으면 `private/records/desk`)이다. 시험은 `SKILL.md` 의 「공통」과 「시험 루트에서 돌릴 때」를 따른다: 세션의 환경에 `OZL_DESK_ROOT` 가 이미 있으면 명령 앞에 붙이지 않고, 없으면 `OZL_DESK_ROOT=<시험 루트>` 를 둔다. 시험 사본에서는 사본의 후보 판을 그대로 읽고, 실제 저장소에서 시험 루트만 바꿔 돌릴 때만 `--board tests/fixtures/skills/board.json` 을 준다.
 
 ## 하지 않는 것
 

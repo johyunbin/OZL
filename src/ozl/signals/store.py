@@ -46,6 +46,8 @@ CREATE INDEX IF NOT EXISTS issue_days_calc ON issue_days(calc_id);
 
 
 def connect(path: pathlib.Path | str) -> sqlite3.Connection:
+    if str(path).startswith("file:"):   # 읽기 전용 URI 를 쓰기용 열기에 넘기면 'file:private/...' 폴더가 생긴다(2026-11-15 흔적)
+        raise ValueError(f"쓰기용 연결에 URI 를 넘겼다: {path} — 읽기는 sqlite3.connect(uri, uri=True) 로 연다")
     p = pathlib.Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
     con = sqlite3.connect(p)

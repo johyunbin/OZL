@@ -8,8 +8,8 @@
 슈카월드 슬라이드는 장마다 제목 문장이 다르므로 **제목 줄(문자 인식)이 같은 프레임 = 같은 슬라이드**로 묶는다.
 제목이 없는 프레임은 직전 슬라이드와 본문이 겹치면 같은 장, 아니면 새 장.
 
-입력: private/style/style_measure_raw.json · private/ocr/<video_id>.jsonl · private/frames/<video_id>/index.json
-출력: private/slides/<video_id>.json(슬라이드별 문구·시각 — 비공개) · tracks/syuka/analysis/slide_structure_syukaworld.md(집계만)
+입력: private/data/derived/style/style_measure_raw.json · private/data/derived/ocr/<video_id>.jsonl · private/data/raw/frames/<video_id>/index.json
+출력: private/data/derived/slides/<video_id>.json(슬라이드별 문구·시각 — 비공개) · tracks/syuka/analysis/slide_structure_syukaworld.md(집계만)
 
     python -m ozl.analyze.slide_timeline
 """
@@ -192,7 +192,7 @@ def main() -> int:
     for r in vids:
         sl = r["slides"]
         L.append(f"| {r['video_id']} | {round(r['duration_sec'] / 60)} | {r['n_clean']} | {len(sl)} | {len(sl) / max(1, r['duration_sec']) * 600:.1f} | {med([s['dwell_sec'] for s in sl if s['dwell_sec'] > 0])} | {sum(1 for s in sl if s['has_en']) / max(1, len(sl)):.0%} |")
-    L += ["", "※ 장면 전환 검출이 놓친 슬라이드(직전 장과 거의 같은 화면)는 빠질 수 있어 장수는 하한에 가깝다. 정답 표본 대조 결과는 `private/style/slide_boundary_check.md`."]
+    L += ["", "※ 장면 전환 검출이 놓친 슬라이드(직전 장과 거의 같은 화면)는 빠질 수 있어 장수는 하한에 가깝다. 정답 표본 대조 결과는 `private/data/derived/style/slide_boundary_check.md`."]
     OUT_MD.write_text("\n".join(L) + "\n", encoding="utf-8")
     print("\n".join(L[:22]))
     return 0

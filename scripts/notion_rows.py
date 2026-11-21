@@ -5,7 +5,7 @@
 
 Notion 에 쓰는 일은 이 스크립트가 하지 않는다. 세션이 Notion 커넥터로 한다: DB 「이슈」에서 `이슈 번호`가 같은 줄을 찾아 있으면 고치고
 없으면 만든다. 「제작물」은 `제작물 번호`로 찾는다. 두 번 돌려도 줄이 늘지 않는다. `메모` 칸은 사용자의 것이라 쓰지 않는다.
-DB 의 식별자는 `private/notion_issues.json` 에 있다.
+DB 의 식별자는 `private/state/notion_issues.json` 에 있다.
 
 올리지 않는 것: 본문(확인된 사실, 주장의 문장, 흐름, 입장), 근거 사본, 공개하지 않는 주장의 내용, 개인 정보.
 이슈 전체가 공개 제외면 제목도 올리지 않는다.
@@ -80,7 +80,7 @@ def product_rows(row: dict, cards_root: pathlib.Path) -> list[dict]:
     slug, rev = issue.get("slug"), row.get("rev")
     stage = {"게시": "게시", "게시 대기": "게시 대기", "검토 대기": "검토 대기"}.get(state_of(row), "만드는 중")
     out = [{"제작물 번호": f"{row['id']}:web", "이름": f"{row['id']} 웹 이슈 화면", "이슈 번호": row["id"], "형식": "웹 이슈 화면",
-            "단계": stage, "판 번호": rev, "파일 위치": f"private/desk/issues/{row['id']}/"}]
+            "단계": stage, "판 번호": rev, "파일 위치": f"private/records/desk/issues/{row['id']}/"}]
     d = cards_root / str(slug) / f"r{rev}"
     n = len(list(d.glob("*.png"))) if d.is_dir() else 0
     if n:

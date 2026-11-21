@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """라이브 풀버전의 주제 세그먼트 경계와 브릿지 멘트 수집 (Phase 2A-2 구성 템플릿).
 
-입력: private/meta/live_align_syukaworld.csv (클립→라이브 구간), private/transcripts/trading_export/syuka/<live>.json (세그먼트 타임스탬프)
+입력: private/data/raw/meta/live_align_syukaworld.csv (클립→라이브 구간), private/data/raw/transcripts/trading_export/syuka/<live>.json (세그먼트 타임스탬프)
 산출:
-  - private/style/bridges/<live_id>.md : 세그먼트 순서표 + 각 경계(시작·끝) 전후 45초 발화(비공개 — 전사 원문)
+  - private/data/derived/style/bridges/<live_id>.md : 세그먼트 순서표 + 각 경계(시작·끝) 전후 45초 발화(비공개 — 전사 원문)
   - tracks/syuka/analysis/live_structure.md : 집계만(도입 길이·세그먼트 수·길이·간격·마무리 길이)
 """
 from __future__ import annotations
@@ -73,7 +73,7 @@ def main() -> int:
           "", "| 날짜 | 라이브(분) | 세그먼트 | 도입(분) | 세그 중앙(분) | 최단~최장 | 간격 중앙 | 마무리(분) |", "|---|---|---|---|---|---|---|---|"]
     for s in stats:
         md.append(f"| {s['date']} | {s['dur_min']:.0f} | {s['n']} | {s['intro']:.0f} | {s['seg_median']:.0f} | {s['seg_min']:.0f}~{s['seg_max']:.0f} | {s['gap_median']:.1f} | {s['outro']:.0f} |")
-    md += ["", "※ 세그먼트 경계는 주중 클립 전사를 라이브 전사에 정렬해 얻은 5~95 백분위 구간(과소 추정 경향). 경계 전후 발화(브릿지 멘트) 원문은 비공개 `private/style/bridges/`."]
+    md += ["", "※ 세그먼트 경계는 주중 클립 전사를 라이브 전사에 정렬해 얻은 5~95 백분위 구간(과소 추정 경향). 경계 전후 발화(브릿지 멘트) 원문은 비공개 `private/data/derived/style/bridges/`."]
     OUT_MD.write_text("\n".join(md) + "\n", encoding="utf-8")
     print("\n".join(md[:8]))
     return 0

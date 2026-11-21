@@ -3,10 +3,10 @@
 
 사용:
     python -m ozl.collect.youtube_meta --handle syukaworld
-    python -m ozl.collect.youtube_meta --handle moneymoneycomics --out private/meta/moneycomics_videos.jsonl
+    python -m ozl.collect.youtube_meta --handle moneymoneycomics --out private/data/raw/meta/moneycomics_videos.jsonl
 
 비용: playlistItems.list 1유닛/50편 + videos.list 1유닛/50편 → 2,500편 ≈ 100유닛 (일 한도 10,000).
-정책: API 데이터는 private/meta/ 에만 저장(30일 주기 재조회·갱신), 공개는 집계만.
+정책: API 데이터는 private/data/raw/meta/ 에만 저장(30일 주기 재조회·갱신), 공개는 집계만.
 키: 환경변수 YOUTUBE_API_KEY 또는 저장소 루트 .env.
 """
 from __future__ import annotations
@@ -158,7 +158,7 @@ def flatten(it: dict, fetched_at: str) -> dict:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--handle", required=True, help="채널 핸들(@ 없이)")
-    ap.add_argument("--out", help="JSONL 출력 경로 (기본 private/meta/<handle>_videos.jsonl)")
+    ap.add_argument("--out", help="JSONL 출력 경로 (기본 private/data/raw/meta/<handle>_videos.jsonl)")
     args = ap.parse_args()
     key = load_key()
     out = pathlib.Path(args.out) if args.out else ozlpaths.at("meta", f"{args.handle}_videos.jsonl")

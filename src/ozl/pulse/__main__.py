@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """OZL Pulse 명령줄.
 
-    python -m ozl.pulse run [--no-fetch]   # 수집 → 점수 → private/pulse/out/now.json
+    python -m ozl.pulse run [--no-fetch]   # 수집 → 점수 → private/live/pulse/out/now.json
     python -m ozl.pulse run --community    # 회차(하루 2회)용 — 국내 커뮤니티 인기글·실시간 검색어도 받는다
     python -m ozl.pulse show [-n 15]       # now.json 상위 주제를 표로
     python -m ozl.pulse prune [--days 90]  # 오래된 항목·실행 기록 정리

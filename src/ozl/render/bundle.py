@@ -9,7 +9,7 @@ visible_text·spoken_text·chart_screen_text·footnote_text 로 뽑는다. 머�
 막는 그림이 든 사양(두 판 — pictures.py 머리말)은 비공개판을 본문으로 싣고 끝에 「바꾼 판에서 달라지는 장」을 붙인다. 엄격 검사 결과는 판마다 적는다.
 
 묶음에는 기록의 observed(원문 표기)와 재대조 칸이 들어간다 — 절차서 §5 의 독립 재대조 에이전트에게는 주지 않는다.
-기본 출력은 private/desk/builds/<card_id>/reviews/bundle_<타임코드>.md 이고, private/ 밖에는 쓰지 않는다(실수로 커밋되지 않게).
+기본 출력은 private/records/desk/builds/<card_id>/reviews/bundle_<타임코드>.md 이고, private/ 밖에는 쓰지 않는다(실수로 커밋되지 않게).
 """
 from __future__ import annotations
 

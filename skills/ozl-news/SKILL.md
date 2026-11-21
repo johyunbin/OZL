@@ -5,23 +5,23 @@ description: (은퇴, 쓰지 않는다. 보관용) 2026-11-11 에 시험한 옛 
 
 # /ozl-news — 이슈 브리핑 덱 절차 (은퇴, 보관용)
 
-> **은퇴(2026-11-14)**: 이 절차는 쓰지 않는다. 이슈 한 건을 읽는 글(`article.yaml`)과 검증 기록으로 만드는 지금의 절차는 `.claude/skills/ozl/SKILL.md`(`/ozl make`)이고 규칙은 `agent/issues.md` 다. 아래 내용은 옛 덱(`private/briefs/`)을 읽거나 다시 렌더할 때를 위해 그대로 둔다. 옛 판정 다섯(근거 없음 포함), 커뮤니티 수집, 장 유형 같은 내용은 지금 형식과 다르다.
+> **은퇴(2026-11-14)**: 이 절차는 쓰지 않는다. 이슈 한 건을 읽는 글(`article.yaml`)과 검증 기록으로 만드는 지금의 절차는 `.claude/skills/ozl/SKILL.md`(`/ozl make`)이고 규칙은 `agent/issues.md` 다. 아래 내용은 옛 덱(`private/outputs/briefs/`)을 읽거나 다시 렌더할 때를 위해 그대로 둔다. 옛 판정 다섯(근거 없음 포함), 커뮤니티 수집, 장 유형 같은 내용은 지금 형식과 다르다.
 
-> **상태(2026-11-14 확인)**: 이 절차는 2026-11-11 에 시험한 형식이다. 그 자리는 이슈 기록(`agent/issues.md`, `.claude/skills/ozl/`)이 이었고, 이슈 글 형식은 2026-11-14 에 다시 정해졌다(`private/plan/글형식_명세_20261114.md`). 지금의 판정은 넷(근거 없음 제외)이다. 커뮤니티 인기글 수집(시그널, 보배드림, 뽐뿌, 클리앙)은 2026-11-14 부터 꺼져 있어(`src/ozl/pulse/community.py` 의 `enabled: False`) 아래 1단계의 `--community` 는 아무것도 받지 않고, 후보는 구글 트렌드 키워드만으로 나온다. 사용자가 이 절차를 다시 쓰라고 하기 전에는 돌리지 않는다.
+> **상태(2026-11-14 확인)**: 이 절차는 2026-11-11 에 시험한 형식이다. 그 자리는 이슈 기록(`agent/issues.md`, `.claude/skills/ozl/`)이 이었고, 이슈 글 형식은 2026-11-14 에 다시 정해졌다(`private/records/plan/글형식_명세_20261114.md`). 지금의 판정은 넷(근거 없음 제외)이다. 커뮤니티 인기글 수집(시그널, 보배드림, 뽐뿌, 클리앙)은 2026-11-14 부터 꺼져 있어(`src/ozl/pulse/community.py` 의 `enabled: False`) 아래 1단계의 `--community` 는 아무것도 받지 않고, 후보는 구글 트렌드 키워드만으로 나온다. 사용자가 이 절차를 다시 쓰라고 하기 전에는 돌리지 않는다.
 
-작업 폴더 `~/OZL`, 파이썬 `~/OZL/.venv/bin/python`(아래 `PY`). 규범은 `~/OZL/CLAUDE.md` 와 `~/OZL/agent/issues.md`. 형식과 판정 정의의 정본은 `skills/ozl-news/deck_example.yaml`, 실제 덱의 본보기는 `private/briefs/2026-11-11/2026-11-11-pm-b01.yaml`(비공개). 모든 산문은 한국어. 슈카 대비 일일 데스크(`/ozl`)와 별개 트랙이다 — 카드·클레임 파일을 건드리지 않는다.
+작업 폴더 `~/OZL`, 파이썬 `~/OZL/.venv/bin/python`(아래 `PY`). 규범은 `~/OZL/CLAUDE.md` 와 `~/OZL/agent/issues.md`. 형식과 판정 정의의 정본은 `skills/ozl-news/deck_example.yaml`, 실제 덱의 본보기는 `private/outputs/briefs/2026-11-11/2026-11-11-pm-b01.yaml`(비공개). 모든 산문은 한국어. 슈카 대비 일일 데스크(`/ozl`)와 별개 트랙이다 — 카드·클레임 파일을 건드리지 않는다.
 
 인자: `am` · `pm`. 날짜는 오늘(KST). 회차당 덱 수는 `N`(기본 3, 사용자가 말하면 그 수).
 
 ## 0. 가드 (예약 실행이면 가장 먼저)
 1. **기기**: `hostname -s` 가 `Mac-mini` 가 아니면 "다른 기기 발화 — 무동작 종료" 한 줄만 남긴다.
 2. **모델**: 예약 실행인데 Opus 계열이 아니면 무동작 종료하고 보고한다(사용자가 대화로 부르면 적용하지 않는다).
-3. **쓰기 범위**: `~/OZL/private/briefs/` 와 `~/OZL/private/pulse/` 뿐. 코드·설정·문서·공개 저장소 파일은 고치지 않는다. 고장이면 고치지 말고 근거와 함께 보고한다.
+3. **쓰기 범위**: `~/OZL/private/outputs/briefs/` 와 `~/OZL/private/live/pulse/` 뿐. 코드·설정·문서·공개 저장소 파일은 고치지 않는다. 고장이면 고치지 말고 근거와 함께 보고한다.
 4. **금지**: Codex 호출 · 커뮤니티 본문·댓글을 긁어 오기(목록 제목·링크·수치만) · 로그인·유료 벽·봇 차단 우회 · git commit/push · 덱을 공개 저장소로 옮기기.
 
 ## 1. 수집과 후보
 1. `PY -m ozl.pulse run --community` — 피드와 커뮤니티 목록(소스당 1회)을 받는다. 출력의 실패 줄은 보고에 옮긴다.
-2. `PY -m ozl.briefs candidates --slot <am|pm>`(아침 `--hours 24`, 저녁 `--hours 14`) → `private/briefs/<날짜>/<회차>/candidates.md` 를 읽는다.
+2. `PY -m ozl.briefs candidates --slot <am|pm>`(아침 `--hours 24`, 저녁 `--hours 14`) → `private/outputs/briefs/<날짜>/<회차>/candidates.md` 를 읽는다.
 3. **고르기(N개)** — 지금은 단순하게: 점수 순으로 보되 아래만 건너뛴다. 민감 소재는 거르지 않는다(사용자 결정 · 표시만).
    - 사실관계로 확인할 거리가 없는 것(개인 사연·잡담·유머·스포츠 경기 결과 하나)
    - 떠도는 주장이 없는 것(이미 공식 발표로 끝난 단순 소식) — 이 트랙은 "말과 사실의 간격"을 보여 주는 곳이다
@@ -37,7 +37,7 @@ description: (은퇴, 쓰지 않는다. 보관용) 2026-11-11 에 시험한 옛 
 
 ## 3. 덱 쓰기
 1. `PY -m ozl.briefs ids --slot <am|pm> -n <고른 수>` 로 번호를 받는다(대장에 적힌다 — 지운 번호도 다시 쓰지 않는다).
-2. `private/briefs/<날짜>/<brief_id>.yaml` 을 쓴다. 본보기를 따른다.
+2. `private/outputs/briefs/<날짜>/<brief_id>.yaml` 을 쓴다. 본보기를 따른다.
    - 10~13장: cover → number(여는 숫자) → claim 들(그 사이에 bars·cards 근거 장) → text(시사점, 필요할 때만) → questions.
    - 제목은 **문장**이고 제목만 넘겨 읽어도 줄거리가 된다. 첫 반전(`twist: true`, "그런데")은 앞 1/3 안에 둔다. 마지막은 요약하지 않고 남은 질문.
    - 판정은 5종만: 확인 · 일부 맞음 · 사실과 다름 · 근거 없음(틀렸다는 뜻이 아님) · 확인 못 함(자료가 없음). `why` 에 판정 이유를 한두 문장으로 — 출처가 1곳이면 그렇게 적는다.

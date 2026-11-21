@@ -2,10 +2,10 @@
 """영상별 글자 크기 조사 — 문자 인식된 한글 줄을 맑은 고딕으로 렌더해 폭으로 em 을 역산 (Phase 2A · font_match 의 전수판).
 
 font_match 는 사람이 문구를 적어 준 13줄(영상 2편)만 봤다. 독립 검증에서 영상마다 em 이 다르다는 지적이 나와 30편 전체를 잰다.
-방법: private/ocr/<video_id>.jsonl 에서 본문 크기·한글 위주·신뢰도 높은 줄을 영상당 최대 60줄 고른다 →
+방법: private/data/derived/ocr/<video_id>.jsonl 에서 본문 크기·한글 위주·신뢰도 높은 줄을 영상당 최대 60줄 고른다 →
        원본 줄의 잉크 폭 ÷ 같은 문구의 렌더 폭 = em(px). 한글은 Regular·Bold 의 글자 폭이 같아 굵기와 무관하다.
        문자 인식 오류로 문구가 다르면 폭이 어긋나므로 겹침(IoU) ≥ 0.5 인 줄만 쓴다.
-출력: private/style/font_survey.json · 표준출력 요약 (집계는 style_measure 보고서 §5 가 읽어 싣는다)
+출력: private/data/derived/style/font_survey.json · 표준출력 요약 (집계는 style_measure 보고서 §5 가 읽어 싣는다)
 
     python -m ozl.analyze.font_survey
 """

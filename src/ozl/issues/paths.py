@@ -1,7 +1,7 @@
 """자료 루트와 경로, 파일 잠금, 원자적 쓰기.
 
 자료 루트는 가져올 때 한 번 정하지 않고 부를 때마다 읽는다(`desk_root()`). 시험은 환경 변수 OZL_DESK_ROOT 로 바꾸고,
-이 모듈을 쓰는 코드가 경로를 상수로 박으면 시험이 실제 private/desk 에 쓰게 된다.
+이 모듈을 쓰는 코드가 경로를 상수로 박으면 시험이 실제 private/records/desk 에 쓰게 된다.
 """
 from __future__ import annotations
 

@@ -5,7 +5,7 @@
     python -m ozl.analyze.catalog sample30       # 슈카월드 대표 30편(최신/중간/고조회 10편씩)
     python -m ozl.analyze.catalog livemap        # 슈카월드 라이브 풀버전 ↔ 주중 클립 매핑
 
-공개 산출(`tracks/syuka/analysis/`)은 집계만. 개별 영상 행(제목·조회수 등)은 `private/meta/` 에만 둔다(YouTube API 정책: 30일 갱신).
+공개 산출(`tracks/syuka/analysis/`)은 집계만. 개별 영상 행(제목·조회수 등)은 `private/data/raw/meta/` 에만 둔다(YouTube API 정책: 30일 갱신).
 """
 from __future__ import annotations
 
@@ -214,7 +214,7 @@ def main(argv: list[str]) -> int:
             rows = load(h)
             c = write_catalog(h, rows)
             o = write_overview(h, rows)
-            print(f"[{h}] {len(rows)} rows → private/meta/{c.name} · {o.relative_to(ROOT)}")
+            print(f"[{h}] {len(rows)} rows → private/data/raw/meta/{c.name} · {o.relative_to(ROOT)}")
     if cmd in ("all", "sample30"):
         sample30(load("syukaworld"))
     if cmd in ("all", "livemap"):

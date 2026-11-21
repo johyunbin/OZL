@@ -7,13 +7,13 @@
 - 절차: `.claude/skills/ozl/SKILL.md`(`/ozl find`, `/ozl make`, `/ozl status`)와 지시서 `.claude/skills/ozl/find/find.md`, 단계별 지시서 `.claude/skills/ozl/make/`. 사용자가 부를 때만 돈다.
 - 고르는 길은 둘이다: 대화의 `/ozl find`(후보 판을 표로 보고 고르기, 버리기, 직접 넣기. 고르기 기록은 `<자료 루트>/find/`)와 운영 화면 `/pick` 의 [만들기](만들기 대기열에 쌓이고 인자 없는 `/ozl make` 가 꺼낸다). 만들 건이 정해졌으면 `/ozl make "<제목>"` 으로 바로 만든다.
 - 판정과 문장의 원칙 20가지: `.claude/skills/ozl/make/principles.md`. 쓰기, 재대조와 문장 대조, 고치기가 모두 이 파일을 쓴다.
-- 기록의 형식과 판정 규칙의 정본은 코드다: `src/ozl/issues/`(판정과 근거 조건의 조합표는 `rules.py`). 설계 문서는 `private/plan/issues_spec_20261114.md` 3절.
+- 기록의 형식과 판정 규칙의 정본은 코드다: `src/ozl/issues/`(판정과 근거 조건의 조합표는 `rules.py`). 설계 문서는 `private/records/plan/issues_spec_20261114.md` 3절.
 - 명령은 `.venv/bin/python -m ozl.issues --help` 에 있는 것만 쓴다: `new`, `ids`, `capture`, `machine-verify`, `check`, `review add`, `snapshot`, `hash`, `status`, `links`, `export`, `approve`, `withdraw`, `article-check`, `article-new`.
 - 지어낸 예시 기록: `tests/fixtures/issues/`.
 
 ## 글(읽는 층)
 - 독자가 읽는 글은 이슈마다 `<자료 루트>/issues/<이슈 번호>/article.yaml` 한 파일이다. 위의 기록(`issue.yaml`, `evidence/`, `captures/`, `reviews/`)은 뒤쪽 층으로 그대로 두고, 글의 출처(`sources`)는 가능하면 근거 번호(`evidence`)로 잇는다.
-- 칸, 검사, 글쓰기 규칙, 갱신 방법의 정본은 글 형식 명세(`private/plan/` 의 `글형식_명세_20261114.md`)다. 코드는 `src/ozl/issues/article.py`.
+- 칸, 검사, 글쓰기 규칙, 갱신 방법의 정본은 글 형식 명세(`private/records/plan/` 의 `글형식_명세_20261114.md`)다. 코드는 `src/ozl/issues/article.py`.
 - 명령: `python -m ozl.issues article-new <slug> --category "…" --title "…" [--date YYYY-MM-DD]`(번호를 받아 폴더, 최소 `issue.yaml`, 빈 글 뼈대를 쓴다), `python -m ozl.issues article-check <이슈 번호>`(오류가 있으면 종료 코드 1, 마지막 줄 "오류 N, 경고 M"). `check` 도 글이 있으면 같은 검사를 함께 한다.
 - 글은 승인 지문에 들고 승인한 판의 고정 사본에 함께 남는다. 글을 고치면 승인과 검토가 풀린다. 사이트 자료의 이슈 목록(`index.json`)에는 글이 있는 이슈만 실린다.
 - `issue.yaml` 안에 `article` 칸을 쓰지 않는다(읽기가 멈춘다).
@@ -47,7 +47,7 @@
 - 승인(`approve`), 내림(`withdraw`), 공개용 내보내기(`export --public`)는 모델이 실행하지 않는다. 사용자가 운영 화면 `/approve` 에서 한다(시험 자료 루트의 지어낸 이슈로 하는 시험만 예외. `CLAUDE.md` 와 같은 문장이다). 승인은 판 번호와 내용 해시를 함께 보내고, 지금 내용과 다르면 거부된다. 내용을 고치면 판 번호가 오르고 다시 승인해야 게시된다. 게시를 내릴 때는 지우지 않고 내림 기록을 더한다.
 
 ## 자료가 놓이는 곳
-- 실제 이슈 기록, 근거 기록, 원문 사본, 판은 자료 루트 `private/desk/issues/` 에만 둔다(자료 루트는 `OZL_DESK_ROOT`, 없으면 `private/desk`). 공개 저장소에는 지어낸 예시만 둔다.
+- 실제 이슈 기록, 근거 기록, 원문 사본, 판은 자료 루트 `private/records/desk/issues/` 에만 둔다(자료 루트는 `OZL_DESK_ROOT`, 없으면 `private/records/desk`). 공개 저장소에는 지어낸 예시만 둔다.
 - 시험은 `OZL_DESK_ROOT=private/test_desk` 처럼 시험 자료 루트로 한다. 대소문자만 다른 경로나 링크로 실제 폴더를 가리키면 운영 명령이 멈춘다.
 - 발행 목록(`issues/manifest.json`), 번호 대장, 고정 사본(`issues/*/revisions/`)은 손으로 쓰지 않는다. 명령으로만 바꾼다.
 - 이슈 기록을 손으로 고쳤으면 저장한 뒤 다시 읽어 값이 비어 있는 낯선 키가 없는지 본다(검사기도 정해지지 않은 칸을 거부한다).
@@ -59,8 +59,8 @@
 - 원문은 공식 배포 위치(기관 누리집, 공시 시스템, 법령 사이트)에서 받는다. 다른 곳에 올라온 사본은 공식 원문으로 세지 않는다.
 
 ## Notion 행
-- `scripts/notion_rows.py [이슈 번호 …]` 가 이슈 기록에서 요약 칸만 뽑고, Notion 에 쓰는 일은 세션이 Notion 커넥터로 한다(DB 「이슈」는 `이슈 번호`로, 「제작물」은 `제작물 번호`로 찾아 있으면 고치고 없으면 만든다). DB 식별자는 `private/notion_issues.json`. `메모` 칸은 사용자의 것이라 쓰지 않는다.
+- `scripts/notion_rows.py [이슈 번호 …]` 가 이슈 기록에서 요약 칸만 뽑고, Notion 에 쓰는 일은 세션이 Notion 커넥터로 한다(DB 「이슈」는 `이슈 번호`로, 「제작물」은 `제작물 번호`로 찾아 있으면 고치고 없으면 만든다). DB 식별자는 `private/state/notion_issues.json`. `메모` 칸은 사용자의 것이라 쓰지 않는다.
 - 올리지 않는 것: 본문(확인된 사실, 주장의 문장, 흐름, 입장), 근거 사본, 공개하지 않는 주장의 내용, 개인 정보. 이슈 전체가 공개 제외면 제목도 올리지 않는다.
 
 ## 옛 이슈 브리핑
-2026-11-11 에 시험한 '판정 도장 스와이프 덱' 형식(절차 `skills/ozl-news/SKILL.md`, 형식 예시 `skills/ozl-news/deck_example.yaml`, 코드 `src/ozl/briefs/`, 실제 덱은 `private/briefs/`)은 시험했던 형식으로 남아 있고, 이슈 기록이 그 자리를 이었다. 그 덱도 `private/briefs/`(비공개)에만 두고, 공개 저장소에는 지어낸 예시만 둔다. 공개 발행은 증거 경로(일일 데스크의 원문 사본 대조 같은 검증 기준)와 사용자 승인 절차를 정한 뒤에만 한다. 이 형식에 예약 실행을 붙이지 않는다.
+2026-11-11 에 시험한 '판정 도장 스와이프 덱' 형식(절차 `skills/ozl-news/SKILL.md`, 형식 예시 `skills/ozl-news/deck_example.yaml`, 코드 `src/ozl/briefs/`, 실제 덱은 `private/outputs/briefs/`)은 시험했던 형식으로 남아 있고, 이슈 기록이 그 자리를 이었다. 그 덱도 `private/outputs/briefs/`(비공개)에만 두고, 공개 저장소에는 지어낸 예시만 둔다. 공개 발행은 증거 경로(일일 데스크의 원문 사본 대조 같은 검증 기준)와 사용자 승인 절차를 정한 뒤에만 한다. 이 형식에 예약 실행을 붙이지 않는다.

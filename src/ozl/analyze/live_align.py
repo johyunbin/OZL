@@ -4,8 +4,8 @@
 방법: 라이브 세그먼트(타임스탬프)의 정규화 텍스트에서 n-gram 셔글을 만들고 라이브 시각에 매핑.
 각 클립의 셔글이 라이브 어느 시각대에 몰리는지로 (1) 커버리지(클립 텍스트 중 라이브에 존재하는 비율)
 (2) 라이브 내 구간(5~95 백분위) (3) 클립 업로드 순서 vs 라이브 진행 순서 를 측정한다.
-입력: private/meta/live_clip_map_syukaworld.csv · private/transcripts/trading_export/syuka/*.json
-출력: private/meta/live_align_syukaworld.csv · tracks/syuka/analysis/live_vs_clips.md (집계만)
+입력: private/data/raw/meta/live_clip_map_syukaworld.csv · private/data/raw/transcripts/trading_export/syuka/*.json
+출력: private/data/raw/meta/live_align_syukaworld.csv · tracks/syuka/analysis/live_vs_clips.md (집계만)
 """
 from __future__ import annotations
 

@@ -5,8 +5,8 @@
 ## 자료
 - 사양(정본): `{SPEC}` — 쪽마다 title, body, table, chart, number, capture/capture_focus, spoken(말), transition(넘김), claim_ids, refs, conversions, notes
 - 빌드한 쪽 그림: `{BUILD}/` 의 PNG(화면에 실제로 찍힌 글). 작은 글씨가 의심되면 같은 폴더 PDF 를 `pdftotext -f N -l N` 으로 확인한다.
-- 인용 기록: `private/desk/claims/<날짜>/<claim_id>.yaml` — `observed`(원문 표기), `verification.recheck.checks`(단위, 기준 시점, 상태, 대상, 말한 쪽), `verification.recheck.note`, `counter`
-- 원문 사본: `private/desk/captures/<claim_id>/`(받은 원문 파일과 뽑은 글)
+- 인용 기록: `private/records/desk/claims/<날짜>/<claim_id>.yaml` — `observed`(원문 표기), `verification.recheck.checks`(단위, 기준 시점, 상태, 대상, 말한 쪽), `verification.recheck.note`, `counter`
+- 원문 사본: `private/records/desk/captures/<claim_id>/`(받은 원문 파일과 뽑은 글)
 - 기사 사본(쪽의 `refs` 가 가리키는 기사를 받아 둔 파일): `{PRESS_DIR}`
 
 ## 이전 판에서 짚었던 것(이번 판이 고쳤는지도 본다)

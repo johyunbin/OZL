@@ -1,4 +1,4 @@
-"""3판 자료의 DB 표(`private/syuka/syuka.db` 안, 기존 videos·records·merged 표는 그대로 둔다).
+"""3판 자료의 DB 표(`private/data/derived/syuka/syuka.db` 안, 기존 videos·records·merged 표는 그대로 둔다).
 
 표: v3_videos(영상) · v3_segments(토막) · v3_claims · v3_stages · v3_names(인물, 기관, 나라 — 맞춘 표기와 원래 표기)
 · v3_keywords · v3_followups. 원본 JSON 은 v3_videos.json 에 그대로 둔다.

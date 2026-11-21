@@ -6,12 +6,12 @@
   복사   src/, tracks/, skills/, .claude/skills/, agent/, docs/, CLAUDE.md, README.md, tests/fixtures/
          (docs/ 와 README.md 는 CLAUDE.md 의 진입 순서가 가리키는 공개 문서다)
   링크   .venv (실제 저장소의 가상 환경. 사본에서는 PYTHONPATH=<사본>/src 를 주어 사본의 코드가 먼저 잡히게 한다)
-  만든다 private/pulse/out/board.json   지어낸 후보 판(tests/fixtures/skills/board.json)
+  만든다 private/live/pulse/out/board.json   지어낸 후보 판(tests/fixtures/skills/board.json)
          private/test_desk/issues/      지어낸 이슈 예시 둘(tests/fixtures/issues/) — 시험 자료 루트
-         private/syuka/syuka.db         지어낸 슈카 3판 추출 5편(tests/fixtures/skills/syuka_v3/)
-         private/decks/drafts/          빈 폴더(덱 빌드의 산출 폴더가 이 아래에 생긴다)
-         private/meta/                  지어낸 영상 목록과 주제 태그(tests/fixtures/skills/syuka_meta/ 의 csv 둘)
-         private/transcripts/trading_export/   지어낸 전사 3편과 색인(같은 폴더의 transcripts/, transcripts_index.csv)
+         private/data/derived/syuka/syuka.db         지어낸 슈카 3판 추출 5편(tests/fixtures/skills/syuka_v3/)
+         private/outputs/decks/drafts/          빈 폴더(덱 빌드의 산출 폴더가 이 아래에 생긴다)
+         private/data/raw/meta/                  지어낸 영상 목록과 주제 태그(tests/fixtures/skills/syuka_meta/ 의 csv 둘)
+         private/data/raw/transcripts/trading_export/   지어낸 전사 3편과 색인(같은 폴더의 transcripts/, transcripts_index.csv)
                                         지어낸 영상의 날짜는 2097~2098년이다. 전사 본문 찾기에는 --asof 2099-01-02T12:00 을 준다
          kit/                           지어낸 공식 문서와 기사 요지, 광고주 자료(tests/fixtures/skills/kit/)
 

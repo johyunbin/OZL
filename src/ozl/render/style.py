@@ -47,8 +47,8 @@ from ozl.render import spec as S
 
 ROOT = S.ROOT
 
-# ── 기준값(원본 집계 private/decks/규칙/원본_집계_20261115_013559.json · 영상 110편, 장 7,721장, 반짝 장 제외) ──────────
-NORMS_FILE = "private/decks/규칙/원본_집계_20261115_013559.json"
+# ── 기준값(원본 집계 private/outputs/decks/규칙/원본_집계_20261115_013559.json · 영상 110편, 장 7,721장, 반짝 장 제외) ──────────
+NORMS_FILE = "private/outputs/decks/규칙/원본_집계_20261115_013559.json"
 NORMS_VIDEOS = 110
 SEC_PER_SLIDE_MEDIAN = 26.2          # 편별 장당 초(편 길이 ÷ 장수)의 중앙값
 SEC_PER_SLIDE_RANGE = (18.0, 37.9)   # 편별 장당 초의 최소~최대 — 우리 덱 본편 평균이 이 밖이면 실패

@@ -1,5 +1,5 @@
-"""옛 자료(카드 29장과 그 기록) 회귀 시험 — 실제 private/desk 를 읽기만 한다. 자료가 없는 기기에서는 건너뛴다.
-발행 5장의 공개 판정 값은 private/out/night_20261114/baseline_publishable.json 과 대조한다(내용은 읽지 않고 번호·지문·참거짓만)."""
+"""옛 자료(카드 29장과 그 기록) 회귀 시험 — 실제 private/records/desk 를 읽기만 한다. 자료가 없는 기기에서는 건너뛴다.
+발행 5장의 공개 판정 값은 private/outputs/out/night_20261114/baseline_publishable.json 과 대조한다(내용은 읽지 않고 번호·지문·참거짓만)."""
 from __future__ import annotations
 
 import json
@@ -18,7 +18,7 @@ from ozl import paths as ozlpaths  # noqa: E402
 BASELINE = ozlpaths.real_at("out", "night_20261114", "baseline_publishable.json")
 PUBLISHED = {"2026-11-10-am-01", "2026-11-10-am-02", "2026-11-10-am-03", "2026-11-10-am-05", "2026-11-10-am-06"}
 
-need_private = pytest.mark.skipif(not links.available(), reason="옛 자료(private/desk)가 이 기기에 없다")
+need_private = pytest.mark.skipif(not links.available(), reason="옛 자료(private/records/desk)가 이 기기에 없다")
 
 
 @need_private
@@ -64,7 +64,7 @@ def test_legacy_checks_run_on_real_data_in_subprocess():
         pytest.skip("이미 실제 자료로 도는 중이다")
     real = ozlpaths.real_at("desk")
     if not ((real / "cards").is_dir() and (real / "claims").is_dir()):
-        pytest.skip("옛 자료(private/desk)가 이 기기에 없다")
+        pytest.skip("옛 자료(private/records/desk)가 이 기기에 없다")
     env = {k: v for k, v in os.environ.items() if k not in ("OZL_PRIVATE", "OZL_DESK_ROOT")}
     env["OZL_TEST_REAL_PRIVATE"] = "1"
     r = subprocess.run([sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", str(pathlib.Path(__file__)),

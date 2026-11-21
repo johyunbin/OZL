@@ -4,9 +4,9 @@
 흐름(영상 1편):
   yt-dlp 1080p mp4 → ffmpeg 로 슬라이드 영역 크롭·축소 프록시(2fps) → PySceneDetect ContentDetector 로 전환 시각 검출
   → 원본 1080p 에서 해당 시각 프레임을 크롭 PNG 로 저장 → imagehash(pHash) 중복 제거 → index.json → 원본 영상 삭제.
-부하: nice 19 · 순차 1편 · yt-dlp sleep. 산출은 private/frames/<video_id>/ (비공개).
+부하: nice 19 · 순차 1편 · yt-dlp sleep. 산출은 private/data/raw/frames/<video_id>/ (비공개).
 
-    python -m ozl.collect.frames private/meta/sample30_syukaworld.csv [--crop 0.56x0.65] [--threshold 12]
+    python -m ozl.collect.frames private/data/raw/meta/sample30_syukaworld.csv [--crop 0.56x0.65] [--threshold 12]
 """
 from __future__ import annotations
 

@@ -13,8 +13,8 @@ import urllib.parse
 from dataclasses import dataclass
 
 PREFIX = "/preview/"
-BUILD_CMD = (".venv/bin/python -m ozl.issues export --preview --out private/out/site_data && cd apps/web && "
-             "OZL_SITE_DATA=../../private/out/site_data npm run build:preview")
+BUILD_CMD = (".venv/bin/python -m ozl.issues export --preview --out private/outputs/out/site_data && cd apps/web && "
+             "OZL_SITE_DATA=../../private/outputs/out/site_data npm run build:preview")
 CTYPES = {
     ".html": "text/html; charset=utf-8", ".css": "text/css", ".js": "text/javascript", ".mjs": "text/javascript",
     ".json": "application/json", ".wasm": "application/wasm",

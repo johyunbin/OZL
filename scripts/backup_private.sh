@@ -29,9 +29,17 @@ PRIVATE="$(gh repo view "$SLUG" --json isPrivate -q .isPrivate 2>/dev/null)" || 
 [ "$PRIVATE" = "true" ] || die "원격 저장소가 비공개가 아니다 — 올리지 않는다" 3
 
 # 허용 목록에 든 폴더만 이름으로 올린다(없는 폴더는 건너뛴다).
-for p in .gitignore README.md notion.json desk daily plan guide research meta decks backup out briefs handoff 결과물; do
-  [ -e "$p" ] && git add -- "$p"
+for p in .gitignore README.md state/notion.json records/desk outputs/daily records/plan records/guide records/research \
+         data/raw/meta outputs/decks archive/backup outputs/out outputs/briefs records/handoff 결과물 templates; do
+  [ -e "$p" ] && git add -A -- "$p"
 done
+# 2026-11-21 개편 전 자리에 남은 추적 파일(옮겨져 사라진 것)의 삭제도 올린다. 아직 추적 중인 옛 최상위 이름만 고른다
+# (head 로 끊지 않는다 — pipefail 에서 SIGPIPE 로 멈춘다. 실패를 숨기지 않는다)
+OLD_TOP="$(git -c core.quotepath=off ls-files -- notion.json desk daily plan guide research meta decks backup out briefs handoff | cut -d/ -f1 | sort -u)"
+if [ -n "$OLD_TOP" ]; then
+  # shellcheck disable=SC2086 — 옛 이름은 공백 없는 ASCII 다
+  git add -A -- $OLD_TOP
+fi
 
 if git diff --cached --quiet; then
   echo "[backup_private] 바뀐 기록 없음"; exit 0

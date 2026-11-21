@@ -6,7 +6,7 @@ Pulse 의 기사 묶음(`snapshot`)은 경제·국제 기사 위주라 커뮤니
 그래서 여기서는 화제 신호(시그널·구글 트렌드 KR·커뮤니티 글)를 먼저 묶어 이슈를 만들고, 기사는 이슈마다 나중에 붙인다.
 민감 소재는 거르지 않는다(표시만). 커뮤니티 글은 단서일 뿐 근거가 아니다.
 
-산출(비공개): private/briefs/<날짜>/<회차>/candidates.json · candidates.md
+산출(비공개): private/outputs/briefs/<날짜>/<회차>/candidates.json · candidates.md
 """
 from __future__ import annotations
 

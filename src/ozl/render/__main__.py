@@ -16,12 +16,12 @@ python -m ozl.render origin --survey <원본> <사본…> [--json <파일>]     
 python -m ozl.render public-check <산출 폴더 · 파일 하나(pptx · pdf · png · jpg · zip · tar)>   # 비공개 판의 것이면 종료 코드 1(문서 속성, 공개_가부.json, 등록 대장의 해시).
                                                            # 끝까지 보지 못한 파일도 1('검사 불가'). 등록 대장이 없으면 알림 줄을 낸다
                                                            # 폴더에서 보지 못한 것(읽지 못한 하위 폴더, 폴더 링크, 깨진 링크)도 1 — 링크는 따라가지 않는다
-python -m ozl.render register-private [<폴더 또는 덱 파일>…] [--dry-run]   # 이미 만든 비공개 판을 등록 대장에 채운다(인자가 없으면 private/decks 아래)
+python -m ozl.render register-private [<폴더 또는 덱 파일>…] [--dry-run]   # 이미 만든 비공개 판을 등록 대장에 채운다(인자가 없으면 private/outputs/decks 아래)
                                                            # 보지 못한 폴더나 링크가 있으면 '검사 불가' 줄과 종료 코드 1(그 아래는 등록에서 빠졌다)
 
 --draft        아직 '확인'(사람 대조)도 「원문 일치」(프로그램 대조 + 독립 재대조)도 아닌 기록·대기 폴더 기록도 인용 허용.
                해당 쪽에 [검증 대기] 딱지, 산출물 이름에 _draft. 완성본은 엄격 모드(--draft 없이)로만 만든다.
---claims-dir   카드 기록 폴더(private/desk/claims) 말고 기록을 더 찾을 폴더(예: private/desk/staging/<card_id>/). 초안 모드에서만 쓸 수 있다.
+--claims-dir   카드 기록 폴더(private/records/desk/claims) 말고 기록을 더 찾을 폴더(예: private/records/desk/staging/<card_id>/). 초안 모드에서만 쓸 수 있다.
 --edition      막는 그림(판정 '비공개 판에서만' 또는 권리 확인 대기)이 든 사양에서 한 판만 다룬다. 주지 않으면 엄격 모드는 두 판을 함께 검사하고
                같은 타임코드의 폴더 둘(<card>_<ts>_비공개판, _바꾼판)로 만든다. 비공개판만 다룰 때는 장의 swap 이 덜 쓰였어도 된다.
                초안 모드는 판을 가르지 않는다(바꾼 판의 초안은 --draft --edition 바꾼판).

@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """OZL 이슈 데스크 명령줄 — `/ozl` 스킬이 부르는 결정적 단계들.
 
-    python -m ozl.research collect --slot am                  # 후보 수집 → private/desk/<날짜>_am/candidates.md
+    python -m ozl.research collect --slot am                  # 후보 수집 → private/records/desk/<날짜>_am/candidates.md
     python -m ozl.research coverage 낱말 [낱말…] [--fulltext]   # 슈카월드 기존 커버리지 대조
     python -m ozl.research ids --slot am -n 6                 # 새 카드 ID 발급(발급 대장에 적힌다 — 부를 때마다 번호가 소비된다)
     python -m ozl.research validate --slot am                 # 카드·클레임 스키마 검사
     python -m ozl.research render --slot am                   # 전체본·검증 시트(비공개) + 발행본(공개) 쓰기
     python -m ozl.research notion --slot am                   # Notion upsert 용 속성 JSON
     python -m ozl.research status                             # 채택 대기·검증 대기 목록
-    python -m ozl.research ledger                             # 카드 원장 private/desk/ledger.csv 쓰기(전체 카드 한 줄씩)
+    python -m ozl.research ledger                             # 카드 원장 private/records/desk/ledger.csv 쓰기(전체 카드 한 줄씩)
     python -m ozl.research pick <card_id>                     # 채택(상태만 바꾼다)
     python -m ozl.research human-verify <claim_id>… --by 이름  # 사람이 원문을 대조했다고 말한 클레임만
     python -m ozl.research publish <card_id>… --by 이름        # 공개 발행 승인(배지 조건 통과 시)
@@ -168,7 +168,7 @@ def _machine(cmd: str, ap: argparse.ArgumentParser, rest: list[str]) -> int:
     ap.add_argument("claim_ids", nargs="*")
     ap.add_argument("--claims-dir", help="정본 대신 이 폴더의 기록(시험 사본·대기 기록 사본)을 읽고 쓴다")
     if cmd == "capture":
-        ap.add_argument("--captures-dir", help="원문 사본·그림을 둘 곳(기본 private/desk/captures)")
+        ap.add_argument("--captures-dir", help="원문 사본·그림을 둘 곳(기본 private/records/desk/captures)")
         ap.add_argument("--author", default="", help="기록을 쓴 쪽 식별자(verification.author.by)")
         ap.add_argument("--no-image", action="store_true")
         ap.add_argument("--delay", type=float, default=4.0, help="서로 다른 주소를 받을 때 사이 간격(초)")

@@ -8,9 +8,9 @@
 
 - **Codex 를 부르지 않는다.** `codex`, `codex_smart.sh`, `codex exec`, `mm_request.py --surface codex`, `multimodel_request` 도구 모두 금지다. 실행기는 `multimodel_request` MCP 도구를 통째로 막는다(인자로 표면만 거를 수 없다).
 - **다른 계열의 해석 점검을 보내지 않는다**(6단계). 검토 묶음까지 만들고 이슈를 '검토 대기'로 둔 채 끝낸다.
-- 실행기는 명령의 `--disallowedTools` 로 다음을 막는다: 승인 명령, 철회 명령, 공개 내보내기 명령, `ozl.ops token`, `private/ops/` 읽기, 발행 목록(`issues/manifest.json`) 직접 쓰기, 번호 대장 직접 쓰기, 고정 사본(`issues/*/revisions/`) 직접 쓰기, 운영 파일(`ops/`) 직접 쓰기, 옛 카드와 클레임(`cards/`, `claims/`) 직접 쓰기, `approval.json` 과 `make_queue.json` 을 이름으로 가리키는 명령(`src/ozl/ops/runner.py` 의 `DISALLOWED`, `DESK_BLOCK`). 막힌 것을 돌아가려 하지 않는다.
+- 실행기는 명령의 `--disallowedTools` 로 다음을 막는다: 승인 명령, 철회 명령, 공개 내보내기 명령, `ozl.ops token`, `private/state/ops/` 읽기, 발행 목록(`issues/manifest.json`) 직접 쓰기, 번호 대장 직접 쓰기, 고정 사본(`issues/*/revisions/`) 직접 쓰기, 운영 파일(`ops/`) 직접 쓰기, 옛 카드와 클레임(`cards/`, `claims/`) 직접 쓰기, `approval.json` 과 `make_queue.json` 을 이름으로 가리키는 명령(`src/ozl/ops/runner.py` 의 `DISALLOWED`, `DESK_BLOCK`). 막힌 것을 돌아가려 하지 않는다.
 - 사용자에게 묻지 않는다. 막히면 `PY -m ozl.ops queue set <job_id> --state 멈춤 --note "<까닭 한 줄>"` 하고 끝낸다.
-- 쓰기는 `OZL_DESK_ROOT` 아래만 한다(없으면 `private/desk`). 코드, 설정, 문서, 스킬은 고치지 않는다.
+- 쓰기는 `OZL_DESK_ROOT` 아래만 한다(없으면 `private/records/desk`). 코드, 설정, 문서, 스킬은 고치지 않는다.
 - 대상은 늘 대기열 번호다. 고르기 기록(`find/board_view.py`)은 쓰지 않는다.
 - **역할의 모델은 기본 배정 그대로다.** 경로표(`lanes.py route`)를 부르지 않는다. `.venv/bin/python -m ozl.issues roles --json` 은 실행기에서 경로표를 읽지 않고 기본 배정(쓰기, 고치기, 묶음은 Opus, 문장 대조는 Sonnet, 강도는 세션 값)을 `source: runner` 로 내고, 1차 대조(`precheck`)는 `null` 로 낸다. 실행기 세션 자체는 `runner.json` 의 `model`(Opus) 고정이다(Fable 자동화 금지). 워크플로 인자 `offload`, `packet_mode`, `review_mode` 의 시험 길도 쓰지 않는다. `offload.py` 는 실행기의 거부 규칙(`src/ozl/ops/runner.py` 의 `OFFLOAD_RULES`)이 막는다.
 
