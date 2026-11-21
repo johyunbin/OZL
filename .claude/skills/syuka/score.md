@@ -24,11 +24,11 @@
 
 | 단계 | 부르는 경로표 |
 |---|---|
-| 3판 토막과 사건 묶기(후보를 보지 않은 레인) | `python3 ~/.claude/scripts/lanes.py route --task longread --chars <전사 글자 수>` 의 맨 위 줄(외부 레인). 그 레인이 3판 검사를 통과하는 파일을 내지 못하면 같은 경로표의 claude 줄로 새 서브에이전트를 띄운다 |
+| 3판 토막과 사건 묶기(후보를 보지 않은 레인) | `python3 ~/.claude/scripts/lanes.py route --task read --chars <전사 글자 수>`(경로표에는 `longread` 가 없고 긴 읽기는 `read` 다) 의 맨 위 줄(외부 레인). 그 레인이 3판 검사를 통과하는 파일을 내지 못하면 같은 경로표의 claude 줄로 새 서브에이전트를 띄운다 |
 | 가림 판정 둘 | `python3 ~/.claude/scripts/lanes.py route --task judge` 의 codex 줄과 gemini_web 줄 |
 | 갈린 건의 중재 | 같은 경로표의 chatgpt 줄 |
 
-- 경로표의 `--task`(judge, longread)는 레인과 강도를 고르는 이름이고, `offload.py run` 의 `--task` 는 맡기는 일의 꼴이다. 판정과 중재는 `offload.py run --task verify`, 3판 추출과 사건 묶기는 `offload.py run --task longread`(구조가 필요하므로 `--expect json`)로 보낸다. 어느 쪽이든 `--caller ozl:syuka-score --lane <경로표가 고른 레인> --effort <강도>` 를 붙인다.
+- 경로표의 `--task`(judge, read)는 레인과 강도를 고르는 이름이고, `offload.py run` 의 `--task` 는 맡기는 일의 꼴이다. 판정과 중재는 `offload.py run --task verify`, 3판 추출과 사건 묶기는 `offload.py run --task longread`(구조가 필요하므로 `--expect json`)로 보낸다. 어느 쪽이든 `--caller ozl:syuka-score --lane <경로표가 고른 레인> --effort <강도>` 를 붙인다.
 - 시작과 끝의 `get_usage` 값, `lane_budget.py` 의 한도를 실행 기록에 적는다. 계획 8절대로 채점 회차가 Claude 주간 2%를 넘을 것 같으면(특히 3판 추출을 Claude 서브에이전트로 넘길 때) 멈추고 사용자에게 알린다.
 
 ## 순서

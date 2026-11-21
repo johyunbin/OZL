@@ -27,9 +27,8 @@ import yaml
 
 from ozl.research import cards
 
-from . import article as ART
-from . import digest, export, ids, links, model, numbers, paths, revisions, units
-from . import evidence as EV
+from . import article as ART, evidence as EV
+from . import digest, export, ids, links, model, numbers, packet, paths, revisions, roles, units
 
 
 def _err(msg: str, code: int = 2) -> int:
@@ -376,12 +375,14 @@ def _parser() -> argparse.ArgumentParser:
     c.add_argument("--category", required=True)
     c.add_argument("--title", required=True)
     c.add_argument("--date", help="번호의 날짜(없으면 오늘, KST)")
+    roles.add_parser(sub)
+    packet.add_parser(sub)
     return ap
 
 
 HANDLERS = {"check": _check, "new": _new, "ids": _ids, "hash": _hash, "capture": _capture, "machine-verify": _machine,
             "review": _review, "snapshot": _snapshot, "approve": _approve, "export": _export, "withdraw": _withdraw, "status": _status, "links": _links,
-            "article-check": _article_check, "article-new": _article_new}
+            "article-check": _article_check, "article-new": _article_new, "roles": roles.command, "packet": packet.command}
 
 
 def main(argv=None) -> int:

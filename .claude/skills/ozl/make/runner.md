@@ -12,6 +12,7 @@
 - 사용자에게 묻지 않는다. 막히면 `PY -m ozl.ops queue set <job_id> --state 멈춤 --note "<까닭 한 줄>"` 하고 끝낸다.
 - 쓰기는 `OZL_DESK_ROOT` 아래만 한다(없으면 `private/desk`). 코드, 설정, 문서, 스킬은 고치지 않는다.
 - 대상은 늘 대기열 번호다. 고르기 기록(`find/board_view.py`)은 쓰지 않는다.
+- **역할의 모델은 기본 배정 그대로다.** 경로표(`lanes.py route`)를 부르지 않는다. `.venv/bin/python -m ozl.issues roles --json` 은 실행기에서 경로표를 읽지 않고 기본 배정(쓰기, 고치기, 묶음은 Opus, 문장 대조는 Sonnet, 강도는 세션 값)을 `source: runner` 로 낸다. 실행기 세션 자체는 `runner.json` 의 `model`(Opus) 고정이다(Fable 자동화 금지). 워크플로 인자 `offload`, `packet_mode` 의 시험 길도 쓰지 않는다.
 
 `SKILL.md` 0절의 나머지 가드(승인, 내림, 공개용 내보내기를 하지 않는다. 대기열 파일을 손으로 고치지 않는다. 다루지 않는 소재. 작성자는 스스로 검토하지 않는다)는 실행기에서도 그대로다.
 
@@ -35,4 +36,4 @@
 - 거부 규칙(`--disallowedTools`)이 허용보다 앞서므로 넓은 파이썬 허용이 승인과 공개 내보내기를 열지는 않는다. 다만 `runner.py` 머리말이 적었듯 이 규칙은 명령을 돌려 쓰면 빠져나갈 수 있고, 마지막 방어는 사람이 하는 승인이다.
 - `<서브에이전트 도구 이름>` 은 실행 환경에서 확인해 적는다. 이 칸이 틀리면 `SKILL.md` 2절의 마지막 줄대로 멈춘다.
 - `allowed_tools` 에 `multimodel_request` MCP 도구와 `mm_request.py` 를 넣지 않는다(실행기는 해석 점검을 보내지 않는다. MCP 도구는 넣어도 실행기가 뺀다). `WebFetch` 는 `robots.txt` 와 기사 열람에 쓴다.
-- 헤드리스로 실제 한 건을 돌려 멈추는 곳은 아직 확인하지 않았다. 처음 켤 때 `PY -m ozl.ops runner --once --dry-run` 으로 명령을 보고, 한 건을 지켜본다. 서브에이전트가 `model: sonnet` 을 받는지도 그때 확인한다.
+- 헤드리스로 실제 한 건을 돌려 멈추는 곳은 아직 확인하지 않았다. 처음 켤 때 `PY -m ozl.ops runner --once --dry-run` 으로 명령을 보고, 한 건을 지켜본다. 문장 대조 서브에이전트가 작성자와 다른 모델(기본 배정에서는 Sonnet)을 받는지도 그때 확인한다.
