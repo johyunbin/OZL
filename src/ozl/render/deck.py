@@ -12,6 +12,8 @@ from __future__ import annotations
 
 import datetime as dt
 import pathlib
+import re
+from xml.sax.saxutils import escape as xml_escape
 import subprocess
 import sys
 
@@ -214,7 +216,28 @@ GAP = px(48 - INK_DX)  # 그림 오른쪽 변 → 글 기둥 잉크까지 48px
 def new_deck() -> Presentation:
     prs = Presentation()
     prs.slide_width, prs.slide_height = W, H
+    set_theme_font(prs)
     return prs
+
+
+_THEME_FONT = re.compile(r"(<a:(major|minor)Font>\s*)<a:latin typeface=\"[^\"]*\"/>\s*<a:ea typeface=\"[^\"]*\"/>")
+
+
+def set_theme_font(prs, face: str = FONT) -> None:
+    """테마의 제목·본문 글꼴(라틴과 동아시아)을 맑은 고딕으로 둔다.
+
+    python-pptx 기본 테마는 Calibri 이고 동아시아 글꼴이 비어 있다. 글자마다 글꼴을 직접 정한 곳은 괜찮지만, 사용자가 템플릿에서
+    새 글상자를 만들거나 글꼴 지정이 없는 자리에 입력하면 영문·숫자는 Calibri, 한글은 시스템 기본 글꼴로 나왔다(2026-11-21 사용자 지적)."""
+    from pptx.opc.constants import RELATIONSHIP_TYPE as RT
+    for master in prs.slide_masters:
+        part = master.part.part_related_by(RT.THEME)
+        xml = part.blob.decode("utf-8")
+        q = xml_escape(face, {'"': "&quot;"})
+        kinds = [m.group(2) for m in _THEME_FONT.finditer(xml)]
+        if sorted(kinds) != ["major", "minor"]:       # 제목(major)·본문(minor) 글꼴이 정확히 한 곳씩이어야 한다
+            raise ValueError(f"테마 글꼴 자리가 예상과 다르다({kinds}): {part.partname}")
+        new = _THEME_FONT.sub(lambda m: f'{m.group(1)}<a:latin typeface="{q}"/><a:ea typeface="{q}"/>', xml)
+        part._blob = new.encode("utf-8")
 
 
 def _blank(prs):
