@@ -43,13 +43,14 @@ from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 from pptx.oxml.ns import qn
 from pptx.util import Emu, Inches, Pt
 
+from ozl import paths as ozlpaths
 from ozl.render import deck
 from ozl.render import spec as S
 from ozl.render.pictures import file_sha256
 from ozl.research import cards as C
 
 ROOT = S.ROOT
-DRAFTS = ROOT / "private" / "decks" / "drafts"
+DRAFTS = ozlpaths.at("decks", "drafts")
 MD2PDF = pathlib.Path.home() / "Claude" / "tools" / "md2pdf.py"
 
 EMU_IN = 914400

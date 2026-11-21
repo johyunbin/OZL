@@ -25,8 +25,9 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from ozl.issues import paths  # noqa: E402
 from ozl.ops import auth, server  # noqa: E402
+from ozl import paths as ozlpaths  # noqa: E402
 
-REAL_DESK = ROOT / "private" / "desk"
+REAL_DESK = ozlpaths.real_at("desk")
 FIX_ISSUES = ROOT / "tests" / "fixtures" / "issues"
 NOW = datetime(2099, 1, 1, 3, 0, tzinfo=timezone.utc)      # KST 12:00
 SENS = [{"level": "GREEN", "reasons": []}, {"level": "YELLOW", "reasons": ["가상 사유 갑"]},

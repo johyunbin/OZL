@@ -10,9 +10,10 @@ import pathlib
 import sqlite3
 from datetime import datetime, timedelta, timezone
 
-from .catalog import ROOT
+from ozl import paths as ozlpaths
+from .catalog import ROOT as ROOT  # 기존 모듈 경로로도 가져올 수 있다
 
-DB_PATH = ROOT / "private" / "syuka" / "syuka.db"
+DB_PATH = ozlpaths.at("syuka", "syuka.db")
 KST = timezone(timedelta(hours=9))
 
 SCHEMA = """

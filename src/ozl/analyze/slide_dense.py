@@ -28,12 +28,13 @@ from PIL import Image
 from ozl.analyze.slide_timeline import BODY_SIM, TITLE_SIM, frame_text, is_latin, norm, sim
 from ozl.analyze.style_measure import measure
 from ozl.research import ledger
+from ozl import paths as ozlpaths
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
-TMP = ROOT / "private" / "dense" / "_tmp"
-DENSE = ROOT / "private" / "dense"
-SLIDES = ROOT / "private" / "slides_dense"
-REP = ROOT / "private" / "frames_dense"
+TMP = ozlpaths.at("dense", "_tmp")
+DENSE = ozlpaths.at("dense")
+SLIDES = ozlpaths.at("slides_dense")
+REP = ozlpaths.at("frames_dense")
 BIN = ROOT / "tools" / "ocr" / "ocr"
 STEP = 3          # 초
 SAME_THUMB = 1.2  # 64×38 회색 축소본의 평균 절대 차이가 이보다 작으면 같은 화면 → 문자 인식 재사용

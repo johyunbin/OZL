@@ -28,13 +28,14 @@ from pathlib import Path
 
 from ozl.analyze.slide_db import FRAMES_DIR, PICTURE_KINDS, validate_kinds
 from ozl.syuka.db import DB_PATH, ROOT
+from ozl import paths as ozlpaths
 
 URL = "https://api.openai.com/v1/responses"
 MODEL = "gpt-6.1-terra"
 DETAIL = "low"
 LABELER = "openai-terra-low"
 KEY_FILE = Path.home() / "Trading" / "settings" / "openai.json"
-LOG_DIR = ROOT / "private" / "p3" / "picture_api"
+LOG_DIR = ozlpaths.at("p3", "picture_api")
 # Trading `src/youtube/market_brief.py` 의 단가표(백만 토큰당 달러, 입력·출력). 현행 단가는 확인하지 못한 값이다.
 PRICE = {"gpt-6-luna": (0.10, 0.50), "gpt-6.1-terra": (1.00, 5.00), "gpt-6.1-sol": (2.00, 10.00)}
 # 2026-11-21 시험의 장당 실측(낮은 해상도): 입력 606 토큰, 출력 약 71~121 토큰

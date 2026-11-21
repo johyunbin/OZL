@@ -20,12 +20,13 @@ import sys
 import numpy as np
 from PIL import ImageFont
 
+from ozl import paths as ozlpaths
 from ozl.analyze.font_match import FRAMES, iou_best, render, target_line
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
-OCR = ROOT / "private" / "ocr"
-RAW = ROOT / "private" / "style" / "style_measure_raw.json"
-OUT = ROOT / "private" / "style" / "font_survey.json"
+OCR = ozlpaths.at("ocr")
+RAW = ozlpaths.at("style", "style_measure_raw.json")
+OUT = ozlpaths.at("style", "font_survey.json")
 CANVAS_W = 1218.0
 PER_VIDEO = 60
 

@@ -28,10 +28,11 @@ from pptx.opc.constants import CONTENT_TYPE as CT, RELATIONSHIP_TYPE as RT
 from pptx.oxml.ns import qn
 from pptx.parts.slide import SlideLayoutPart
 
+from ozl import paths as ozlpaths
 from ozl.render import build as renderer
 from ozl.render import deck, style, template
 
-OUT = template.ROOT / "private" / "결과물" / "16_템플릿v1"
+OUT = ozlpaths.at("결과물", "16_템플릿v1")
 
 
 def _placeholder_type(shape):

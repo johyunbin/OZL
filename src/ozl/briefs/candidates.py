@@ -15,12 +15,13 @@ import math
 import pathlib
 from datetime import datetime, timezone
 
+from ozl import paths as ozlpaths
 from ..pulse import signals as psig
 from ..pulse import community as pcommunity
 from ..pulse import store
 from ..research import collect, ledger, sensitive
 
-BRIEFS = store.ROOT / "private" / "briefs"
+BRIEFS = ozlpaths.at("briefs")
 NEWS_KINDS = ("news", "official")
 # 기사 붙이기에서 식별어로 치지 않는 흔한 낱말 — 이것만 겹쳐서는 같은 사건이라 볼 수 없다
 GENERIC = set("속보 단독 종합 오늘 어제 내일 올해 정부 한국 미국 중국 일본 국내 해외 시장 발표 공개 논란 의혹 사과 입장 "

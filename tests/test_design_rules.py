@@ -92,6 +92,7 @@ def seed_catalog(path):
 @pytest.fixture
 def outputs(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("OZL_PRIVATE", str(tmp_path / "private"))   # 기본 구성 폴더(ozl.paths.at("compose"))가 이 아래를 가리키게
     db = tmp_path / "fake #1?.db"
     base, extra = Path("private/compose"), Path("extra")
     base.mkdir(parents=True)

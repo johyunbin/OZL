@@ -33,6 +33,9 @@ import shutil
 import subprocess
 import sys
 
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[3] / "src"))
+from ozl import paths as ozlpaths  # noqa: E402  (사본 구조를 정본 LAYOUT 에 맞춘다)
+
 HERE = pathlib.Path(__file__).resolve().parent
 REPO = HERE.parents[2]
 COPY_DIRS = ("src", "tracks", "skills", ".claude/skills", "agent", "docs", "tests/fixtures")
@@ -78,11 +81,19 @@ class Stop(Exception):
 
 def sandbox_env(copy: pathlib.Path) -> dict[str, str]:
     """사본에서 명령을 돌릴 때의 환경: 사본의 코드가 먼저 잡히고 자료 루트는 사본의 시험 루트다."""
-    env = dict(os.environ)
-    env["PYTHONPATH"] = str(copy / "src")
-    env["OZL_DESK_ROOT"] = str(copy / TEST_DESK)
+    env = {k: v for k, v in os.environ.items() if k not in SLOT_ENV}   # 셸에서 물려받은 칸별 위치 변수는 운영을 가리킬 수 있다
+    env.update(copy_vars(copy))
     env["PYTHONDONTWRITEBYTECODE"] = "1"
     return env
+
+
+# 칸별 위치 변수(운영 자료를 가리킬 수 있어 사본 환경에서는 비운다)
+SLOT_ENV = ("OZL_DESK_ROOT", "OZL_PULSE_DB", "OZL_ENGINE_DB", "OZL_BOARD_OUT", "OZL_ENGINE_OVERRIDES", "OZL_WEB_OUT", "OZL_CARDS_OUT")
+
+
+def copy_vars(copy: pathlib.Path) -> dict[str, str]:
+    """사본에서 명령을 돌릴 때 정하는 변수 — 자식 환경, 출력 JSON, 안내 문구가 모두 이 값을 쓴다."""
+    return {"PYTHONPATH": str(copy / "src"), "OZL_PRIVATE": str(copy / "private"), "OZL_DESK_ROOT": str(copy / TEST_DESK)}
 
 
 def build(target: pathlib.Path, git: bool = True, repo: pathlib.Path = REPO) -> pathlib.Path:
@@ -104,18 +115,18 @@ def build(target: pathlib.Path, git: bool = True, repo: pathlib.Path = REPO) -> 
     (target / ".venv").symlink_to(venv, target_is_directory=True)
 
     fx = target / "tests" / "fixtures"
-    board = target / "private" / "pulse" / "out" / "board.json"
+    board = ozlpaths.under(target / "private", "pulse", "out", "board.json")
     board.parent.mkdir(parents=True)
     shutil.copy2(fx / "skills" / "board.json", board)
     shutil.copytree(fx / "issues", target / TEST_DESK / "issues", ignore=IGNORE)
     shutil.copytree(fx / "skills" / "kit", target / "kit", ignore=IGNORE)
-    (target / "private" / "syuka").mkdir(parents=True)
-    (target / "private" / "decks" / "drafts").mkdir(parents=True)      # 덱 빌드는 이 폴더 바로 아래에 산출 폴더를 만든다(없으면 멈춘다)
+    (ozlpaths.under(target / "private", "syuka")).mkdir(parents=True)
+    (ozlpaths.under(target / "private", "decks", "drafts")).mkdir(parents=True)      # 덱 빌드는 이 폴더 바로 아래에 산출 폴더를 만든다(없으면 멈춘다)
     meta = fx / "skills" / "syuka_meta"                       # 주제 태그 찾기와 전사 본문 찾기가 읽는 자리
-    (target / "private" / "meta").mkdir(parents=True)
+    (ozlpaths.under(target / "private", "meta")).mkdir(parents=True)
     for name in ("catalog_syukaworld.csv", "video_tags_syukaworld.csv"):
-        shutil.copy2(meta / name, target / "private" / "meta" / name)
-    export = target / "private" / "transcripts" / "trading_export"
+        shutil.copy2(meta / name, ozlpaths.under(target / "private", "meta", name))
+    export = ozlpaths.under(target / "private", "transcripts", "trading_export")
     shutil.copytree(meta / "transcripts", export / "syuka", ignore=IGNORE)
     shutil.copy2(meta / "transcripts_index.csv", export / "index.csv")
 
@@ -153,9 +164,9 @@ def main(argv: list[str] | None = None) -> int:
         print(f"멈춤: {e}", file=sys.stderr)
         return e.code
     n = sum(1 for p in t.rglob("*") if p.is_file())
-    print(json.dumps({"sandbox": str(t), "files": n, "env": {"PYTHONPATH": str(t / "src"),
-                                                             "OZL_DESK_ROOT": str(t / TEST_DESK)}}, ensure_ascii=False))
-    print("사본에서 명령을 돌릴 때: cd <사본> && env PYTHONPATH=<사본>/src OZL_DESK_ROOT=<사본>/private/test_desk .venv/bin/python …")
+    print(json.dumps({"sandbox": str(t), "files": n, "env": copy_vars(t)}, ensure_ascii=False))
+    print("사본에서 명령을 돌릴 때: cd <사본> && env -u OZL_PULSE_DB -u OZL_ENGINE_DB -u OZL_BOARD_OUT -u OZL_ENGINE_OVERRIDES -u OZL_WEB_OUT -u OZL_CARDS_OUT "
+          "PYTHONPATH=<사본>/src OZL_PRIVATE=<사본>/private OZL_DESK_ROOT=<사본>/private/test_desk .venv/bin/python …")
     return 0
 
 

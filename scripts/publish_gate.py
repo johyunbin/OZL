@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import pathlib
 import pickle
 import re
@@ -43,11 +44,13 @@ def h64(s: str) -> int:
     return int.from_bytes(hashlib.blake2b(s.encode("utf-8"), digest_size=8).digest(), "little")
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-TRANS = ROOT / "private" / "transcripts"
-PILOT = ROOT / "private" / "pilot"
-CACHE = ROOT / "private" / ".gate_shingles.pkl"
-SLIDES = ROOT / "private" / "slides_dense"
-OCR = ROOT / "private" / "ocr"
+sys.path.insert(0, str(ROOT / "src"))
+from ozl import paths as ozlpaths  # noqa: E402
+TRANS = ozlpaths.at("transcripts")
+PILOT = ozlpaths.at("pilot")
+CACHE = ozlpaths.at(".gate_shingles.pkl")
+SLIDES = ozlpaths.at("slides_dense")
+OCR = ozlpaths.at("ocr")
 N = 20        # 셔글 길이(정규화 문자)
 TRANS_MIN_HANGUL = 8  # 전사 창도 한글이 이만큼 있어야 코퍼스에 넣는다 — 방송에서 읽어 준 영문 기관명('federalreservebankof'·'internationalmonetar')이
                       # 클레임 발행처와 겹쳐 오탐(2026-11-10 하루 두 번). 실측: 전사 창 821만 개 중 한글 0자 0.45% · 7자 이하 0.57%(영문·숫자 위주)
@@ -297,6 +300,10 @@ def check_md(p: pathlib.Path, sh: set[int], slide_sh: set[int] | None = None) ->
 
 
 def main(argv: list[str]) -> int:
+    # 운영 검사(커밋 훅)는 체크아웃의 대조 자료와 대장을 읽는다. 셸에 사본 뿌리(OZL_PRIVATE)가 남아 있으면 빈 대조로 통과할 수 있어 멈춘다.
+    if os.environ.get("OZL_PRIVATE") and os.environ.get("OZL_UNDER_TEST") != "1" and ozlpaths.root().resolve() != ozlpaths.real_root().resolve():
+        print(f"공개 검사 중단: OZL_PRIVATE={os.environ['OZL_PRIVATE']} 가 체크아웃의 private/ 와 다르다. 변수를 지우고 다시 돌린다.", file=sys.stderr)
+        return 2
     sh = slide_sh = None
     bad = 0
     looked = False

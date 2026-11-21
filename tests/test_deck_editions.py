@@ -19,6 +19,7 @@ import test_deck_visuals as V  # noqa: E402
 from test_deck_visuals import desk  # noqa: E402,F401  (pytest fixture)
 from test_deck_kinds import entry  # noqa: E402
 from test_deck_pictures_policy import _art, photo, press, screen  # noqa: E402
+from ozl import paths as ozlpaths  # noqa: E402
 from ozl.render import build as B  # noqa: E402
 from ozl.render import bundle as BU  # noqa: E402
 from ozl.render import compare as CMP  # noqa: E402
@@ -606,8 +607,8 @@ def test_plain_spec_build_is_unchanged(desk, arts, tmp_path):
 
 def test_registry_file_is_the_default_registry_in_the_real_layout():
     """빌드가 덧붙이는 대장과 public_check 가 읽는 기본 대장은 실제 자리에서 같은 파일이다."""
-    assert B.DRAFTS == B.ROOT / "private" / "decks" / "drafts"            # 이 시험은 DRAFTS 를 바꾸지 않았다
-    assert B.registry_file() == REAL_REGISTRY == PIC.ROOT / "private" / "decks" / "private_only_registry.jsonl"
+    assert B.DRAFTS == ozlpaths.at("decks", "drafts")            # 이 시험은 DRAFTS 를 바꾸지 않았다
+    assert B.registry_file() == REAL_REGISTRY == ozlpaths.at("decks", "private_only_registry.jsonl")
 
 
 # ── 등록 대장과 public_check ──────────────────────────────────────────────

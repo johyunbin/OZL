@@ -11,12 +11,14 @@ import os
 import pathlib
 import tempfile
 
+from ozl import paths as ozlpaths
+
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 ENV = "OZL_DESK_ROOT"
 
 
 def real_root() -> pathlib.Path:
-    return ROOT / "private" / "desk"
+    return ozlpaths.at("desk")
 
 
 def desk_root() -> pathlib.Path:
@@ -33,7 +35,9 @@ def is_alias_of_real_root() -> bool:
     않는다. 파일 시스템의 같은 폴더인지(samefile)로 본다. 이런 루트에서 '시험' 승인을 실제 발행 목록에 쓰지 않게 승인이 막는다."""
     if is_real_root():
         return False
-    for a, b in ((desk_root(), real_root()), (desk_root() / "issues", real_root() / "issues")):
+    reals = [real_root(), ozlpaths.real_at("desk")]   # 뿌리를 OZL_PRIVATE 로 돌린 시험에서도 체크아웃의 운영 desk 는 지킨다
+    pairs = [(desk_root() / sub, r / sub) for r in reals for sub in ("", "issues")]
+    for a, b in pairs:
         try:
             if os.path.samefile(a, b):
                 return True

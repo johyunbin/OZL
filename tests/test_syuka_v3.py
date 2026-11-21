@@ -10,6 +10,7 @@ import pytest
 
 from ozl.syuka import __main__ as cli
 from ozl.syuka import db, db_v3, names, pilot, schema_v3
+from ozl import paths as ozlpaths  # noqa: E402
 
 TRANSCRIPT = ("안녕하세요 여러분. 오늘은 가상의 섬나라 몽돌국이 화폐 단위를 바꾼 이야기를 해 보겠습니다. "
               "새 돈이 나오자 가게마다 값을 올려 받았다고 합니다. 한 달 사이 생필품 값이 12% 올랐습니다. "
@@ -102,7 +103,7 @@ def test_twist_needs_turn_stage():
     assert schema_v3.validate_file(d) == []
 
 
-GUIDE = pathlib.Path(__file__).resolve().parents[1] / "private" / "syuka" / "extract_guide_v3.md"
+GUIDE = ozlpaths.real_at("syuka", "extract_guide_v3.md")
 
 
 @pytest.mark.skipif(not GUIDE.exists(), reason="비공개 지침 파일이 없는 환경")

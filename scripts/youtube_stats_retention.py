@@ -34,7 +34,9 @@ import sys
 from datetime import date, datetime, timedelta, timezone
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-REAL_PRIVATE = ROOT / "private"
+sys.path.insert(0, str(ROOT / "src"))
+from ozl import paths as ozlpaths  # noqa: E402
+REAL_PRIVATE = ozlpaths.real_root()
 KST = timezone(timedelta(hours=9))
 RETENTION = timedelta(days=30)
 
@@ -257,15 +259,16 @@ def save(d: Doc) -> None:
 
 
 # ── 안전장치 ────────────────────────────────────────────────────────────
-def apply_refusal(root: pathlib.Path, real_private: pathlib.Path = REAL_PRIVATE) -> str:
-    """--apply 를 거부할 이유. 빈 문자열이면 허용."""
+def apply_refusal(root: pathlib.Path, real_private: pathlib.Path | None = None) -> str:
+    """--apply 를 거부할 이유. 빈 문자열이면 허용. real_private 를 주지 않으면 부를 때의 REAL_PRIVATE(시험이 바꿔 끼운다)."""
+    real_private = REAL_PRIVATE if real_private is None else real_private
     if os.environ.get("OZL_YT_PURGE_REAL") == "1":
         return ""
     r, rp = root.resolve(), real_private.resolve()
     if r == rp or rp.is_relative_to(r):
         return f"--root 가 실제 private 폴더({rp})이거나 그것을 품은 폴더다. 실제 자료를 지우려면 OZL_YT_PURGE_REAL=1 을 함께 준다."
-    if r.is_relative_to(rp) and not r.is_relative_to(rp / "out"):
-        return f"--root 가 실제 private 폴더 안({r})이다. 시험 사본은 {rp / 'out'} 아래에 둔다. 실제 자료를 지우려면 OZL_YT_PURGE_REAL=1 을 함께 준다."
+    if r.is_relative_to(rp) and not r.is_relative_to(ozlpaths.under(rp, "out")):
+        return f"--root 가 실제 private 폴더 안({r})이다. 시험 사본은 {ozlpaths.under(rp, 'out')} 아래에 둔다. 실제 자료를 지우려면 OZL_YT_PURGE_REAL=1 을 함께 준다."
     return ""
 
 
@@ -350,7 +353,7 @@ def cmd_purge(root: pathlib.Path, asof: date, apply: bool) -> int:
     print(f"\n통계 칸 {total}개를 {word}.")
     if apply:
         stamp = datetime.now(KST).strftime("%Y%m%d_%H%M%S")
-        log = root / "out" / f"youtube_stats_purge_{stamp}.json"
+        log = ozlpaths.under(root, "out", f"youtube_stats_purge_{stamp}.json")
         log.parent.mkdir(parents=True, exist_ok=True)
         log.write_text(json.dumps({
             "run_at": datetime.now(KST).isoformat(timespec="seconds"), "root": str(root.resolve()),

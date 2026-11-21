@@ -15,6 +15,7 @@ from collections import Counter
 from datetime import datetime
 from urllib.parse import quote
 
+from ozl import paths as ozlpaths
 from . import cards as C
 
 ROOT = C.ROOT
@@ -27,8 +28,8 @@ _ANCHOR = re.compile(r'<a id="((?:am|pm|wk)-\d{2})"></a>')   # 발행본에 실�
 
 def paths(date: str, slot: str) -> dict[str, pathlib.Path]:
     y, m = date[:4], date[5:7]
-    return {"private": ROOT / "private" / "daily" / y / m / f"{date}_{slot}.md",
-            "sheet": ROOT / "private" / "daily" / y / m / f"{date}_{slot}_검증시트.md",
+    return {"private": ozlpaths.at("daily") / y / m / f"{date}_{slot}.md",
+            "sheet": ozlpaths.at("daily") / y / m / f"{date}_{slot}_검증시트.md",
             "public": ROOT / "daily" / y / m / f"{date}_{slot}.md"}
 
 

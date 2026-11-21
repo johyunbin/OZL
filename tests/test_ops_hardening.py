@@ -71,13 +71,15 @@ def raw(port: int, head: bytes, body: bytes = b"", wait: float = 8.0) -> bytes:
 # ---------- 실제 자료 루트의 별칭 ----------
 
 def _case_insensitive() -> bool:
-    p = REAL_DESK.parent / "DESK"
-    return REAL_DESK.exists() and p.exists()
+    # 시험 중의 '실제 자료 루트'는 가드(tests/conftest.py)가 돌린 임시 폴더다 — 그 폴더를 만들어 대소문자만 다른 경로로 가리켜 본다
+    real = paths.real_root()
+    real.mkdir(parents=True, exist_ok=True)
+    return (real.parent / "DESK").exists()
 
 
 @pytest.mark.skipif(not _case_insensitive(), reason="대소문자를 가리는 파일 시스템")
 def test_case_alias_of_real_root_refused(monkeypatch, tmp_path):
-    monkeypatch.setenv(paths.ENV, str(REAL_DESK.parent / "DESK"))
+    monkeypatch.setenv(paths.ENV, str(paths.real_root().parent / "DESK"))
     assert store.root_alias()                      # paths.is_real_root() 는 여기서 거짓이다(issues 쪽 보고 대상)
     with pytest.raises(RuntimeError):
         with store.ops_lock():

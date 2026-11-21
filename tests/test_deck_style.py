@@ -19,6 +19,7 @@ from ozl.render import pictures as PIC  # noqa: E402
 from ozl.render import spec as S  # noqa: E402
 from ozl.render import style as ST  # noqa: E402
 from ozl.render.__main__ import main as render_main  # noqa: E402
+from ozl import paths as ozlpaths  # noqa: E402
 
 TEMPLATE = V.TEMPLATE
 
@@ -314,7 +315,7 @@ def test_collect_counts_without_text(tmp_path):
 
 def test_style_constants_match_a_norms_file():
     """style.py 의 상수가 가리키는 집계 파일이 있으면 그 값과 같아야 한다(다시 셌으면 상수도 옮긴다)."""
-    p = ST.ROOT / ST.NORMS_FILE
+    p = ozlpaths.resolve(ST.NORMS_FILE, real=True)      # 실제 자료를 읽기만 한다(가드와 무관한 운영 위치)
     if not p.is_file():
         pytest.skip("원본 집계 파일이 없는 환경")
     r = json.loads(p.read_text(encoding="utf-8"))

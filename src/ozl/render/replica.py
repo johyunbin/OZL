@@ -21,12 +21,13 @@ import numpy as np
 from PIL import Image
 from pptx.util import Inches
 
+from ozl import paths as ozlpaths
 from ozl.render import deck
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
-SPEC = ROOT / "private" / "style" / "replica_spec.json"
-OUT = ROOT / "private" / "style" / "replica"
-FRAMES = ROOT / "private" / "frames"
+SPEC = ozlpaths.at("style", "replica_spec.json")
+OUT = ozlpaths.at("style", "replica")
+FRAMES = ozlpaths.at("frames")
 CW, CH = 1218, 686
 
 INK_DX, TITLE_INK_DY, BODY_INK_DY = deck.INK_DX, deck.TITLE_INK_DY, deck.BODY_INK_DY  # 보정 상수 정본 = deck.py

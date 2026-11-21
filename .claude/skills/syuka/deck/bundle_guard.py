@@ -25,9 +25,10 @@ import pathlib
 import re
 import sys
 
+from ozl import paths as ozlpaths
 from ozl.research import cards as C
 
-CATALOG = C.ROOT / "private" / "meta" / "catalog_syukaworld.csv"
+CATALOG = ozlpaths.at("meta", "catalog_syukaworld.csv")
 HEAD = re.compile(r"^# 검토 묶음 — (\S+)\s*$", re.M)
 CLAIMS_HEAD = "## 인용한 검증 기록"
 RUN = re.compile(r"[A-Za-z0-9_-]+")

@@ -22,10 +22,11 @@ import requests
 import yaml
 
 from . import coverage, ledger, sensitive
+from ozl import paths as ozlpaths
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 HERE = pathlib.Path(__file__).resolve().parent
-DESK = ROOT / "private" / "desk"
+DESK = ozlpaths.at("desk")
 KST = timezone(timedelta(hours=9))
 UA = {"User-Agent": "Mozilla/5.0 (compatible; feed-reader/1.0)",
       "Accept": "application/rss+xml, application/atom+xml, application/xml;q=0.9, */*;q=0.8"}

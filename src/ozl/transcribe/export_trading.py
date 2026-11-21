@@ -16,11 +16,13 @@ import sqlite3
 import sys
 from datetime import datetime, timezone
 
+from ozl import paths as ozlpaths
+
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 # Trading 저장소 위치: 환경변수 OZL_TRADING_ROOT 가 있으면 그것, 없으면 홈 아래 Trading.
 TRADING = pathlib.Path(os.environ.get("OZL_TRADING_ROOT") or (pathlib.Path.home() / "Trading"))
 DB = TRADING / "trading.db"
-OUT = ROOT / "private" / "transcripts" / "trading_export"
+OUT = ozlpaths.at("transcripts", "trading_export")
 CHANNELS = ("syuka", "moneycomics", "alex")
 MIN_CHARS = 500
 

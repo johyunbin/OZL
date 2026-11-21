@@ -15,6 +15,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
 from test_deck_pictures_policy import _art, press  # noqa: E402
 from ozl.render import pictures as PIC  # noqa: E402
 from ozl.render.__main__ import main as render_main  # noqa: E402
+from ozl import paths as ozlpaths  # noqa: E402
 
 URL = "https://news.example.org/photo/77"
 AT = "2099-01-02T10:00:00+09:00"
@@ -139,7 +140,7 @@ def test_origin_survey_cli_prints_a_table(orig, tmp_path, capsys):
 
 def test_constants_match_the_survey_file():
     """상한 상수가 가리키는 실측 표가 있으면 그 수와 같아야 한다(다시 쟀으면 상수도 옮긴다). 표는 비공개 폴더에 있어 없는 환경에서는 건너뛴다."""
-    p = (PIC.ROOT / PIC.ORIGIN_SURVEY_FILE).with_suffix(".json")
+    p = ozlpaths.resolve(PIC.ORIGIN_SURVEY_FILE, real=True).with_suffix(".json")
     if not p.is_file():
         pytest.skip("실측 표가 없는 환경")
     r = json.loads(p.read_text(encoding="utf-8"))
@@ -150,4 +151,4 @@ def test_constants_match_the_survey_file():
     assert r["core_benign"]["phash_max"] <= PIC.PHASH_MAX
     assert all(v["passed"] == 0 for v in r["clear_paint"].values())    # 뚜렷한 덧칠은 넓이 0.5% 부터 하나도 통과하지 않았다
     assert all(x["ok"] for x in r["real"])                             # 실제 재게시 사본은 통과했다
-    assert (PIC.ROOT / PIC.ORIGIN_SURVEY_FILE).is_file()
+    assert ozlpaths.resolve(PIC.ORIGIN_SURVEY_FILE, real=True).is_file()

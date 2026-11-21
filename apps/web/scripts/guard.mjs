@@ -3,7 +3,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { OUT_MARK, outDir, PREVIEW_DEFAULT, PUBLIC_DIST, REPO_ROOT, siteData, WEB_ROOT } from "./paths.mjs";
+import { CHECKOUT_PREVIEW, OUT_MARK, outDir, PUBLIC_DIST, REPO_ROOT, siteData, WEB_ROOT } from "./paths.mjs";
 
 const mode = process.argv[2] === "public" ? "public" : "preview";
 const out = outDir(mode);
@@ -63,7 +63,7 @@ for (const [name, p] of [["저장소", REPO_ROOT], ["웹 폴더", WEB_ROOT], ["�
 if (fs.existsSync(out)) {
   if (!fs.statSync(out).isDirectory()) fail(3, `결과 자리에 폴더가 아닌 것이 있다 (${out})`);
   const entries = fs.readdirSync(out);
-  const named = outReal === real(PUBLIC_DIST) || outReal === real(PREVIEW_DEFAULT);
+  const named = outReal === real(PUBLIC_DIST) || outReal === real(CHECKOUT_PREVIEW);
   if (entries.length && !entries.includes(OUT_MARK) && !named) {
     fail(3, `결과 폴더에 이 빌드가 남긴 표식(${OUT_MARK})이 없다. 빈 폴더나 새 폴더를 주라 (${out})`);
   }

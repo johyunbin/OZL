@@ -19,6 +19,7 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
+from ozl import paths as ozlpaths  # noqa: E402
 from ozl.issues import model, revisions  # noqa: E402
 
 VERDICT_ORDER = ("확인", "일부 맞음", "사실과 다름", "확인 못 함")
@@ -90,7 +91,7 @@ def product_rows(row: dict, cards_root: pathlib.Path) -> list[dict]:
 
 def build(ids=None, cards_root: pathlib.Path | None = None) -> dict:
     rows = revisions.status_rows(ids or None)
-    cards_root = cards_root or ROOT / "private" / "out" / "cards"
+    cards_root = cards_root or ozlpaths.at("out", "cards")
     return {"issues": [issue_row(r) for r in rows], "products": [p for r in rows for p in product_rows(r, cards_root)]}
 
 

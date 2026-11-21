@@ -46,6 +46,7 @@ import sys
 from collections import Counter
 from contextlib import closing
 
+from ozl import paths as ozlpaths
 from . import agree, catalog, db, db_v3, hits, ledger, pilot, predict, profile, sample, schema, schema_v3
 
 def agree_out(version: int = schema.SCHEMA_VERSION, folder=None) -> pathlib.Path:
@@ -246,8 +247,8 @@ def cmd_mark_v3(con, video_id: str, every: int, start: int = 0, length: int | No
     if not v or not v["has_transcript"]:
         print("videos 표에 없거나 전사가 없는 영상이다", file=sys.stderr)
         return 1
-    p = pathlib.Path(v["transcript_path"])
-    d = json.loads((p if p.is_absolute() else catalog.ROOT / p).read_text(encoding="utf-8"))
+    p = ozlpaths.resolve(catalog.ROOT / v["transcript_path"])
+    d = json.loads(p.read_text(encoding="utf-8"))
     text = catalog.read_transcript(v["transcript_path"])
     # 글자 위치 → 시각(다글로 segments 의 start). 유튜브 자막은 시각이 없다.
     starts, pos = [], 0

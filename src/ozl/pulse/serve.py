@@ -24,10 +24,11 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import yaml
 
 from . import snapshot, store
+from ozl import paths as ozlpaths
 
 WEB = pathlib.Path(__file__).resolve().parent / "web"
 SAMPLE_DECK = store.ROOT / "skills" / "ozl-news" / "deck_example.yaml"
-BRIEFS = store.ROOT / "private" / "briefs"
+BRIEFS = ozlpaths.at("briefs")
 BRIEF_ID = re.compile(r"(\d{4}-\d{2}-\d{2})-(am|pm)-b\d{2}")
 
 

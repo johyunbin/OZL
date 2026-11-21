@@ -16,12 +16,13 @@ import re
 import sys
 from copy import deepcopy
 
+from ozl import paths as ozlpaths
 from ozl.render import design_v2 as V2
 from ozl.render import spec as S
 from ozl.render import style as ST
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
-OUT = ROOT / "private" / "결과물" / "12_템플릿"
+OUT = ozlpaths.at("결과물", "12_템플릿")
 OUT_V2 = OUT.parent / "20_템플릿v2"
 
 TITLE = "여기에 제목: 한 문장으로"

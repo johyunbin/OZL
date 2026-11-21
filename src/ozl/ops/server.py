@@ -29,8 +29,9 @@ from ozl.pulse import snapshot as pulse_snapshot
 from ozl.pulse import store as pulse_store
 
 from . import actions, approvals, approve_view, auth, candidates, compat, preview, queue, store, templates
+from ozl import paths as ozlpaths
 
-PRIVATE_OPS = paths.ROOT / "private" / "ops"
+PRIVATE_OPS = ozlpaths.at("ops")
 STATIC = pathlib.Path(__file__).resolve().parent / "static"
 OPS_CSP = ("default-src 'none'; style-src 'self'; img-src 'self'; form-action 'self'; base-uri 'none'; "
            "frame-ancestors 'none'; script-src 'none'")
@@ -53,7 +54,7 @@ class Config:
     open_read_hosts: tuple[str, ...] = ()       # 이 이름으로 들어온 읽기는 로그인 없이 연다(기본 없음)
     token_path: pathlib.Path = PRIVATE_OPS / "token"
     log_path: pathlib.Path = PRIVATE_OPS / "access.log"
-    preview_dir: pathlib.Path | None = paths.ROOT / "private" / "out" / "web_preview"
+    preview_dir: pathlib.Path | None = ozlpaths.at("out", "web_preview")
     pulse_out: pathlib.Path = pulse_snapshot.OUT
     pulse_db: pathlib.Path = pulse_store.DB
     approver: str = "사용자"

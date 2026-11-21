@@ -14,6 +14,7 @@ import pathlib
 import threading
 from datetime import datetime, timedelta, timezone
 
+from ozl import paths as ozlpaths
 from ozl.issues import paths
 
 KST = timezone(timedelta(hours=9))
@@ -35,8 +36,10 @@ def root_alias() -> bool:
     """
     if paths.is_real_root():
         return False
-    real = paths.real_root()
-    for a, b in ((paths.desk_root(), real), (paths.issues_dir(), real / "issues"), (ops_dir(), real / "ops")):
+    pairs = []
+    for real in (paths.real_root(), ozlpaths.real_at("desk")):   # 뿌리를 OZL_PRIVATE 로 돌린 시험에서도 체크아웃의 운영 desk 는 지킨다
+        pairs += [(paths.desk_root(), real), (paths.issues_dir(), real / "issues"), (ops_dir(), real / "ops")]
+    for a, b in pairs:
         try:
             if os.path.samefile(a, b):
                 return True

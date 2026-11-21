@@ -17,9 +17,11 @@ import statistics
 import sys
 from collections import Counter
 
+from ozl import paths as ozlpaths
+
 ROOT = pathlib.Path(__file__).resolve().parents[3]
-COMPOSE = ROOT / "private" / "compose"
-SLIDES = ROOT / "private" / "slides_label_r2"  # 라벨링에 쓴 슬라이드 목록의 고정본(1..N) — 번호가 라벨과 맞아야 하므로 재생성본(slides_label)이 아니라 고정본을 읽는다
+COMPOSE = ozlpaths.at("compose")
+SLIDES = ozlpaths.at("slides_label_r2")  # 라벨링에 쓴 슬라이드 목록의 고정본(1..N) — 번호가 라벨과 맞아야 하므로 재생성본(slides_label)이 아니라 고정본을 읽는다
 OUT_MD = ROOT / "tracks" / "syuka" / "analysis" / "composition_syukaworld.md"
 OUT_JSON = ROOT / "tracks" / "syuka" / "style" / "composition_template_v0.json"
 HOLDOUT = ["xymdBYW2WUo", "WtYWltGjho4", "t-IIGGFe80U", "tIQFRHoKqdw", "gdfRFs0yMco"]
@@ -227,8 +229,8 @@ def main(argv: list[str]) -> int:
     hits = rule_hits(docs)
     hold = None
     if argv[:1] == ["holdout"]:
-        ha = [d for d in load(ROOT / "private" / "compose_holdout_a", HOLDOUT) if d["_valid"]]
-        hb = [d for d in load(ROOT / "private" / "compose_holdout_b", HOLDOUT) if d["_valid"]]
+        ha = [d for d in load(ozlpaths.at("compose_holdout_a"), HOLDOUT) if d["_valid"]]
+        hb = [d for d in load(ozlpaths.at("compose_holdout_b"), HOLDOUT) if d["_valid"]]
         ra, rb = rule_hits(ha), rule_hits(hb)
         for (name, h, n), (_, h1, n1), (_, h2, n2) in zip(hits, ra, rb):
             L.append(f"| {name} | {h}/{n} ({h / max(1, n):.0%}) | {h1}/{n1} | {h2}/{n2} |")

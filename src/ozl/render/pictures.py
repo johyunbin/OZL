@@ -125,6 +125,8 @@ import re
 import unicodedata
 from dataclasses import dataclass
 
+from ozl import paths as ozlpaths
+
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 
 PIC_ID = re.compile(r"^p\d{1,3}$")
@@ -163,7 +165,7 @@ SWAP_KEYS = ("why", "set", "slide")
 #   권리가 확실해지면 이 줄을 지운다(등록 대장의 그 그림 줄도 함께 지운다).
 RIGHTS_PENDING_HOSTS = ("korea.kr",)
 REGISTRY_NAME = "private_only_registry.jsonl"
-REGISTRY = ROOT / "private" / "decks" / REGISTRY_NAME   # 비공개 등록 대장(막는 그림과 비공개판 산출물의 sha256)
+REGISTRY = ozlpaths.at("decks") / REGISTRY_NAME   # 비공개 등록 대장(막는 그림과 비공개판 산출물의 sha256)
 REGISTRY_ENV = "OZL_PRIVATE_REGISTRY"   # 더 볼 등록 대장(경로 구분자로 여럿) — 더하기만 한다. 기본 대장을 빼지 못한다
 
 AI_MARK = "AI 생성 이미지, 실제 장면 아님"
@@ -357,8 +359,7 @@ def ledger(spec: dict) -> tuple[dict[str, dict], list[str]]:
 
 
 def resolve_path(e: dict) -> pathlib.Path:
-    p = pathlib.Path(_s(e.get("path")))
-    return p if p.is_absolute() else ROOT / p
+    return ozlpaths.resolve(_s(e.get("path")))
 
 
 def is_meme(e: dict | None) -> bool:
@@ -609,7 +610,7 @@ def origin_errors(e: dict) -> list[str]:
         out.append("원출처 대조(origin_check.local_diff)에 구역 차이가 없다 — `python -m ozl.render origin` 으로 재서 적는다"
                    "(받은 파일을 original_path 에 두면 검사 때 다시 잰다)")
     if op and not out:
-        orig = pathlib.Path(op) if pathlib.Path(op).is_absolute() else ROOT / op
+        orig = ozlpaths.resolve(op)
         mine = resolve_path(e)
         if not orig.is_file():
             out.append(f"원출처 대조의 받은 파일이 없다: {orig}")

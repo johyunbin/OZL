@@ -15,10 +15,9 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+from ozl import paths as ozlpaths
 from ozl.syuka.catalog import KST, classify
 
-PRIVATE = Path("private")
-COMPOSE = PRIVATE / "compose"
 CUTS = (15, 20, 25, 30, 35)
 BANDS = ("[0,15)", "[15,20)", "[20,25)", "[25,30)", "[30,35)", "[35,∞)")
 UNKNOWN = "분류 없음"
@@ -440,16 +439,17 @@ def generate(db, catalog, compose_dirs, asof, out, labelers=(), slide_lists=()):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--db", type=Path, default=PRIVATE / "syuka/syuka.db")
-    parser.add_argument("--catalog", type=Path, default=PRIVATE / "meta/catalog_syukaworld.csv")
+    parser.add_argument("--db", type=Path, default=ozlpaths.at("syuka", "syuka.db"))
+    parser.add_argument("--catalog", type=Path, default=ozlpaths.at("meta", "catalog_syukaworld.csv"))
     parser.add_argument("--compose-dirs", type=Path, nargs="+", default=[], help="기본 폴더 뒤에 읽을 구성 폴더")
     parser.add_argument("--labeler", nargs="+", action="extend", default=[], help="앞에서부터 그림 라벨러 우선순위")
     parser.add_argument("--asof", type=date.fromisoformat, default=datetime.now(KST).date())
-    parser.add_argument("--slide-lists", type=Path, nargs="+", default=[PRIVATE / "slides_label_r2"],
+    parser.add_argument("--slide-lists", type=Path, nargs="+", default=[ozlpaths.at("slides_label_r2")],
                         help="라벨 번호의 기준이 된 슬라이드 목록 폴더(뒤가 우선). 장을 t_first 로 잇는다")
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args(argv)
-    directories = [COMPOSE] if COMPOSE.is_dir() or not args.compose_dirs else []
+    compose = ozlpaths.at("compose")   # 부를 때 정한다(시험이 OZL_PRIVATE 로 바꾼다)
+    directories = [compose] if compose.is_dir() or not args.compose_dirs else []
     generate(args.db, args.catalog, [*directories, *args.compose_dirs], args.asof, args.out, args.labeler, args.slide_lists)
 
 

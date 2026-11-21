@@ -8,6 +8,7 @@ import re
 import pytest
 
 from test_ops_support import ROOT, desk, ops, real_untouched, start  # noqa: F401
+from ozl import paths as ozlpaths  # noqa: E402
 
 pytestmark = pytest.mark.usefixtures("real_untouched")
 
@@ -104,7 +105,7 @@ def test_missing_folder_503(tmp_path, desk):
         r.srv.server_close()
 
 
-REAL = ROOT / "private" / "out" / "web_preview"
+REAL = ozlpaths.real_at("out", "web_preview")
 
 
 @pytest.mark.skipif(not (REAL / "pagefind" / "pagefind-entry.json").exists(), reason="실제 미리보기 빌드가 없다")

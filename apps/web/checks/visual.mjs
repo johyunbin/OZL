@@ -11,10 +11,8 @@ import os from "node:os";
 import path from "node:path";
 import http from "node:http";
 import { spawnSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
+import { privateAt, WEB_ROOT } from "../scripts/paths.mjs";
 
-const WEB_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const REPO_ROOT = path.resolve(WEB_ROOT, "../..");
 if (!process.env.PLAYWRIGHT_BROWSERS_PATH) process.env.PLAYWRIGHT_BROWSERS_PATH = path.join(WEB_ROOT, ".pw-browsers");
 const { chromium } = await import("playwright");
 const { default: AxeBuilder } = await import("@axe-core/playwright");
@@ -107,7 +105,7 @@ await new Promise((ok) => server.listen(0, "127.0.0.1", ok));
 const ORIGIN = `http://127.0.0.1:${server.address().port}`;
 const at = (p) => ORIGIN + BASE + encodeURI(p);
 
-const shotDir = path.join(REPO_ROOT, "private/out/screens", `web_${stamp()}`);
+const shotDir = privateAt("out", "screens", `web_${stamp()}`);
 fs.mkdirSync(shotDir, { recursive: true });
 
 const result = {

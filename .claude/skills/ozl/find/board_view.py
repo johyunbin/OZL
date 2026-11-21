@@ -24,6 +24,7 @@ import re
 import sys
 from datetime import datetime, timedelta, timezone
 
+from ozl import paths as ozlpaths
 from ozl.issues import paths
 
 KST = timezone(timedelta(hours=9))
@@ -90,7 +91,7 @@ def ago(d: timedelta) -> str:
 # ── 후보 판 ──────────────────────────────────────────────────────────────
 
 def default_board() -> pathlib.Path:
-    return paths.ROOT / "private" / "pulse" / "out" / "board.json"
+    return ozlpaths.at("pulse", "out", "board.json")
 
 
 def load_board(p: pathlib.Path) -> dict:

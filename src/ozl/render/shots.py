@@ -48,13 +48,14 @@ import urllib.error
 import urllib.request
 import urllib.robotparser
 from urllib.parse import urljoin, urlsplit, urlunsplit
+from ozl import paths as ozlpaths
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 CHROME = pathlib.Path("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome")
 UA_TOKEN = "ozl-shot"
 USER_AGENT = f"Mozilla/5.0 (compatible; {UA_TOKEN}/1.0)"   # 사용자 이름·주소를 넣지 않는다
 MIN_GAP = 2.0
-HOST_LOG = ROOT / "private" / "decks" / "shots" / "host_times.json"
+HOST_LOG = ozlpaths.at("decks", "shots", "host_times.json")
 TIMEOUT = 20
 CHROME_TIMEOUT = 120               # Chrome 한 번이 화면을 찍는 데 주는 시간(초) — 넘으면 오류로 끝낸다
 BLOCK_STATUS = {401: "인증 요구", 403: "접근 거부", 407: "프록시 인증 요구", 429: "요청이 너무 잦다", 451: "법적 사유로 막음", 503: "서비스 불가(차단일 수 있다)"}

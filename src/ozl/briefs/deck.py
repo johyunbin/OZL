@@ -20,9 +20,9 @@ from urllib.parse import unquote, urlparse
 
 import yaml
 
-from ..pulse import store
+from ozl import paths as ozlpaths
 
-BRIEFS = store.ROOT / "private" / "briefs"
+BRIEFS = ozlpaths.at("briefs")
 LEDGER = BRIEFS / "issued_ids.json"
 ID = re.compile(r"(\d{4}-\d{2}-\d{2})-(am|pm)-b(\d{2})")
 TYPES = {"cover", "number", "claim", "bars", "cards", "text", "questions"}

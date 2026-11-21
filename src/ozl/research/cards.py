@@ -20,8 +20,10 @@ from datetime import datetime, timedelta, timezone
 
 import yaml
 
+from ozl import paths as ozlpaths
+
 ROOT = pathlib.Path(__file__).resolve().parents[3]
-DESK = ROOT / "private" / "desk"
+DESK = ozlpaths.at("desk")
 CARDS = DESK / "cards"
 CLAIMS = DESK / "claims"
 PUB_CLAIMS = ROOT / "claims"
@@ -353,8 +355,7 @@ def recheck_check_errors(c: dict) -> list[str]:
 
 
 def _resolve(p) -> pathlib.Path:
-    q = pathlib.Path(str(p))
-    return q if q.is_absolute() else ROOT / q
+    return ozlpaths.resolve(str(p))
 
 
 def _inside_captures(p) -> bool:
@@ -363,7 +364,9 @@ def _inside_captures(p) -> bool:
     raw = pathlib.Path(str(p))
     if ".." in raw.parts:
         return False
-    return any(a.name == "captures" for a in _resolve(raw).resolve().parents)
+    above = {b.resolve() for b in (ROOT, ozlpaths.root())}
+    above |= {a for b in above for a in b.parents}            # 뿌리 자신과 그 위 폴더
+    return any(a.name == "captures" and a not in above for a in _resolve(raw).resolve().parents)
 
 
 def _unique_span(norm_find: dict, what: str, errs: list[str]):

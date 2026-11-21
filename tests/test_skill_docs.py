@@ -19,6 +19,8 @@ import tempfile
 
 import pytest
 
+from ozl import paths as ozlpaths
+
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 SKILLS = ROOT / ".claude" / "skills"
 DOCS = sorted(p for p in SKILLS.rglob("*") if p.is_file() and p.suffix in (".md", ".js"))
@@ -541,6 +543,7 @@ def test_syuka_sandbox_capture_snippet_runs_in_a_copy(tmp_path):
     copy = tmp_path / "copy"
     shutil.copytree(ROOT / "src", copy / "src", ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
     env = dict(os.environ, PYTHONPATH=str(copy / "src"), PYTHONDONTWRITEBYTECODE="1")
+    env.pop("OZL_PRIVATE", None)
     env.pop("OZL_DESK_ROOT", None)
     guard = re.search(r'-c "(from ozl\.research import cards; print\(cards\.ROOT\))"', part).group(1)
     seen = subprocess.run([sys.executable, "-c", guard], cwd=copy, env=env, capture_output=True, text=True, timeout=120)
@@ -557,20 +560,20 @@ def test_syuka_sandbox_capture_snippet_runs_in_a_copy(tmp_path):
     claim = yaml.safe_load(text(ROOT / "skills" / "ozl" / "claim_template.yaml"))
     claim.update(claim_id=cid, card_id=cid[:-3], observed="2099년 3월 한빛시 공유 자전거 대여 건수는 41만 2천 건으로 집계됐다.")
     claim["source"]["url"] = url
-    cpath = copy / "private" / "desk" / "claims" / "2099-01-01" / f"{cid}.yaml"
+    cpath = ozlpaths.under(copy / "private", "desk", "claims", "2099-01-01", f"{cid}.yaml")
     cpath.parent.mkdir(parents=True)
     cpath.write_text(yaml.safe_dump(claim, allow_unicode=True, sort_keys=False), encoding="utf-8")
     code = (snippet.replace("<사본의 절대 경로>", str(copy)).replace("<기록의 source.url>", url)
             .replace("<그 문서를 대신할 로컬 파일의 절대 경로>", str(doc)).replace("<기록 번호>", cid).replace("<쓴 쪽 이름>", "시험 작성자"))
     assert "<" not in re.sub(r"<<|<=|<module>", "", code.split("def local_fetch", 1)[0]), "채우지 않은 자리표시가 남았다"
-    real = ROOT / "private" / "desk" / "captures" / cid
+    real = ozlpaths.real_at("desk", "captures", cid)
     before = real.exists()
     r = subprocess.run([sys.executable, "-"], input=code, cwd=copy, env=env, capture_output=True, text=True, timeout=120)
     assert r.returncode == 0, r.stderr
     assert r.stdout.split()[:2] == [cid, "찾음"], r.stdout
     got = yaml.safe_load(cpath.read_text(encoding="utf-8"))["verification"]
     assert got["match"]["found"] and got["capture"]["ok"] and got["author"]["by"] == "시험 작성자"
-    assert (copy / got["capture"]["text_path"]).is_file() and (copy / "private" / "desk" / "captures" / cid / "source.html").is_file()
+    assert (copy / got["capture"]["text_path"]).is_file() and (ozlpaths.under(copy / "private", "desk", "captures", cid, "source.html")).is_file()
     assert real.exists() == before, "실제 자료 루트에 사본이 쓰였다"
     # 표에 없는 주소는 받지 않고 멈춘다
     bad = subprocess.run([sys.executable, "-"], input=code.replace(f'"{url}":', '"https://example.org/other":'), cwd=copy, env=env,
@@ -843,10 +846,10 @@ def test_ozl_status_names_the_desk_root_and_the_card_exception():
     body = text(SKILLS / "ozl" / "SKILL.md")
     status = body.split("## /ozl status", 1)[1].split("## /ozl make", 1)[0]
     assert "첫 줄에 지금의 자료 루트를 적는다" in status
-    assert "`OZL_DESK_ROOT` 를 따르지 않고 저장소의 `private/desk/cards/` 를 읽는다" in status
-    from ozl.issues import paths
+    desk = ozlpaths.LAYOUT["desk"]                            # 문서에 적힌 위치가 정본 LAYOUT 과 같아야 한다
+    assert f"`OZL_DESK_ROOT` 를 따르지 않고 저장소의 `private/{desk}/cards/` 를 읽는다" in status
     from ozl.research import cards
-    assert cards.CARDS == paths.ROOT / "private" / "desk" / "cards"       # 문서의 말대로 카드 폴더는 저장소 기준 고정이다
+    assert cards.CARDS == ozlpaths.at("desk", "cards")       # 문서의 말대로 카드 폴더는 저장소 기준 고정이다
 
 
 def test_ozl_step1_handles_a_given_title_and_a_stop_before_writing():
@@ -1026,7 +1029,7 @@ def test_ozl_status_commands_leave_only_the_empty_lock_file(tmp_path):
 REVIEW = ROOT / "skills" / "ozl" / "review"
 REVIEW_TEMPLATES = ("sentence.md", "composition.md", "external_head.md")
 PLACEHOLDER = re.compile(r"\{([A-Z][A-Z_]*)\}")
-CRITERIA_DIR = ROOT / "private" / "plan"                 # 평가 기준은 비공개 폴더에 있다(없는 기기에서는 그 시험만 건너뛴다)
+CRITERIA_DIR = ozlpaths.real_at("plan")                 # 평가 기준은 비공개 폴더에 있다(없는 기기에서는 그 시험만 건너뛴다)
 CRITERIA_ITEM = re.compile(r"^\|\s*([나다])(\d+)\s*\|", re.M)
 
 
@@ -1107,8 +1110,9 @@ def test_sentence_template_points_to_no_folder_the_procedure_does_not_make():
     assert "반론 칸(`counter`)에만 있는 내용은 화면에 쓰지 않고 notes 에 둔다" in body
     # 틀이 적은 기록과 사본의 자리가 코드가 쓰는 자리다
     from ozl.research import cards as C
-    assert "`private/desk/claims/<날짜>/<claim_id>.yaml`" in body and C.CLAIMS.relative_to(C.ROOT) == pathlib.Path("private/desk/claims")
-    assert "`private/desk/captures/<claim_id>/`" in body and "private/desk/captures" in help_text("ozl.research", "capture")
+    desk = ozlpaths.LAYOUT["desk"]                            # 문서·도움말의 위치 문구가 정본 LAYOUT 과 같아야 한다
+    assert f"`private/{desk}/claims/<날짜>/<claim_id>.yaml`" in body and C.CLAIMS == ozlpaths.at("desk", "claims")
+    assert f"`private/{desk}/captures/<claim_id>/`" in body and f"private/{desk}/captures" in help_text("ozl.research", "capture")
     assert "받아 둔 것이 없으면 줄을 지우지 말고 \"없음\"이라고 적는다" in review("README.md")
 
 

@@ -15,10 +15,12 @@ import statistics
 import sys
 from collections import defaultdict
 
+from ozl import paths as ozlpaths
+
 ROOT = pathlib.Path(__file__).resolve().parents[3]
-EXP = ROOT / "private" / "transcripts" / "trading_export" / "syuka"
-ALIGN = ROOT / "private" / "meta" / "live_align_syukaworld.csv"
-OUT_DIR = ROOT / "private" / "style" / "bridges"
+EXP = ozlpaths.at("transcripts", "trading_export", "syuka")
+ALIGN = ozlpaths.at("meta", "live_align_syukaworld.csv")
+OUT_DIR = ozlpaths.at("style", "bridges")
 OUT_MD = ROOT / "tracks" / "syuka" / "analysis" / "live_structure.md"
 WIN = 45  # 경계 전후 초
 COV_MIN = 0.12

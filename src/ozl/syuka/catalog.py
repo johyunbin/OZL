@@ -9,9 +9,11 @@ import json
 import pathlib
 from datetime import datetime, timedelta, timezone
 
+from ozl import paths as ozlpaths
+
 ROOT = pathlib.Path(__file__).resolve().parents[3]
-META = ROOT / "private" / "meta"
-TRANSCRIPTS = ROOT / "private" / "transcripts"
+META = ozlpaths.at("meta")
+TRANSCRIPTS = ozlpaths.at("transcripts")
 EXPORT_IDX = TRANSCRIPTS / "trading_export" / "index.csv"
 KST = timezone(timedelta(hours=9))
 
@@ -110,7 +112,6 @@ def load_all() -> list[dict]:
 
 def read_transcript(path: str | pathlib.Path, repo_root: pathlib.Path | None = None) -> str:
     """전사 본문(text 칸). 없으면 segments 의 text 를 잇는다."""
-    p = pathlib.Path(path)
-    p = p if p.is_absolute() else (repo_root or ROOT) / p
+    p = repo_root / path if repo_root is not None else ozlpaths.resolve(ROOT / path)
     d = json.loads(p.read_text(encoding="utf-8"))
     return d.get("text") or "\n".join(s.get("text", "") for s in d.get("segments") or [])

@@ -26,8 +26,9 @@ from datetime import datetime, timedelta, timezone
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
+from ozl import paths as ozlpaths  # noqa: E402
 
-PRIVATE = ROOT / "private"
+PRIVATE = ozlpaths.root()
 KST = timezone(timedelta(hours=9))
 HASH_RE = re.compile(r"\bsha256:\s*['\"]?([0-9a-f]{64})\b")
 YT_STAT_RE = re.compile(r"[\"']?(viewCount|likeCount|commentCount|subscriberCount|view_count|like_count|comment_count)[\"']?\s*[:=,]")
@@ -142,10 +143,12 @@ def staged_paths(repo: pathlib.Path) -> list[str]:
 # ── 복원본 검사 ───────────────────────────────────────────────────────
 def verify(restored: pathlib.Path, baseline: pathlib.Path | None = None) -> dict:
     res: dict = {"restored": str(restored), "problems": []}
-    desk = restored / "desk"
+    # 지금 구조(ozl.paths.LAYOUT)의 자리를 먼저 보고, 없으면 2026-11-21 개편 전 백업의 자리(desk/, backup/)를 본다
+    desk = next((d for d in (ozlpaths.under(restored, "desk"), restored / "desk") if (d / "evidence_manifest.json").is_file()),
+                ozlpaths.under(restored, "desk"))
     mf = desk / "evidence_manifest.json"
     if not mf.is_file():
-        res["problems"].append("근거 해시 목록이 없다: desk/evidence_manifest.json")
+        res["problems"].append(f"근거 해시 목록이 없다: {ozlpaths.LAYOUT['desk']}/evidence_manifest.json")
         return res
     manifest = json.loads(mf.read_text(encoding="utf-8"))
     missing, changed = [], []
@@ -163,9 +166,10 @@ def verify(restored: pathlib.Path, baseline: pathlib.Path | None = None) -> dict
     res["copies_in_backup"] = len(extra)
     res["problems"] += [f"백업에 원문 사본이 있다: {p.relative_to(restored)}" for p in extra[:10]]
 
-    dumps = sorted((restored / "backup").glob("pulse_*.sql.gz"))
+    dumps = sorted(next((d for d in (ozlpaths.under(restored, "backup"), restored / "backup") if any(d.glob("pulse_*.sql.gz"))),
+                        ozlpaths.under(restored, "backup")).glob("pulse_*.sql.gz"))
     if not dumps:
-        res["problems"].append("수집 DB 덤프가 없다: backup/pulse_*.sql.gz")
+        res["problems"].append(f"수집 DB 덤프가 없다: {ozlpaths.LAYOUT['backup']}/pulse_*.sql.gz")
     else:
         gz = dumps[-1]
         side = json.loads(gz.with_name(gz.name.replace(".sql.gz", ".json")).read_text(encoding="utf-8"))
@@ -206,10 +210,10 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="비공개 기록 백업 묶음")
     sub = ap.add_subparsers(dest="cmd", required=True)
     s = sub.add_parser("snapshot-db", help="수집 DB 를 일관되게 떠서 덤프로 둔다")
-    s.add_argument("--db", type=pathlib.Path, default=PRIVATE / "pulse" / "pulse.db")
-    s.add_argument("--out", type=pathlib.Path, default=PRIVATE / "backup")
+    s.add_argument("--db", type=pathlib.Path, default=ozlpaths.at("pulse", "pulse.db"))
+    s.add_argument("--out", type=pathlib.Path, default=ozlpaths.at("backup"))
     m = sub.add_parser("manifest", help="카드·기록 파일의 해시 목록을 쓴다")
-    m.add_argument("--desk", type=pathlib.Path, default=PRIVATE / "desk")
+    m.add_argument("--desk", type=pathlib.Path, default=ozlpaths.at("desk"))
     c = sub.add_parser("check-staged", help="올리려는 목록에 원문 사본이나 유튜브 통계가 섞였는지 본다")
     c.add_argument("--repo", type=pathlib.Path, default=PRIVATE)
     v = sub.add_parser("verify", help="원격에서 다시 받은 묶음을 검사한다")
@@ -228,8 +232,11 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps({k: mf[k] for k in ("made_at", "n_files", "n_copy_hashes")}, ensure_ascii=False))
         return 0
     if a.cmd == "check-staged":
-        mf_path = a.repo / "desk" / "evidence_manifest.json"
-        hashes = copy_hashes(json.loads(mf_path.read_text(encoding="utf-8"))) if mf_path.is_file() else set()
+        mf_path = ozlpaths.under(a.repo, "desk", "evidence_manifest.json")
+        if not mf_path.is_file():   # 해시 목록 없이는 원문 사본을 해시로 가려내지 못한다 — 통과시키지 않는다
+            print(json.dumps({"staged": None, "problems": [f"근거 해시 목록이 없다: {mf_path}"]}, ensure_ascii=False, indent=1))
+            return 1
+        hashes = copy_hashes(json.loads(mf_path.read_text(encoding="utf-8")))
         paths = staged_paths(a.repo)
         bad = check_paths(a.repo, paths, hashes)
         print(json.dumps({"staged": len(paths), "problems": bad}, ensure_ascii=False, indent=1))

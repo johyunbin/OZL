@@ -18,10 +18,12 @@ import sys
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
+from ozl import paths as ozlpaths
+
 ROOT = pathlib.Path(__file__).resolve().parents[3]
-FRAMES = ROOT / "private" / "frames"
-OUT = ROOT / "private" / "style" / "fontmatch"
-SAMPLES = ROOT / "private" / "style" / "font_samples.json"
+FRAMES = ozlpaths.at("frames")
+OUT = ozlpaths.at("style", "fontmatch")
+SAMPLES = ozlpaths.at("style", "font_samples.json")
 PT_PER_PX = 960.0 / 1218.0  # 13.333in 슬라이드 = 캔버스 1218px (style_measure 와 같은 기준)
 
 NANUM_TTC = next(iter(pathlib.Path("/System/Library/AssetsV2").glob("com_apple_MobileAsset_Font*/*/AssetData/NanumGothic.ttc")), None)
@@ -70,7 +72,7 @@ def candidates() -> list[tuple[str, callable]]:
                     break
                 c.append((f"{nm[0]} {nm[1]}", lambda s, i=i: ImageFont.truetype(str(office / "gulim.ttc"), s, index=i)))
     # 추가 폰트 폴더(있으면): private/style/fonts_extra/*.ttf|otf — 내려받은 후보를 넣어 두면 함께 비교
-    extra = ROOT / "private" / "style" / "fonts_extra"
+    extra = ozlpaths.at("style", "fonts_extra")
     if extra.exists():
         for p in sorted(list(extra.glob("*.ttf")) + list(extra.glob("*.otf"))):
             c.append((p.stem, lambda s, p=p: ImageFont.truetype(str(p), s)))

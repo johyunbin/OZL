@@ -32,6 +32,7 @@ from __future__ import annotations
 import datetime as dt
 import hashlib
 import math
+import os
 import pathlib
 import re
 import sys
@@ -40,6 +41,7 @@ from statistics import mean, median
 
 import yaml
 
+from ozl import paths as ozlpaths
 from ozl.render import norms as NM
 from ozl.render import spec as S
 
@@ -387,8 +389,8 @@ def outline_text(o: dict) -> str:
 
 
 # ── 견본집 ──────────────────────────────────────────────────────────────
-SAMPLES = ROOT / "private" / "decks" / "samples"
-SAMPLES_LINK = ROOT / "private" / "결과물" / "04_덱" / "견본집"
+SAMPLES = ozlpaths.at("decks", "samples")
+SAMPLES_LINK = ozlpaths.at("결과물", "04_덱", "견본집")
 SAMPLE_CARD = "견본"
 # 견본집의 광고 칸 — 지어낸 광고주와 지어낸 자료 이름이다(실제 회사가 아니다)
 SAMPLE_SPONSOR = {"kind": "유료 광고", "sponsor": "가상제분", "label": "유료 광고 포함", "whole": False, "materials": ["가상제분 소개 자료(지어낸 자료)"]}
@@ -558,7 +560,7 @@ def samples(out_root: pathlib.Path = SAMPLES, export: bool = True, link: pathlib
         if link.is_symlink() or not link.exists():
             if link.is_symlink():
                 link.unlink()
-            link.symlink_to(pathlib.Path("..") / ".." / "decks" / "samples")
+            link.symlink_to(os.path.relpath(SAMPLES, SAMPLES_LINK.parent))
         info["link"] = str(link)
     return info
 

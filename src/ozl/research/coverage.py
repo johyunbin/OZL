@@ -20,10 +20,12 @@ import re
 import sys
 from datetime import datetime, timedelta, timezone
 
+from ozl import paths as ozlpaths
+
 ROOT = pathlib.Path(__file__).resolve().parents[3]
-CATALOG = ROOT / "private" / "meta" / "catalog_syukaworld.csv"
-LATEST = ROOT / "private" / "desk" / "latest_uploads.json"
-EXPORT = ROOT / "private" / "transcripts" / "trading_export"
+CATALOG = ozlpaths.at("meta", "catalog_syukaworld.csv")
+LATEST = ozlpaths.at("desk", "latest_uploads.json")
+EXPORT = ozlpaths.at("transcripts", "trading_export")
 INDEX = EXPORT / "index.csv"                       # 전사 반출 색인 — 일요 생방송 전체본도 여기에만 있다
 TRADING = pathlib.Path.home() / "Trading"          # 전사가 생긴 시각을 볼 때만 읽는다(쓰지 않는다)
 SHORT_SEC = 180                                    # 이 길이 이하는 짧은 영상(대개 발췌)

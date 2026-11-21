@@ -11,6 +11,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+from ozl import paths as ozlpaths
 from . import db, ledger
 from .catalog import ROOT
 
@@ -225,7 +226,7 @@ def _title_inputs(prediction, clusters):
     board = inputs.get("board_file")
     if board is not None and not isinstance(board, str):
         raise ValueError("board_file: 파일 이름이어야 한다")
-    board_path = ROOT / Path(prediction["file_path"]).parent / board if board else None
+    board_path = ozlpaths.resolve(Path(prediction["file_path"]).parent / board) if board else None
     titles = {}
     if board_path and board_path.exists():
         data = _checked_json(board_path, inputs.get("board_sha256"))

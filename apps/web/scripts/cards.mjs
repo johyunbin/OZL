@@ -17,11 +17,9 @@
 //      장을 넘겨 이은 글(chain 이 같은 조각)은 장 차례로 이은 글 전체가 사본의 문장과 글자 하나 다르지 않아야 한다.
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { privateAt, WEB_ROOT } from "./paths.mjs";
 import { serve } from "./static-server.mjs";
 
-const WEB_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const REPO_ROOT = path.resolve(WEB_ROOT, "../..");
 if (!process.env.PLAYWRIGHT_BROWSERS_PATH) process.env.PLAYWRIGHT_BROWSERS_PATH = path.join(WEB_ROOT, ".pw-browsers");
 const { chromium } = await import("playwright");
 
@@ -33,8 +31,8 @@ const opt = (name) => {
   args.splice(i, 2);
   return v;
 };
-const build = path.resolve(opt("--build") || process.env.OZL_WEB_OUT || path.join(REPO_ROOT, "private/out/web_preview"));
-const outRoot = path.resolve(opt("--out") || process.env.OZL_CARDS_OUT || path.join(REPO_ROOT, "private/out/cards"));
+const build = path.resolve(opt("--build") || process.env.OZL_WEB_OUT || privateAt("out", "web_preview"));
+const outRoot = path.resolve(opt("--out") || process.env.OZL_CARDS_OUT || privateAt("out", "cards"));
 const dataDir = path.resolve(opt("--data") || process.env.OZL_SITE_DATA || path.join(WEB_ROOT, "sample-data"));
 const BASE = opt("--base") || "/preview/";
 let slugs = args.filter((a) => !a.startsWith("--"));

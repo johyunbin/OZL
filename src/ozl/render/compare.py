@@ -32,12 +32,13 @@ from collections import Counter
 
 import yaml
 
+from ozl import paths as ozlpaths
 from ozl.render import norms as NM
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
-LABEL = ROOT / "private" / "slides_label"
+LABEL = ozlpaths.at("slides_label")
 DENSE = NM.DENSE
-OUT = ROOT / "private" / "decks" / "compare"
+OUT = ozlpaths.at("decks", "compare")
 LAYOUTS = NM.LAYOUTS
 UNKNOWN = "unknown"   # 모양을 모르는 장(대표 프레임도 저장된 layout 칸도 없다) — LAYOUTS 에 넣지 않는다(비율의 분모에서 뺀다)
 LAYOUT_NAME = {**NM.LAYOUT_NAME, UNKNOWN: "모양 모름"}

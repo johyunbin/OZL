@@ -27,6 +27,7 @@ from pathlib import Path
 
 import yaml
 
+from ozl import paths as ozlpaths
 from ozl.render import spec
 from ozl.research import cards
 from ozl.signals.config import KST, parse_ts
@@ -36,7 +37,7 @@ RULE = ("후속 기사는 갱신 후보일 뿐이다. 수치는 같은 지표의
         "변경 메모를 남긴다(agent/deck.md 「덱 갱신」).")
 NO_LINK = "카드 discovery 에 엔진 이슈 번호(t…)를 적으면 잇는다(discovery 는 승인 지문 밖)"
 HASH_STEPS = ("검토", "빌드", "게이트", "재확인")
-PRIVATE = cards.ROOT / "private"
+PRIVATE = ozlpaths.root()
 ISSUE_ID = re.compile(r"(?<![0-9A-Za-z])t\d{8}-\d{3,}(?!\d)")
 BROADCAST = re.compile(r"(\d{4}-\d{2}-\d{2})\s+방송\s+예측")
 EDITION = re.compile(r"(\d{8}_\d{6})(?:_(.+))?")
@@ -238,9 +239,9 @@ def print_text(result: dict, show_all: bool, since: date | None) -> None:
     print(result["rule"])
 
 
-def main(argv: list[str], *, db_path: Path = PRIVATE / "pulse" / "engine.db",
+def main(argv: list[str], *, db_path: Path = ozlpaths.at("pulse", "engine.db"),
          cards_dir: Path = cards.CARDS, specs_dir: Path = spec.SPECS,
-         builds_dir: Path = cards.DESK / "builds", predictions_dir: Path = PRIVATE / "syuka" / "predictions") -> int:
+         builds_dir: Path = cards.DESK / "builds", predictions_dir: Path = ozlpaths.at("syuka", "predictions")) -> int:
     parser = argparse.ArgumentParser(prog="python -m ozl.render refresh-candidates", allow_abbrev=False,
                                      description="덱에 연결된 이슈의 후속 기사를 읽습니다.")
     parser.add_argument("card_ids", nargs="*", metavar="card_id")

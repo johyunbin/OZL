@@ -16,12 +16,12 @@ import random
 import re
 from collections import defaultdict
 
-from .catalog import ROOT
+from ozl import paths as ozlpaths
 from .sample import MIN_CHARS, SKIP_CATS, UNTAGGED, quotas
 
 SEED = 20261115
 N_MAIN, N_LIVE, N_AD = 24, 6, 2
-OUT = ROOT / "private" / "syuka" / "pilot30_v3.json"
+OUT = ozlpaths.at("syuka", "pilot30_v3.json")
 AD_TITLE = re.compile(r"유료\s*광고\s*포함|협찬|[xX×]\s*슈카월드|슈카월드\s*[xX×]")
 COLS = ("video_id", "kind", "upload_at", "transcript_path", "chars", "title", "stratum", "ad_title")
 

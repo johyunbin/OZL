@@ -9,9 +9,10 @@ import pathlib
 import re
 import sqlite3
 from datetime import datetime, timedelta
+from ozl import paths as ozlpaths
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
-PULSE = ROOT / "private" / "pulse"
+PULSE = ozlpaths.at("pulse")
 DB = PULSE / "pulse.db"
 # items.extra 에 두는 칸 — 급상승어의 검색량·딸린 기사 제목(trend_news 는 마지막 하나, trend_news_all 은 전부를 담은 목록),
 # 커뮤니티 목록의 소스·순위·추천/조회/댓글 수·정치 게시판 표시

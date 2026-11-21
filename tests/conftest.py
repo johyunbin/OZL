@@ -7,9 +7,22 @@
 """
 from __future__ import annotations
 
-import pytest
+import os
+import tempfile
 
-from ozl.research import ledger
+# 운영 자료 쓰기 가드: 시험 모듈이 ozl 을 가져오기 전에 비공개 자료의 뿌리(ozl.paths.root)를 빈 임시 폴더로 돌린다.
+# 모듈이 가져올 때 정하는 경로 상수도 이 폴더를 따르므로, 시험이 상수를 바꿔 끼우지 않은 곳에서도 운영 private/ 에 쓰지 않는다.
+# 실제 자료를 읽는 시험을 이 기기에서 돌릴 때만 OZL_TEST_REAL_PRIVATE=1 로 끈다(쓰는 시험이 섞여 있으니 사본에서만).
+if os.environ.get("OZL_TEST_REAL_PRIVATE", "") != "1":   # 원문이 정확히 "1" 일 때만 끈다
+    os.environ["OZL_PRIVATE"] = tempfile.mkdtemp(prefix="ozl-test-private-")
+    os.environ["OZL_UNDER_TEST"] = "1"   # 시험이 띄운 하위 프로세스도 시험임을 안다(scripts/publish_gate.py 의 사본 뿌리 차단을 비켜 간다)
+    # 셸에서 물려받은 칸별 위치 변수가 운영 자료를 가리키면 가드를 건너뛴다 — 시험은 필요한 값을 monkeypatch 로 따로 준다
+    for _k in ("OZL_DESK_ROOT", "OZL_PULSE_DB", "OZL_ENGINE_DB", "OZL_BOARD_OUT", "OZL_ENGINE_OVERRIDES", "OZL_WEB_OUT", "OZL_CARDS_OUT"):
+        os.environ.pop(_k, None)
+
+import pytest  # noqa: E402
+
+from ozl.research import ledger  # noqa: E402
 
 
 class _AllowAll(dict):

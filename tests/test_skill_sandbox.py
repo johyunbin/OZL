@@ -12,6 +12,7 @@ from pathlib import Path
 import pytest
 
 from ozl.syuka import schema_v3
+from ozl import paths as ozlpaths  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[1]
 FX = REPO / "tests" / "fixtures" / "skills"
@@ -152,7 +153,7 @@ def test_syuka_meta_fixtures_match_the_v3_fixtures():
 @pytest.mark.skipif(not (REPO / ".venv").is_dir(), reason="저장소의 가상 환경이 있어야 시험 사본을 만든다(CI 에는 없다)")
 def test_make_sandbox_builds_a_copy_that_runs_its_own_code(tmp_path):
     m = _load_maker()
-    real_db = REPO / "private" / "syuka" / "syuka.db"
+    real_db = ozlpaths.real_at("syuka", "syuka.db")
     before = real_db.stat().st_mtime_ns if real_db.exists() else None
     box = m.build(tmp_path / "사본", git=False)
     for rel in ("src/ozl/issues/paths.py", "tracks", "skills/ozl/SKILL.md", ".claude/skills/ozl/SKILL.md", "agent/issues.md",
@@ -162,10 +163,10 @@ def test_make_sandbox_builds_a_copy_that_runs_its_own_code(tmp_path):
                 "private/transcripts/trading_export/index.csv", "private/transcripts/trading_export/syuka/fakeSYK0002.json"):
         assert (box / rel).exists(), rel
     assert (box / ".venv").is_symlink() and not (box / ".git").exists()
-    assert not (box / "private" / "desk").exists()                    # 실제 자료 루트 자리는 비워 둔다
-    assert (box / "private" / "decks" / "drafts").is_dir()            # 덱 빌드가 산출 폴더를 만들 자리
+    assert not (ozlpaths.under(box / "private", "desk")).exists()                    # 실제 자료 루트 자리는 비워 둔다
+    assert (ozlpaths.under(box / "private", "decks", "drafts")).is_dir()            # 덱 빌드가 산출 폴더를 만들 자리
     assert not list(box.rglob("__pycache__"))
-    con = sqlite3.connect(box / "private" / "syuka" / "syuka.db")
+    con = sqlite3.connect(ozlpaths.under(box / "private", "syuka", "syuka.db"))
     try:
         assert con.execute("SELECT COUNT(*) FROM v3_videos").fetchone()[0] == 5
         assert con.execute("SELECT COUNT(*) FROM videos").fetchone()[0] == 5

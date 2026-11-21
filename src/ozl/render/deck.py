@@ -22,8 +22,10 @@ from pptx.oxml.ns import qn
 from pptx.util import Emu, Inches, Pt
 from lxml import etree
 
+from ozl import paths as ozlpaths
+
 ROOT = pathlib.Path(__file__).resolve().parents[3]
-DRAFTS = ROOT / "private" / "decks" / "drafts"
+DRAFTS = ozlpaths.at("decks", "drafts")
 
 RED = RGBColor(0xC0, 0x00, 0x00)  # 표준 '진한 빨강'. 스트림 측정값(굵은 획 심지) #C70D18 — 가는 획의 #AA131E 는 압축 번짐
 TITLE_RGB = RED

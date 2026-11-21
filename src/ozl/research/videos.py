@@ -32,11 +32,12 @@ from datetime import datetime
 
 import yaml
 
+from ozl import paths as ozlpaths
 from . import coverage
 from .cards import CATEGORIES, KST
 
 ROOT = coverage.ROOT
-META = ROOT / "private" / "meta"
+META = ozlpaths.at("meta")
 CATALOG = coverage.CATALOG
 TRANSCRIPTS = coverage.EXPORT / "syuka"
 TAGS = META / "video_tags_syukaworld.csv"

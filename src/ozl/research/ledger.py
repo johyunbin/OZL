@@ -27,9 +27,11 @@ import threading
 
 import yaml
 
+from ozl import paths as ozlpaths
+
 PATH = pathlib.Path(__file__).resolve().parent / "sources_ledger.yaml"
 FEEDS_PATH = pathlib.Path(__file__).resolve().parent / "feeds.yaml"   # policy 의 scope: feeds 가 가리키는 피드 목록
-OVERRIDES_PATH = pathlib.Path(__file__).resolve().parents[3] / "private" / "ops" / "ledger_overrides.yaml"   # 사용자 결정(비공개)
+OVERRIDES_PATH = ozlpaths.at("ops", "ledger_overrides.yaml")   # 사용자 결정(비공개)
 VERDICTS = ("허용", "금지", "불명")
 UNKNOWN = "불명"
 POLICY_USES = ("score_use", "store", "backup")   # 운영 판단이 열 수 있는 쓰임(점수, 비공개 보관, 비공개 백업). 수집, 공개, 수익은 원문 근거로만 연다

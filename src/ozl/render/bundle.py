@@ -19,6 +19,7 @@ import pathlib
 import sys
 from datetime import datetime, timedelta, timezone
 
+from ozl import paths as ozlpaths
 from ozl.render import spec as S
 from ozl.research import cards as C
 
@@ -160,9 +161,12 @@ def default_out(card_id: str, now: datetime | None = None) -> pathlib.Path:
 
 
 def _inside_private(p: pathlib.Path) -> bool:
-    private = C.DESK.parent.resolve()
+    """비공개 뿌리(ozl.paths.root) 안인가. 시험이 카드 폴더(C.DESK)만 바꿔 끼운 경우를 위해 그 위 폴더도 받는다."""
     real = p.resolve()
-    return real == private or private in real.parents
+    for base in {ozlpaths.root().resolve(), C.DESK.parent.resolve()}:
+        if real == base or base in real.parents:
+            return True
+    return False
 
 
 def main(argv: list[str]) -> int:

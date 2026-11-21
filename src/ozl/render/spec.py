@@ -79,11 +79,12 @@ from functools import lru_cache
 
 import yaml
 
+from ozl import paths as ozlpaths
 from ozl.research import cards as C
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 TEMPLATE = ROOT / "tracks" / "syuka" / "style" / "composition_template_v0.json"
-SPECS = ROOT / "private" / "decks" / "specs"
+SPECS = ozlpaths.at("decks", "specs")
 
 KINDS = ("title_hook", "image_text", "quote_translation", "number", "compare_table", "quote_line", "closing",
          "capture_full", "photo_caption", "image_pair", "full_picture", "image_stack")

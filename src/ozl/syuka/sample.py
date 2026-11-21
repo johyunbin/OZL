@@ -15,13 +15,14 @@ import pathlib
 import random
 from collections import defaultdict
 
-from .catalog import META, ROOT
+from ozl import paths as ozlpaths
+from .catalog import META
 
 SEED = 20261114
 N_TOTAL, N_LIVE = 60, 12
 MIN_CHARS = 3000
 TAGS = META / "video_tags_syukaworld.csv"
-OUT = ROOT / "private" / "syuka" / "sample_60.json"
+OUT = ozlpaths.at("syuka", "sample_60.json")
 UNTAGGED = "미분류"
 SKIP_CATS = {"기타", UNTAGGED}
 

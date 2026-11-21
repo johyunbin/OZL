@@ -21,14 +21,15 @@ from collections import Counter
 import numpy as np
 from PIL import Image
 
+from ozl import paths as ozlpaths
 from ozl.analyze.slide_layout import classify
 from ozl.analyze.slide_timeline import is_latin
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
-DENSE = ROOT / "private" / "slides_dense"
-REP = ROOT / "private" / "frames_dense"
-LABEL = ROOT / "private" / "slides_label"
-BOUNDARY = ROOT / "private" / "style" / "boundary"
+DENSE = ozlpaths.at("slides_dense")
+REP = ozlpaths.at("frames_dense")
+LABEL = ozlpaths.at("slides_label")
+BOUNDARY = ozlpaths.at("style", "boundary")
 BIN = ROOT / "tools" / "ocr" / "ocr"
 OUT_MD = ROOT / "tracks" / "syuka" / "analysis" / "slide_structure_syukaworld.md"
 DIALOG_RE = re.compile(r"저장하시겠습니까|저장하지 않은 변경|저장하지 않음")

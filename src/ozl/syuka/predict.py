@@ -7,10 +7,10 @@ import re
 from datetime import date as Date, datetime, timedelta
 from pathlib import Path
 
+from ozl import paths as ozlpaths
 from . import db, ledger
-from .catalog import ROOT
 
-PRED_ROOT = ROOT / "private" / "syuka" / "predictions"
+PRED_ROOT = ozlpaths.at("syuka", "predictions")
 SCHEMA = "ozl.syuka.prediction/1"
 STORY_KEY = re.compile(r"[a-z0-9_]{2,60}")
 BASELINE_KEY = re.compile(r"[A-Za-z0-9_-]{2,60}")
@@ -374,7 +374,7 @@ def verify(con, prediction_id=None, expect=None) -> list[dict]:
         args = (prediction_id,)
     results = []
     for pid, filename, digest in con.execute(sql + " ORDER BY broadcast_date, prediction_id", args):
-        path = ROOT / filename
+        path = ozlpaths.resolve(filename)
         problems = []
         actual = recorded = None
         try:

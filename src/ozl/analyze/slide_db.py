@@ -12,10 +12,11 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-from ozl.syuka.db import DB_PATH, ROOT, connect, now
+from ozl import paths as ozlpaths
+from ozl.syuka.db import DB_PATH, connect, now
 
-SRC_DIR = ROOT / "private" / "slides_dense"
-FRAMES_DIR = ROOT / "private" / "frames_dense"
+SRC_DIR = ozlpaths.at("slides_dense")
+FRAMES_DIR = ozlpaths.at("frames_dense")
 FRAME_AREA = 1152 * 680
 BODY_H = (26, 52)
 

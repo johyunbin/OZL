@@ -24,10 +24,12 @@ import subprocess
 import sys
 from collections import Counter
 
+from ozl import paths as ozlpaths
+
 ROOT = pathlib.Path(__file__).resolve().parents[3]
-DENSE = ROOT / "private" / "slides_dense"
-FRAMES = ROOT / "private" / "frames_dense"
-OUT = ROOT / "private" / "decks" / "규칙"
+DENSE = ozlpaths.at("slides_dense")
+FRAMES = ozlpaths.at("frames_dense")
+OUT = ozlpaths.at("decks", "규칙")
 MD2PDF = pathlib.Path.home() / "Claude" / "tools" / "md2pdf.py"
 
 LAYOUTS = ("image_left", "image_stack", "text_only", "image_full", "media", "image_pair", "image_right")

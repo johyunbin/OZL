@@ -19,11 +19,12 @@ import sys
 import time
 
 from ozl.research import ledger
+from ozl import paths as ozlpaths
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
-EXPORT = ROOT / "private" / "transcripts" / "trading_export"
-PILOT = ROOT / "private" / "pilot"
-MODEL = ROOT / "private" / "models" / "ggml-large-v3-turbo.bin"
+EXPORT = ozlpaths.at("transcripts", "trading_export")
+PILOT = ozlpaths.at("pilot")
+MODEL = ozlpaths.at("models", "ggml-large-v3-turbo.bin")
 YEARS = ["2019", "2021", "2023", "2025", "2026"]
 
 

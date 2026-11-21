@@ -20,10 +20,12 @@ from collections import defaultdict
 from contextlib import ExitStack
 from tempfile import NamedTemporaryFile
 
+from ozl import paths as ozlpaths
+
 ROOT = pathlib.Path(__file__).resolve().parents[3]
-EXP = ROOT / "private" / "transcripts" / "trading_export" / "syuka"
-MAP = ROOT / "private" / "meta" / "live_clip_map_syukaworld.csv"
-OUT_CSV = ROOT / "private" / "meta" / "live_align_syukaworld.csv"
+EXP = ozlpaths.at("transcripts", "trading_export", "syuka")
+MAP = ozlpaths.at("meta", "live_clip_map_syukaworld.csv")
+OUT_CSV = ozlpaths.at("meta", "live_align_syukaworld.csv")
 OUT_MD = ROOT / "tracks" / "syuka" / "analysis" / "live_vs_clips.md"
 N = int(sys.argv[1]) if len(sys.argv) > 1 and sys.argv[1].isdigit() else 10  # 셔글 길이(정규화 문자)
 

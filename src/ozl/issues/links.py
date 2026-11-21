@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import re
 
+from ozl import paths as ozlpaths
 from ozl.research import cards
 
 from . import paths
@@ -57,7 +58,7 @@ def check() -> dict:
     index_p = cards.ROOT / "daily" / "index.json"
     index = json.loads(index_p.read_text(encoding="utf-8")) if index_p.is_file() else {"cards": []}
     in_index = {c.get("card_id"): c for c in index.get("cards") or [] if isinstance(c, dict)}
-    finals = cards.ROOT / "private" / "decks" / "final"
+    finals = ozlpaths.at("decks", "final")
     for card in cards.all_cards():
         cid = card["card_id"]
         claims = cards.claims_for(cid)
@@ -113,7 +114,7 @@ def write_map(now=None) -> dict:
     index_p = cards.ROOT / "daily" / "index.json"
     index = json.loads(index_p.read_text(encoding="utf-8")) if index_p.is_file() else {"cards": []}
     urls = {c.get("card_id"): c.get("url") for c in index.get("cards") or [] if isinstance(c, dict)}
-    finals = cards.ROOT / "private" / "decks" / "final"
+    finals = ozlpaths.at("decks", "final")
     rows = []
     for card in cards.all_cards():
         cid = card["card_id"]

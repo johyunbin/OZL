@@ -21,12 +21,13 @@ from collections import Counter
 import numpy as np
 from PIL import Image
 
+from ozl import paths as ozlpaths
 from ozl.analyze.style_measure import classify
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
-FRAMES = ROOT / "private" / "frames"
+FRAMES = ozlpaths.at("frames")
 OUT_MD = ROOT / "tracks" / "syuka" / "analysis" / "style_tokens_syukaworld.md"
-OUT_RAW = ROOT / "private" / "style" / "style_tokens_raw.json"
+OUT_RAW = ozlpaths.at("style", "style_tokens_raw.json")
 WHITE = 245
 
 

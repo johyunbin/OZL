@@ -12,6 +12,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "tests"))
 
+from ozl import paths as ozlpaths  # noqa: E402
 from ozl.issues import digest, export, model, paths, revisions  # noqa: E402
 from test_issues_check import I1, I2, desk, load  # noqa: E402,F401
 
@@ -188,7 +189,7 @@ def test_test_approval_rules(desk, monkeypatch, tmp_path):
 
 
 def test_test_desk_leaves_real_untouched(desk, monkeypatch, tmp_path):
-    real_issues = paths.ROOT / "private" / "desk" / "issues"
+    real_issues = ozlpaths.real_at("desk", "issues")      # 가드와 무관한 운영 위치를 감시한다
     before = tree_hash(real_issues)
     assert not paths.is_real_root()
     ready(I1)

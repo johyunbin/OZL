@@ -156,6 +156,7 @@ def desk(monkeypatch, tmp_path):
     monkeypatch.setattr(C, "CLAIMS", tmp_path / "desk" / "claims")
     monkeypatch.setattr(C, "PUB_CLAIMS", tmp_path / "claims")
     monkeypatch.setattr(report, "ROOT", tmp_path)
+    monkeypatch.setenv("OZL_PRIVATE", str(tmp_path / "private"))   # 보고서의 비공개 사본(ozl.paths.at("daily"))도 tmp_path 아래로
     for i in (1, 2, 3):
         c = make_claim(i)
         C.save_yaml(C.claim_path(c["claim_id"]), c)

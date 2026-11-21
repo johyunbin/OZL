@@ -19,6 +19,7 @@ import time
 from datetime import datetime
 from typing import Callable
 
+from ozl import paths as ozlpaths
 from ozl.issues import paths
 
 from . import queue, store
@@ -62,7 +63,8 @@ def disallowed() -> list[str]:
     """명령의 --disallowedTools. 시험 루트든 실제 루트든 실제 자료 루트의 막는 곳도 함께 막는다."""
     rules = list(DISALLOWED)
     roots = []
-    for r in (paths.desk_root().resolve(), paths.real_root().resolve()):
+    checkout_desk = ozlpaths.real_root() / ozlpaths.LAYOUT["desk"]
+    for r in (paths.desk_root().resolve(), paths.real_root().resolve(), checkout_desk.resolve()):
         if r not in roots:
             roots.append(r)
     for r in roots:
@@ -72,9 +74,11 @@ def disallowed() -> list[str]:
     for rel in DESK_BLOCK:
         for tool in ("Edit", "Write"):
             rules.append(f"{tool}(private/desk/{rel})")
-    ops_private = paths.ROOT / "private" / "ops"
+    # 시험용 루트로 돌려도 체크아웃의 운영 파일은 계속 막는다.
+    ops_dirs = dict.fromkeys((ozlpaths.at("ops").resolve(), ozlpaths.real_root() / ozlpaths.LAYOUT["ops"]))
     for tool in ("Read", "Edit", "Write"):
-        rules += [f"{tool}(private/ops/**)", f"{tool}({_abs_rule(ops_private)}/**)"]
+        rules.append(f"{tool}(private/ops/**)")
+        rules.extend(f"{tool}({_abs_rule(directory)}/**)" for directory in ops_dirs)
     return rules
 
 

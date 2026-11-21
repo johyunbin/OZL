@@ -10,6 +10,8 @@ import time
 
 import pytest
 
+from ozl import paths as ozlpaths
+
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 _spec = importlib.util.spec_from_file_location("yt_retention_under_test", ROOT / "scripts" / "youtube_stats_retention.py")
 yr = importlib.util.module_from_spec(_spec)
@@ -121,17 +123,24 @@ def test_purge_apply_clears_only_expired_stats(tmp_path):
     assert yr.main(["purge", "--root", str(tmp_path), "--asof", ASOF]) == 0
 
 
-def test_apply_refused_on_real_private(monkeypatch, capsys):
+def test_apply_refused_on_real_private(monkeypatch, capsys, tmp_path):
     monkeypatch.delenv("OZL_YT_PURGE_REAL", raising=False)
-    real = ROOT / "private"
+    # 명령 거부는 가짜 운영 뿌리로 본다 — 거부가 깨져도 실제 자료를 지우지 않게
+    fake = tmp_path / "private"
+    ozlpaths.under(fake, "meta").mkdir(parents=True)
+    monkeypatch.setattr(yr, "REAL_PRIVATE", fake)
+    assert yr.main(["purge", "--root", str(fake), "--asof", "2099-01-01", "--apply"]) == 2
+    assert "거부" in capsys.readouterr().err
+    # 판정 함수만은 실제 위치로도 본다(지우는 명령은 돌리지 않는다)
+    real = ozlpaths.real_root()
+    monkeypatch.setattr(yr, "REAL_PRIVATE", real)
     if not real.is_dir():
         pytest.skip("이 기기에는 private 폴더가 없다")
-    assert yr.main(["purge", "--root", str(real), "--asof", "2099-01-01", "--apply"]) == 2
-    assert "거부" in capsys.readouterr().err
+    assert yr.apply_refusal(real)
     # 상위 폴더·private 하위(out 밖)도 거부, private/out 아래는 허용
     assert yr.apply_refusal(ROOT)
-    assert yr.apply_refusal(real / "meta")
-    assert yr.apply_refusal(real / "out" / "trial") == ""
+    assert yr.apply_refusal(ozlpaths.under(real, "meta"))
+    assert yr.apply_refusal(ozlpaths.under(real, "out", "trial")) == ""
 
 
 def test_apply_refusal_lifted_by_env(monkeypatch, tmp_path):

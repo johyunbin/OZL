@@ -23,12 +23,14 @@ import sys
 from collections import Counter
 from difflib import SequenceMatcher
 
+from ozl import paths as ozlpaths
+
 ROOT = pathlib.Path(__file__).resolve().parents[3]
-FRAMES = ROOT / "private" / "frames"
-RAW = ROOT / "private" / "style" / "style_measure_raw.json"
-OCR = ROOT / "private" / "ocr"
-OUT = ROOT / "private" / "slides"
-OUT_MD = ROOT / "private" / "style" / "slide_structure_scenedetect.md"  # 장면 전환 기반(구) 집계 — 공개 집계는 slide_structure.py(촘촘 표본)가 쓴다
+FRAMES = ozlpaths.at("frames")
+RAW = ozlpaths.at("style", "style_measure_raw.json")
+OCR = ozlpaths.at("ocr")
+OUT = ozlpaths.at("slides")
+OUT_MD = ozlpaths.at("style", "slide_structure_scenedetect.md")  # 장면 전환 기반(구) 집계 — 공개 집계는 slide_structure.py(촘촘 표본)가 쓴다
 
 TITLE_SIM = 0.78   # 제목 문자열 유사도(정규화 후) 이 이상이면 같은 슬라이드
 BODY_SIM = 0.6     # 제목 없는 프레임: 직전 슬라이드 본문과의 유사도

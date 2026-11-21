@@ -41,8 +41,8 @@ git diff --cached --stat | tail -1
 
 # 올리려는 목록에 원문 사본(폴더 이름이나 해시로 판정)이나 유튜브 통계가 섞였으면 멈춘다.
 if [ -x ../.venv/bin/python ] && [ -f ../scripts/private_bundle.py ]; then
-  ../.venv/bin/python ../scripts/private_bundle.py check-staged >/dev/null || {
-    ../.venv/bin/python ../scripts/private_bundle.py check-staged >&2 || true
+  ../.venv/bin/python ../scripts/private_bundle.py check-staged --repo . >/dev/null || {
+    ../.venv/bin/python ../scripts/private_bundle.py check-staged --repo . >&2 || true
     git reset -q; die "올릴 목록에 원문 사본이나 유튜브 통계가 있다 — 커밋하지 않았다" 6; }
 fi
 

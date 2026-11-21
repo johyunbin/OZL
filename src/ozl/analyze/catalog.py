@@ -17,9 +17,11 @@ import sys
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
 
+from ozl import paths as ozlpaths
+
 ROOT = pathlib.Path(__file__).resolve().parents[3]
-META = ROOT / "private" / "meta"
-EXPORT_IDX = ROOT / "private" / "transcripts" / "trading_export" / "index.csv"
+META = ozlpaths.at("meta")
+EXPORT_IDX = ozlpaths.at("transcripts", "trading_export", "index.csv")
 PUB = ROOT / "tracks" / "syuka" / "analysis"
 HANDLES = {"syukaworld": "슈카월드", "moneymoneycomics": "머니코믹스", "rsangmoo": "알상무"}
 KST = timezone(timedelta(hours=9))
@@ -212,7 +214,7 @@ def main(argv: list[str]) -> int:
             rows = load(h)
             c = write_catalog(h, rows)
             o = write_overview(h, rows)
-            print(f"[{h}] {len(rows)} rows → {c.relative_to(ROOT)} · {o.relative_to(ROOT)}")
+            print(f"[{h}] {len(rows)} rows → private/meta/{c.name} · {o.relative_to(ROOT)}")
     if cmd in ("all", "sample30"):
         sample30(load("syukaworld"))
     if cmd in ("all", "livemap"):

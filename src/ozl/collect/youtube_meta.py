@@ -22,6 +22,7 @@ from datetime import datetime, timezone
 import requests
 
 from ozl.research import ledger
+from ozl import paths as ozlpaths
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 API = "https://www.googleapis.com/youtube/v3"
@@ -160,7 +161,7 @@ def main() -> int:
     ap.add_argument("--out", help="JSONL 출력 경로 (기본 private/meta/<handle>_videos.jsonl)")
     args = ap.parse_args()
     key = load_key()
-    out = pathlib.Path(args.out) if args.out else ROOT / "private" / "meta" / f"{args.handle}_videos.jsonl"
+    out = pathlib.Path(args.out) if args.out else ozlpaths.at("meta", f"{args.handle}_videos.jsonl")
     out.parent.mkdir(parents=True, exist_ok=True)
 
     ch = channel_by_handle(args.handle, key)

@@ -5,6 +5,7 @@ import hashlib
 import os
 import pathlib
 from datetime import date, datetime, timedelta, timezone
+from ozl import paths as ozlpaths
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 HERE = pathlib.Path(__file__).resolve().parent
@@ -153,7 +154,7 @@ def paths(pulse_db: str | None = None, engine_db: str | None = None, out: str | 
     def pick(arg, env, default):
         v = arg or os.environ.get(env) or default
         return pathlib.Path(v)
-    pulse_dir = ROOT / "private" / "pulse"
+    pulse_dir = ozlpaths.at("pulse")
     return {
         "pulse_db": pick(pulse_db, "OZL_PULSE_DB", pulse_dir / "pulse.db"),
         "engine_db": pick(engine_db, "OZL_ENGINE_DB", pulse_dir / "engine.db"),

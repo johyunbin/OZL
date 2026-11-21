@@ -22,9 +22,11 @@ import cv2
 import numpy as np
 from PIL import Image
 
+from ozl import paths as ozlpaths
+
 ROOT = pathlib.Path(__file__).resolve().parents[3]
-FRAMES = ROOT / "private" / "frames"
-OUT_RAW = ROOT / "private" / "style" / "style_measure_raw.json"
+FRAMES = ozlpaths.at("frames")
+OUT_RAW = ozlpaths.at("style", "style_measure_raw.json")
 OUT_MD = ROOT / "tracks" / "syuka" / "analysis" / "style_measure_syukaworld.md"
 
 CANVAS_W, CANVAS_H = 1218.0, 686.0  # 1080p 화면에서 슬라이드 캔버스 픽셀(전체 프레임 실측)
@@ -255,7 +257,7 @@ def main() -> int:
     if col_x0:
         L += [f"- 좌 그림 슬라이드의 글 기둥({len(col_x0)}장): 왼쪽 시작 중앙값 {med(col_x0)}px({med([x * IN_PER_PX for x in col_x0], 2)}in) · 그림과의 간격 중앙값 {med(gaps)}px({med([g * IN_PER_PX for g in gaps], 2)}in) · 장당 본문 줄 수 중앙값 {med(nlines)}줄(상위 10% {sorted(nlines)[int(len(nlines) * 0.9)]}줄)",
               f"- 첫 본문 줄 윗변 중앙값 {med([min(ln['top'] for ln in f['body'] if 20 <= ln['h'] <= 40) for f in il if any(20 <= ln['h'] <= 40 for ln in f['body'])])}px"]
-    fm = ROOT / "private" / "style" / "fontmatch" / "report.json"
+    fm = ozlpaths.at("style", "fontmatch", "report.json")
     if fm.exists():
         rep = json.loads(fm.read_text(encoding="utf-8"))
         ems = [s_["rank"][0]["size_px"] / (1 + s_["rank"][0]["aspect_err"]) for s_ in rep["samples"]]
@@ -265,7 +267,7 @@ def main() -> int:
         for k, iou, ae, _ in rep["summary"][:6]:
             L.append(f"| {k} | {iou:.3f} | {ae:.1%} |")
         L += ["", f"- 표본 13줄(영상 2편)의 폭 기준 글자 크기(em) 중앙값 {statistics.median(ems):.2f}px(범위 {min(ems):.2f}~{max(ems):.2f})"]
-    fs = ROOT / "private" / "style" / "font_survey.json"
+    fs = ozlpaths.at("style", "font_survey.json")
     if fs.exists():
         sv = json.loads(fs.read_text(encoding="utf-8"))
         sm, vs = sv["summary"], sv["videos"]

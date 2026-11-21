@@ -6,6 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright";
 import AxeBuilder from "@axe-core/playwright";
+import { privateAt } from "../scripts/paths.mjs";
 import { serve } from "../scripts/static-server.mjs";
 
 const args = process.argv.slice(2);
@@ -16,7 +17,7 @@ const opt = (k) => {
   args.splice(i, 2);
   return v;
 };
-const build = path.resolve(opt("--build") || "../../private/out/web_preview");
+const build = path.resolve(opt("--build") || privateAt("out", "web_preview"));
 const shots = opt("--shots");
 const base = opt("--base") || "/preview/";
 let slugs = args;

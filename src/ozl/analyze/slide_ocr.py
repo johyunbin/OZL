@@ -14,10 +14,12 @@ import pathlib
 import subprocess
 import sys
 
+from ozl import paths as ozlpaths
+
 ROOT = pathlib.Path(__file__).resolve().parents[3]
-FRAMES = ROOT / "private" / "frames"
-RAW = ROOT / "private" / "style" / "style_measure_raw.json"
-OUT = ROOT / "private" / "ocr"
+FRAMES = ozlpaths.at("frames")
+RAW = ozlpaths.at("style", "style_measure_raw.json")
+OUT = ozlpaths.at("ocr")
 BIN = ROOT / "tools" / "ocr" / "ocr"
 BATCH = 40
 

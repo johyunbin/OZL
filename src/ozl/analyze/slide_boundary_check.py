@@ -22,11 +22,12 @@ from PIL import Image
 from ozl.analyze.slide_timeline import TITLE_SIM, frame_text, norm, sim
 from ozl.analyze.style_measure import measure
 from ozl.research import ledger
+from ozl import paths as ozlpaths
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
-TMP = ROOT / "private" / "style" / "boundary" / "_tmp"
-OUT = ROOT / "private" / "style" / "boundary"
-SLIDES = ROOT / "private" / "slides"
+TMP = ozlpaths.at("style", "boundary", "_tmp")
+OUT = ozlpaths.at("style", "boundary")
+SLIDES = ozlpaths.at("slides")
 BIN = ROOT / "tools" / "ocr" / "ocr"
 STEP = 4  # 초
 
@@ -128,7 +129,7 @@ def main(argv: list[str]) -> int:
     for r in results:
         for m in r["missed"]:
             L.append(f"- {r['video_id']} {m['t0']}~{m['t1']}s({m['sec']}초): {m['title']}")
-    (ROOT / "private" / "style" / "slide_boundary_check.md").write_text("\n".join(L) + "\n", encoding="utf-8")
+    ozlpaths.at("style", "slide_boundary_check.md").write_text("\n".join(L) + "\n", encoding="utf-8")
     print("\n".join(L))
     return 0
 

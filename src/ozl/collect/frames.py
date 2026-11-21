@@ -20,9 +20,10 @@ import sys
 import time
 
 from ozl.research import ledger
+from ozl import paths as ozlpaths
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
-FRAMES = ROOT / "private" / "frames"
+FRAMES = ozlpaths.at("frames")
 TMP = FRAMES / "_tmp"
 
 
