@@ -33,18 +33,8 @@ UNIT_LABEL = {"day": "그날의 화제", "restored": "복원판"}
 
 # ---------- 받지 못한 검토 (revisions 의 검토 조건과 같은 규칙을 읽기 전용으로) ----------
 
-def _passing(reviews: list, h: str, drafted) -> tuple[bool, bool]:
-    cmp = any(r.get("kind") == "문장 대조" and r.get("family") == "anthropic" and not RV._same(r.get("by_model"), drafted)
-              and r.get("result") == "통과" and r.get("content_hash") == h for r in reviews)
-    itp = any(r.get("kind") == "해석 점검" and r.get("family") not in (None, "anthropic") and r.get("result") == "통과"
-              and r.get("content_hash") == h for r in reviews)
-    return cmp, itp
-
-
-def missing_reviews(issue: dict, evs: dict) -> list[str]:
-    """지금 내용 해시로 받지 못한 검토의 이름. 빈 목록 ⇔ `revisions.review_state` 가 '검토 완료'.
-    규칙은 이슈 패키지의 공개 함수(`ozl.issues.reviews.missing_reviews`) 하나를 쓴다."""
-    return RV.missing_reviews(issue, evs)
+def missing_reviews(issue: dict, evs: dict, man: dict | None = None) -> list[str]:
+    return RV.missing_reviews(issue, evs, man)
 
 
 def got_reviews(issue: dict) -> list[dict]:
@@ -210,7 +200,7 @@ def issue_card(issue: dict, evs: dict, man: dict) -> IssueCard:
     rows = [_claim_row(c, evs, issue) for c in claims]
     allc = rows + [p for r in rows for p in r.parts]
     r = revisions.check_with_manifest(issue, evs, public=True, man=man)
-    review = revisions.review_state(issue, evs)
+    review = revisions.review_state(issue, evs, man)
     pub_state = (issue.get("publish") or {}).get("state") if isinstance(issue.get("publish"), dict) else None
     sens = [SENS_WORD.get(str(s), str(s)) for s in issue.get("sensitive") or []]
     personal = any(it.get("target_kind") in PRIVATE_KINDS for it in _items(issue)) or any(c.get("allegation") is True for c in claims)
@@ -221,7 +211,7 @@ def issue_card(issue: dict, evs: dict, man: dict) -> IssueCard:
         false_verdict=any(x.verdict == "사실과 다름" for x in allc),
         flagged=bool(r["errors"] or r["warnings"]) or review == "검토 대기" or pub_state != "게시 가능",
         disputed=any(x.disputed for x in allc), counter=any(x.counter for x in allc), sensitive=sens,
-        changed=_changed(issue, man), errors=list(r["errors"]), warnings=list(r["warnings"]), missing=missing_reviews(issue, evs),
+        changed=_changed(issue, man), errors=list(r["errors"]), warnings=list(r["warnings"]), missing=missing_reviews(issue, evs, man),
         got=got_reviews(issue), claims=rows, hidden_claims=sum(1 for x in rows if not x.public))
 
 

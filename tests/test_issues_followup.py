@@ -300,7 +300,8 @@ def test_review_add_with_content_hash_needs_snapshot(desk, capsys):
 def test_missing_reviews_matches_ops(desk):
     from ozl.ops import approvals
     issue, evs = load(I1)
-    assert approvals.missing_reviews(issue, evs) == RV.missing_reviews(issue, evs) == [RV.NEED_CMP, RV.NEED_ITP]
+    assert approvals.missing_reviews(issue, evs) == RV.missing_reviews(issue, evs) == [
+        RV.NEED_CMP, "해석 점검: openai 계열 통과가 없다", "해석 점검: google 계열 통과가 없다"]
     assert approvals.NEED_CMP == RV.NEED_CMP and approvals.NEED_ITP == RV.NEED_ITP
 
 

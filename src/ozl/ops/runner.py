@@ -28,10 +28,11 @@ DEFAULT = {"enabled": False, "timeout_min": 90, "claude": "/Users/hyunbin/.local
            "permission_mode": "acceptEdits", "allowed_tools": [], "argv": None}
 CODEX_RULES = ["Bash(codex*)", "Bash(*codex_smart*)", "Bash(*codex exec*)", "Bash(*/codex *)", "Bash(*mm_request*codex*)",
                "Bash(*surface*codex*)", "mcp__hyunbin-multimodel__multimodel_request"]
+OFFLOAD_RULES = ["Bash(*offload.py*)", "Bash(*offload_read*)"]
 APPROVE_RULES = ["Bash(*ozl.issues approve*)", "Bash(*ozl.issues withdraw*)", "Bash(*export*--public*)",
                  "Bash(*ozl.ops token*)", "Bash(*private/ops*)", "Bash(*manifest.json*)", "Bash(*approval.json*)",
                  "Bash(*make_queue.json*)", "Bash(*revisions.approve*)", "Bash(*approve_unit*)"]
-DISALLOWED = CODEX_RULES + APPROVE_RULES      # 자료 루트에 매이지 않는 규칙. 경로 규칙은 disallowed() 가 더한다
+DISALLOWED = CODEX_RULES + OFFLOAD_RULES + APPROVE_RULES      # 자료 루트에 매이지 않는 규칙. 경로 규칙은 disallowed() 가 더한다
 # make 가 쓰는 곳(issue.yaml, evidence/, captures/, reviews/)은 막지 않는다. 막는 곳만 적는다(거부 규칙이 허용보다 앞선다).
 DESK_BLOCK = ("issues/manifest.json", "issues/issued_ids.json", "issues/.lock", "issues/*/revisions/**", "ops/**",
               "cards/**", "claims/**")

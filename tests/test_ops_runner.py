@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import fcntl
+from fnmatch import fnmatchcase
 import json
 import os
 import sys
@@ -71,6 +72,18 @@ def test_dry_run_shows_command_only(desk, monkeypatch, capsys):
         assert d in out
     assert "--disallowedTools" in out and "CODEX_ALLOW_AUTOMATION" in out and "90분" in out
     assert calls == [] and tree(desk) == before
+
+
+def test_command_denies_offload_even_with_python_allowed():
+    cfg = dict(runner.DEFAULT, allowed_tools=["Bash(.venv/bin/python *)"])
+    cmd = runner.build_cmd(cfg, "m20990101-0001")
+    deny = cmd[cmd.index("--disallowedTools") + 1:cmd.index("--allowedTools")]
+    expected = ["Bash(*offload.py*)", "Bash(*offload_read*)"]
+    assert all(rule in deny for rule in expected)
+    for command in ("python3 ~/.claude/scripts/offload.py run --task longread ...",
+                    ".venv/bin/python /Users/x/.claude/scripts/offload.py run ...",
+                    "cd /tmp && python3 offload.py pick", "python3 /tmp/offload_read.py"):
+        assert any(fnmatchcase(command, rule[5:-1]) for rule in expected)
 
 
 def test_command_shape():

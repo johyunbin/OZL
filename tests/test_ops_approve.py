@@ -32,7 +32,7 @@ def add_review(iid: str, kind: str, by_model: str, family: str, result: str = "�
     return revisions.add_review(iid, kind, by_model, family, result, notes_path=str(f))
 
 
-def ready(iid: str, n_reviews: int = 2) -> str:
+def ready(iid: str, n_reviews: int = 3) -> str:
     issue = model.load_issue(iid)
     issue["work_state"] = "게시 대기"
     model.save_issue(issue)
@@ -40,6 +40,8 @@ def ready(iid: str, n_reviews: int = 2) -> str:
         add_review(iid, "문장 대조", "Claude Sonnet", "anthropic")
     if n_reviews >= 2:
         add_review(iid, "해석 점검", "가상 모델 G", "openai")
+    if n_reviews >= 3:
+        add_review(iid, "해석 점검", "가상 모델 H", "google")
     return digest.content_hash(model.load_issue(iid), model.load_evidences(iid))
 
 
@@ -151,14 +153,16 @@ def test_bad_shape_is_400(ops):
 
 def test_missing_reviews_agree_with_review_state(desk):
     for iid in (I1, I2):
-        for n in (0, 1, 2):
-            if n:
-                add_review(iid, ("문장 대조", "해석 점검")[n - 1], ("Claude Sonnet", "가상 모델 G")[n - 1],
-                           ("anthropic", "openai")[n - 1])
+        needs = [approvals.NEED_CMP, "해석 점검: openai 계열 통과가 없다", "해석 점검: google 계열 통과가 없다"]
+        rows = [("문장 대조", "Claude Sonnet", "anthropic"), ("해석 점검", "가상 모델 G", "openai"),
+                ("해석 점검", "가상 모델 H", "google")]
+        for n in range(len(rows) + 1):
             issue, evs = model.load_issue(iid), model.load_evidences(iid)
             miss = approvals.missing_reviews(issue, evs)
             assert (miss == []) == (revisions.review_state(issue, evs) == "검토 완료")
-            assert miss == [[approvals.NEED_CMP, approvals.NEED_ITP], [approvals.NEED_ITP], []][n]
+            assert miss == needs[n:]
+            if n < len(rows):
+                add_review(iid, *rows[n])
 
 
 def _clean(issue: dict) -> dict:

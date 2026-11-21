@@ -373,6 +373,8 @@ def test_review_family_and_hash(desk):
     add_review(I1, "해석 점검", "Claude Haiku", "anthropic", "통과")       # 해석 점검은 다른 계열이어야 한다
     assert revisions.review_state(*load(I1)) == "검토 대기"
     add_review(I1, "해석 점검", "가상 모델 G", "openai", "통과")
+    assert revisions.missing_reviews(*load(I1)) == ["해석 점검: google 계열 통과가 없다"]
+    add_review(I1, "해석 점검", "가상 모델 H", "google", "통과")
     assert revisions.review_state(*load(I1)) == "검토 완료"
     edit(I1, lambda i: claim(i, "c3").update(searched="시 교통 통계"))     # 검토 뒤 내용이 바뀌면 다시 대기
     assert revisions.review_state(*load(I1)) == "검토 대기"

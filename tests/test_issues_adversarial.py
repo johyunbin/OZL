@@ -431,33 +431,33 @@ def _finding(iid, field, **kw):
 
 def test_followup_snapshot_must_match_hash(desk):
     h0 = ready(I2)
-    _finding(I2, "claims.c3.would_decide")                                  # r3
+    finding = _finding(I2, "claims.c3.would_decide")
     edit(I2, lambda i: claim(i, "c3").update(would_decide="대법원의 확정 판결"))
     edit(I2, lambda i: claim(i, "c1").update(gist="회수 대상은 1만 2천 개이고, 모두 국내용이다."))     # 지적 밖의 변경
     model.save_yaml(revisions.snapshot_file(I2, h0), digest.snapshot_view(*load(I2)))               # 이전 사본을 지금 내용으로 바꿔치기
-    add_review(I2, "수정 확인", "Claude Sonnet", "anthropic", "통과", before_hash=h0, addresses=["r3"])
+    add_review(I2, "수정 확인", "Claude Sonnet", "anthropic", "통과", before_hash=h0, addresses=[finding["id"]])
     assert revisions.review_state(*load(I2)) == "검토 대기"
 
 
 def test_followup_addresses_same_hash(desk):
     ready(I2)
-    _finding(I2, "claims")                                                  # r3 — 옛 내용의 넓은 지적
+    finding = _finding(I2, "claims")  # 옛 내용의 넓은 지적
     edit(I2, lambda i: claim(i, "c3").update(would_decide="대법원의 확정 판결"))
-    h1 = ready(I2)                                                          # r4, r5 — 새 내용의 검토 완료
+    h1 = ready(I2)                                                          # 새 내용의 검토 완료
     edit(I2, lambda i: claim(i, "c1").update(gist="회수 대상은 1만 2천 개이고, 모두 국내용이다."))
-    add_review(I2, "수정 확인", "Claude Sonnet", "anthropic", "통과", before_hash=h1, addresses=["r3"])
+    add_review(I2, "수정 확인", "Claude Sonnet", "anthropic", "통과", before_hash=h1, addresses=[finding["id"]])
     assert revisions.review_state(*load(I2)) == "검토 대기"
 
 
 def test_followup_findings_tamper(desk):
     h0 = ready(I2)
-    _finding(I2, "claims.c3.would_decide")                                  # r3
+    finding = _finding(I2, "claims.c3.would_decide")
     edit(I2, lambda i: claim(i, "c3").update(would_decide="대법원의 확정 판결"))
-    add_review(I2, "수정 확인", "Claude Sonnet", "anthropic", "통과", before_hash=h0, addresses=["r3"])
+    add_review(I2, "수정 확인", "Claude Sonnet", "anthropic", "통과", before_hash=h0, addresses=[finding["id"]])
     assert revisions.review_state(*load(I2)) == "검토 완료"
     edit(I2, lambda i: claim(i, "c1").update(gist="회수 대상은 1만 2천 개이고, 모두 국내용이다."))
-    edit(I2, lambda i: i["reviews"][2]["findings"].append({"field": "claims.c1", "note": "나중에 더함"}))
-    add_review(I2, "수정 확인", "Claude Sonnet", "anthropic", "통과", before_hash=h0, addresses=["r3"])
+    edit(I2, lambda i: next(r for r in i["reviews"] if r["id"] == finding["id"])["findings"].append({"field": "claims.c1", "note": "나중에 더함"}))
+    add_review(I2, "수정 확인", "Claude Sonnet", "anthropic", "통과", before_hash=h0, addresses=[finding["id"]])
     assert revisions.review_state(*load(I2)) == "검토 대기"
 
 

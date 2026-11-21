@@ -12,7 +12,7 @@
 - 사용자에게 묻지 않는다. 막히면 `PY -m ozl.ops queue set <job_id> --state 멈춤 --note "<까닭 한 줄>"` 하고 끝낸다.
 - 쓰기는 `OZL_DESK_ROOT` 아래만 한다(없으면 `private/desk`). 코드, 설정, 문서, 스킬은 고치지 않는다.
 - 대상은 늘 대기열 번호다. 고르기 기록(`find/board_view.py`)은 쓰지 않는다.
-- **역할의 모델은 기본 배정 그대로다.** 경로표(`lanes.py route`)를 부르지 않는다. `.venv/bin/python -m ozl.issues roles --json` 은 실행기에서 경로표를 읽지 않고 기본 배정(쓰기, 고치기, 묶음은 Opus, 문장 대조는 Sonnet, 강도는 세션 값)을 `source: runner` 로 낸다. 실행기 세션 자체는 `runner.json` 의 `model`(Opus) 고정이다(Fable 자동화 금지). 워크플로 인자 `offload`, `packet_mode` 의 시험 길도 쓰지 않는다.
+- **역할의 모델은 기본 배정 그대로다.** 경로표(`lanes.py route`)를 부르지 않는다. `.venv/bin/python -m ozl.issues roles --json` 은 실행기에서 경로표를 읽지 않고 기본 배정(쓰기, 고치기, 묶음은 Opus, 문장 대조는 Sonnet, 강도는 세션 값)을 `source: runner` 로 내고, 1차 대조(`precheck`)는 `null` 로 낸다. 실행기 세션 자체는 `runner.json` 의 `model`(Opus) 고정이다(Fable 자동화 금지). 워크플로 인자 `offload`, `packet_mode`, `review_mode` 의 시험 길도 쓰지 않는다. `offload.py` 는 실행기의 거부 규칙(`src/ozl/ops/runner.py` 의 `OFFLOAD_RULES`)이 막는다.
 
 `SKILL.md` 0절의 나머지 가드(승인, 내림, 공개용 내보내기를 하지 않는다. 대기열 파일을 손으로 고치지 않는다. 다루지 않는 소재. 작성자는 스스로 검토하지 않는다)는 실행기에서도 그대로다.
 

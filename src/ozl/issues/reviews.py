@@ -1,13 +1,14 @@
 """검토 — 검토 줄 더하기(잠금 안에서), 검토 원문 확인, 검토 조건(설계 9-4)과 이어받기(수정 확인). revisions 가 이 이름들을 다시 내보낸다."""
 from __future__ import annotations
 
+from datetime import datetime
 import pathlib
 import re
 
 from ozl.research import capture as K
 from ozl.research import cards
 
-from . import digest, model, paths
+from . import digest, manifest, model, paths
 
 
 def snapshot_file(issue_id: str, h: str) -> pathlib.Path:
@@ -42,12 +43,38 @@ def _notes_ok(issue_id, r: dict) -> bool:
     return d in f.parents and f.is_file() and f.stat().st_size > 0 and K.sha256_file(f) == r["notes_sha256"]
 
 
-def _full(reviews: list, h: str, drafted_by) -> bool:
-    cmp = any(r.get("kind") == "문장 대조" and r.get("family") == "anthropic" and not _same(r.get("by_model"), drafted_by)
-              and r.get("result") == "통과" and r.get("content_hash") == h for r in reviews)
-    itp = any(r.get("kind") == "해석 점검" and r.get("family") not in (None, "anthropic") and r.get("result") == "통과"
-              and r.get("content_hash") == h for r in reviews)
-    return cmp and itp
+TWO_FAMILIES_SINCE = datetime.fromisoformat("2026-11-21T15:00:00+09:00")
+
+
+def _old_approval(man: dict, issue_id: str, h: str) -> bool:
+    for row in manifest.entries(man, "issue", issue_id):
+        if row.get("content_hash") != h:
+            continue
+        try:
+            at = datetime.fromisoformat(row["approved_at"])
+        except (KeyError, ValueError, TypeError):
+            continue
+        if at.tzinfo is not None and at < TWO_FAMILIES_SINCE:
+            return True
+    return False
+
+
+def _missing_passes(reviews: list, h: str, drafted_by, legacy: bool) -> list[str]:
+    passes = [r for r in reviews if r.get("result") == "통과" and r.get("content_hash") == h]
+    compared = any(r.get("kind") == "문장 대조" and r.get("family") == "anthropic"
+                   and not _same(r.get("by_model"), drafted_by) for r in passes)
+    missing = [] if compared else [NEED_CMP]
+    families = [r.get("family") for r in passes if r.get("kind") == "해석 점검"]
+    if legacy:
+        if not any(f not in (None, "anthropic") for f in families):
+            missing.append(NEED_ITP)
+    else:
+        missing.extend(f"해석 점검: {f} 계열 통과가 없다" for f in ("openai", "google") if f not in families)
+    return missing
+
+
+def _full(reviews: list, h: str, drafted_by, legacy: bool = False) -> bool:
+    return not _missing_passes(reviews, h, drafted_by, legacy)
 
 
 def _objections(reviews: list, h: str) -> list[dict]:
@@ -65,15 +92,8 @@ def _objections(reviews: list, h: str) -> list[dict]:
     return out
 
 
-def review_state(issue: dict, evidences: dict) -> str:
-    """'검토 완료' | '검토 대기' — 설계 9-4. 이어받기(수정 확인)는 바뀐 칸이 모두 지적한 칸 안일 때만 받는다."""
-    reviews = [r for r in issue.get("reviews") or [] if isinstance(r, dict) and _notes_ok(issue.get("issue_id"), r)]
-    drafted = (issue.get("production") or {}).get("drafted_by") if isinstance(issue.get("production"), dict) else None
-    h = digest.content_hash(issue, evidences)
-    if _objections(reviews, h):                     # 이 내용에 남은 지적·반려가 있으면 앞선 통과로 넘기지 않는다
-        return "검토 대기"
-    if _full(reviews, h, drafted):
-        return "검토 완료"
+def _inherited(issue, evidences, reviews, h, drafted, legacy) -> bool:
+    """수정 확인은 지적받은 칸만 고쳤을 때 인정한다. 적용 기준은 이전 해시가 아니라 지금 판의 승인 이력이다."""
     by_id = {r.get("id"): r for r in reviews}
     for r in reviews:
         after = r.get("after_hash") or r.get("content_hash")
@@ -82,7 +102,7 @@ def review_state(issue: dict, evidences: dict) -> str:
             continue
         hb = r["before_hash"]
         snap = snapshot_file(issue.get("issue_id"), hb)
-        if not isinstance(hb, str) or not _full(reviews, hb, drafted) or not snap.is_file() \
+        if not isinstance(hb, str) or not _full(reviews, hb, drafted, legacy) or not snap.is_file() \
                 or any(x.get("result") == "반려" for x in _objections(reviews, hb)):   # 반려된 내용은 이어받지 않는다
             continue
         try:
@@ -96,8 +116,8 @@ def review_state(issue: dict, evidences: dict) -> str:
                   if isinstance(f, dict) and f.get("field")}
         changed = digest.changed_paths(before, digest.snapshot_view(issue, evidences))
         if changed and all(any(p == f or p.startswith(f + ".") for f in fields) for p in changed):
-            return "검토 완료"
-    return "검토 대기"
+            return True
+    return False
 
 
 def _findings(r, hb: str) -> list:
@@ -178,21 +198,22 @@ def _load_or_none(p):
 NEED_CMP = "다른 모델의 문장 대조(같은 계열, 쓴 모델과 다른 모델)"
 NEED_ITP = "다른 계열의 해석 점검"
 NEED_OBJ = "지적이 남아 있다. 내용을 고친 뒤 다시 검토를 받는다"
-NEED_OTHER = "검토 조건을 채우지 못했다(검토 원문이 없거나 바뀐 줄은 세지 않는다)"
 
 
-def missing_reviews(issue: dict, evidences: dict) -> list[str]:
-    """지금 내용(해시)에서 검토 완료까지 빠진 것의 목록. 빈 목록 ⇔ review_state 가 '검토 완료'.
-    남은 지적·반려가 있으면 그것부터 알린다(같은 내용에 통과를 더 받아도 풀리지 않는다 — 내용을 고친다)."""
-    if review_state(issue, evidences) == "검토 완료":
-        return []
-    reviews = [r for r in issue.get("reviews") or [] if isinstance(r, dict) and _notes_ok(issue.get("issue_id"), r)]
+def missing_reviews(issue: dict, evidences: dict, man: dict | None = None) -> list[str]:
+    """검토 완료까지 빠진 것. 빈 목록은 직접 통과했거나 수정 확인으로 이어받은 판이다."""
+    iid = issue.get("issue_id")
+    reviews = [r for r in issue.get("reviews") or [] if isinstance(r, dict) and _notes_ok(iid, r)]
     drafted = (issue.get("production") or {}).get("drafted_by") if isinstance(issue.get("production"), dict) else None
     h = digest.content_hash(issue, evidences)
-    out = [NEED_OBJ] if _objections(reviews, h) else []
-    cmp = any(r.get("kind") == "문장 대조" and r.get("family") == "anthropic" and not _same(r.get("by_model"), drafted)
-              and r.get("result") == "통과" and r.get("content_hash") == h for r in reviews)
-    itp = any(r.get("kind") == "해석 점검" and r.get("family") not in (None, "anthropic") and r.get("result") == "통과"
-              and r.get("content_hash") == h for r in reviews)
-    out += ([] if cmp else [NEED_CMP]) + ([] if itp else [NEED_ITP])
-    return out or [NEED_OTHER]
+    legacy = _old_approval(manifest.load_manifest() if man is None else man, iid, h)
+    missing = _missing_passes(reviews, h, drafted, legacy)
+    if _objections(reviews, h):
+        return [NEED_OBJ, *missing]
+    if missing and _inherited(issue, evidences, reviews, h, drafted, legacy):
+        return []
+    return missing
+
+
+def review_state(issue: dict, evidences: dict, man: dict | None = None) -> str:
+    return "검토 대기" if missing_reviews(issue, evidences, man) else "검토 완료"

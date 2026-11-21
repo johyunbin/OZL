@@ -43,6 +43,8 @@ def test_commands_exit_codes(desk):
                    "--result", "통과", "--notes-path", str(nd / "a.md"))[0] == 0
         assert cli(desk, "review", "add", iid, "--kind", "해석 점검", "--by-model", "가상 모델 G", "--family", "openai",
                    "--result", "통과", "--notes-path", str(nd / "b.md"))[0] == 0
+        assert cli(desk, "review", "add", iid, "--kind", "해석 점검", "--by-model", "가상 모델 H", "--family", "google",
+                   "--result", "통과", "--notes-path", str(nd / "b.md"))[0] == 0
     assert cli(desk, "check", "--all", "--public")[0] == 0
     code, out = cli(desk, "hash", I1)
     assert code == 0

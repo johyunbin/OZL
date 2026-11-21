@@ -17,15 +17,16 @@ ROLE_TABLE = {
     "revise": ("implement", 2, True),
     "packet": ("implement", 1, True),
     "packet_check": ("extract", 2, True),
+    "precheck": ("verify", 1, False),
 }
 DEFAULT_ROLES = {
     "draft": "opus", "review": "sonnet", "fix": "opus",
-    "revise": "opus", "packet": "opus", "packet_check": "sonnet",
+    "revise": "opus", "packet": "opus", "packet_check": "sonnet", "precheck": "gpt-6.2-astra",
 }
 EFFORTS = ("low", "medium", "high", "xhigh", "max")
 
 
-def _route(task, level, budget):
+def _route(task, level, budget, lane_name):
     override = os.environ.get("OZL_LANES_CMD")
     script = Path(override or "~/.claude/scripts/lanes.py").expanduser().absolute()
     cmd = [str(script)] if override and os.access(script, os.X_OK) else ["python3", str(script)]
@@ -33,11 +34,11 @@ def _route(task, level, budget):
     if budget:
         cmd.append("--with-budget")
     result = subprocess.run([*cmd, "--json"], capture_output=True, text=True, timeout=30, check=True)
-    lane = json.loads(result.stdout)["lanes"]["claude"]["auto"]
+    lane = json.loads(result.stdout)["lanes"][lane_name]["auto"]
     model, effort = lane["model"], lane["effort"]
-    if model not in ("opus", "sonnet"):
+    if not isinstance(model, str) or not model.strip() or (lane_name == "claude" and model not in ("opus", "sonnet")):
         raise ValueError(f"허용 밖 모델: {model}")
-    if effort not in EFFORTS:
+    if effort not in EFFORTS or (lane_name == "codex" and effort == "max"):
         raise ValueError(f"허용 밖 effort: {effort}")
     return model, effort
 
@@ -46,11 +47,16 @@ def resolve_roles(drafted_by=""):
     runner = paths.in_runner()
     roles, notes = {}, []
     for role, (task, level, budget) in ROLE_TABLE.items():
+        if runner and role == "precheck":
+            roles[role] = None
+            continue
         row = {"task": task, "level": level, "model": DEFAULT_ROLES[role], "source": "runner" if runner else "default"}
+        if role == "precheck":
+            row["effort"] = "high"
         roles[role] = row
         if not runner:
             try:
-                model, effort = _route(task, level, budget)
+                model, effort = _route(task, level, budget, "codex" if role == "precheck" else "claude")
                 row.update(model=model, effort=effort, source="lanes")
             except (OSError, subprocess.SubprocessError, ValueError, TypeError, KeyError) as exc:
                 notes.append(f"{role}: 경로표를 쓸 수 없어 기본값 사용 ({exc})")
@@ -75,7 +81,7 @@ def resolve_roles(drafted_by=""):
             review.update(model="sonnet" if writer == "opus" else "opus", source="default")
             review.pop("effort", None)
 
-    sources = {row["source"] for row in roles.values()}
+    sources = {row["source"] for row in roles.values() if row is not None}
     return {"source": sources.pop() if len(sources) == 1 else "mixed", "roles": roles, "notes": notes}
 
 
@@ -91,6 +97,9 @@ def command(args):
         print(json.dumps(result, ensure_ascii=False))
     else:
         for role, row in result["roles"].items():
+            if row is None:
+                print(f"{role}: 쓰지 않음")
+                continue
             print(f'{role}: {row["model"]} / {row.get("effort", "세션 값")} ({row["task"]} L{row["level"]}, {row["source"]})')
         for note in result["notes"]:
             print(note)

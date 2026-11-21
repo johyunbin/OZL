@@ -1,7 +1,7 @@
 """끝에서 끝: 지어낸 이슈가 고르기부터 게시본까지 한 번 끝까지 간다(설계 11절 test_ops_e2e, 기획안 밤 6).
 
 시험 자료 루트(임시 폴더)에서 ① 후보 [만들기] → ② 실행기가 가짜 make(시험 폴더의 작은 파이썬)를 띄워 지어낸 이슈를
-게시 대기로 두고 검토 둘을 더함 → ③ 승인 화면에 그 판이 보임 → ④ 틀린 해시 409, 맞는 해시 303, 같은 요청 다시 보내도 한 줄
+게시 대기로 두고 검토 셋을 더함 → ③ 승인 화면에 그 판이 보임 → ④ 틀린 해시 409, 맞는 해시 303, 같은 요청 다시 보내도 한 줄
 → ⑤ 미리보기용 내보내기에는 실리고 공개용(시험 연락처)에는 시험 승인이라 실리지 않음 → ⑥ 실제 폴더의 발행 목록은 그대로.
 실제 claude 명령은 띄우지 않는다.
 """
@@ -36,8 +36,8 @@ issue["work_state"] = "게시 대기"
 model.save_issue(issue)
 d = paths.issue_dir(iid) / "reviews"
 d.mkdir(parents=True, exist_ok=True)
-for kind, who, fam in (("문장 대조", "Claude Sonnet", "anthropic"), ("해석 점검", "가상 모델 G", "openai")):
-    f = d / f"{kind}.md"
+for kind, who, fam in (("문장 대조", "Claude Sonnet", "anthropic"), ("해석 점검", "가상 모델 G", "openai"), ("해석 점검", "가상 모델 H", "google")):
+    f = d / f"{kind}_{fam}.md"
     f.write_text(kind + " 시험용으로 지어낸 검토 원문\\n", encoding="utf-8")
     run("ozl.issues", "review", "add", iid, "--kind", kind, "--by-model", who, "--family", fam, "--result", "통과",
         "--notes-path", str(f))
@@ -65,7 +65,7 @@ def test_pick_to_published(ops, desk, tmp_path, monkeypatch):
     j = queue.find(queue.load(), jid)
     assert (j["state"], j["issue_id"], j["exit"]) == (queue.DONE, I1, 0), (j, said)
     issue = model.load_issue(I1)
-    assert issue["work_state"] == "게시 대기" and len(issue["reviews"]) == 2
+    assert issue["work_state"] == "게시 대기" and len(issue["reviews"]) == 3
     runs = store.read_jsonl(store.ops_dir() / "runner" / "runs.jsonl")
     assert len(runs) == 1 and runs[0]["exit"] == 0 and runs[0]["timed_out"] is False
     st, _, text = c.get("/pick")

@@ -55,7 +55,7 @@ def manifest_errors(issue: dict, evidences: dict, man: dict) -> list[str]:
         out.append(f"{iid} revision: {MSG_SAME_REV}")
     if ents and ents[0].get("slug") != issue.get("slug"):
         out.append(f"{iid} slug: {MSG_SLUG}")
-    if issue.get("work_state") == "게시 대기" and review_state(issue, evidences) == "검토 대기":
+    if issue.get("work_state") == "게시 대기" and review_state(issue, evidences, man) == "검토 대기":
         out.append(f"{iid} reviews: {MSG_REVIEW}")
     out += [f"{iid} {k}: {m}" for k, m in slug_conflicts(issue, man)]
     return out
@@ -132,7 +132,7 @@ def approve(issue_id: str, rev: int, content_hash: str, by: str, request_id=None
         why = check_with_manifest(issue, evs, public=True, man=man)["errors"]
         if issue.get("work_state") != "게시 대기":
             why.append(f"{issue_id} work_state: 작업 상태가 '게시 대기'가 아니다({issue.get('work_state')})")
-        if review_state(issue, evs) != "검토 완료":
+        if review_state(issue, evs, man) != "검토 완료":
             why.append(f"{issue_id} reviews: 검토 조건을 채우지 못했다(검토 대기)")
         if (issue.get("publish") or {}).get("state") != "게시 가능":
             why.append(f"{issue_id} publish.state: 게시 가부가 '게시 가능'이 아니다")
@@ -211,7 +211,7 @@ def revision_publishable(issue_id: str, rev: int, man: dict | None = None) -> tu
     errs = check.check_issue(fi, fe, public=True)["errors"]
     if errs:
         return False, f"고정 사본이 검사를 통과하지 못한다 — {errs[0]}"
-    if review_state(fi, fe) != "검토 완료":
+    if review_state(fi, fe, man) != "검토 완료":
         return False, "고정 사본의 검토 조건이 채워지지 않았다"
     if e.get("export_version") != B.EXPORT_VERSION or digest.body_hash(B.issue_body(fi, fe, rev_at=appr.get("approved_at", ""),
                                                                           first_rev=fixed_first_rev(man, issue_id, rev))) != e.get("body_hash"):
@@ -284,7 +284,7 @@ def status_rows(issue_ids=None) -> list[dict]:
             appr = "승인 뒤 고침"
         else:
             appr = "미승인"
-        review = review_state(issue, evs)
+        review = review_state(issue, evs, man)
         rows.append({"id": iid, "rev": issue.get("revision"), "work_state": issue.get("work_state"), "content_hash": h,
                      "shown_state": shown_work_state(issue, review),
                      "stale_ready": issue.get("work_state") == "게시 대기" and review == "검토 대기",

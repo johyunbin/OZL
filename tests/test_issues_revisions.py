@@ -38,12 +38,13 @@ def real(desk, monkeypatch):
 
 
 def ready(iid, reviewer="Claude Sonnet") -> str:
-    """게시 대기로 두고 검토 두 줄(다른 모델의 문장 대조, 다른 계열의 해석 점검)을 더한다. 지금 내용 해시를 돌려준다."""
+    """게시 대기로 두고 검토 세 줄(문장 대조, 두 계열의 해석 점검)을 더한다. 지금 내용 해시를 돌려준다."""
     issue = model.load_issue(iid)
     issue["work_state"] = "게시 대기"
     model.save_issue(issue)
     add_review(iid, "문장 대조", reviewer, "anthropic", "통과", now=NOW)
     add_review(iid, "해석 점검", "가상 모델 G", "openai", "통과", now=NOW)
+    add_review(iid, "해석 점검", "가상 모델 H", "google", "통과", now=NOW)
     return digest.content_hash(*load(iid))
 
 
@@ -109,19 +110,19 @@ def test_approve_requires_reviews(real):
     assert approve(I1)["code"] == 0
     # 이어받기: 지적한 칸만 고친 수정은 수정 확인 한 줄로 넘어간다. 지적은 검토를 더할 때 적는다(나중에 고친 지적은 믿지 않는다).
     h0 = ready(I2)
-    add_review(I2, "문장 대조", "Claude Sonnet", "anthropic", "지적",
-               findings=[{"field": "claims.c3.would_decide", "note": "범위를 좁힌다"}])                 # r3
-    add_review(I2, "해석 점검", "가상 모델 G", "openai", "지적", findings=[{"field": "claims.c1", "note": "요지를 고친다"}])   # r4
+    sentence = add_review(I2, "문장 대조", "Claude Sonnet", "anthropic", "지적",
+               findings=[{"field": "claims.c3.would_decide", "note": "범위를 좁힌다"}])
+    interpretation = add_review(I2, "해석 점검", "가상 모델 G", "openai", "지적", findings=[{"field": "claims.c1", "note": "요지를 고친다"}])
     edit(I2, lambda i: claim(i, "c3").update(would_decide="대법원의 확정 판결"))
     assert revisions.review_state(*load(I2)) == "검토 대기"
-    add_review(I2, "수정 확인", "Claude Sonnet", "anthropic", "통과", before_hash=h0, addresses=["r3"])
+    add_review(I2, "수정 확인", "Claude Sonnet", "anthropic", "통과", before_hash=h0, addresses=[sentence["id"]])
     assert revisions.review_state(*load(I2)) == "검토 완료"
     assert approve(I2)["code"] == 0
     # 지적과 무관한 칸(다른 주장의 요지)까지 바뀌면 같은 이어받기로는 다시 검토 대기
     edit(I2, lambda i: claim(i, "c1").update(gist="회수 대상은 1만 2천 개이고, 모두 국내용이다."))
-    add_review(I2, "수정 확인", "Claude Sonnet", "anthropic", "통과", before_hash=h0, addresses=["r3"])
+    add_review(I2, "수정 확인", "Claude Sonnet", "anthropic", "통과", before_hash=h0, addresses=[sentence["id"]])
     assert revisions.review_state(*load(I2)) == "검토 대기"
-    add_review(I2, "수정 확인", "Claude Sonnet", "anthropic", "통과", before_hash=h0, addresses=["r3", "r4"])
+    add_review(I2, "수정 확인", "Claude Sonnet", "anthropic", "통과", before_hash=h0, addresses=[sentence["id"], interpretation["id"]])
     assert revisions.review_state(*load(I2)) == "검토 완료"
 
 
@@ -187,3 +188,30 @@ def test_stale_ready_shown_as_review_wait(desk, capsys):
     assert main(["status", I1]) == 0
     out = capsys.readouterr().out
     assert revisions.STALE_READY in out and "경고:" in out
+
+
+def test_two_families_and_old_approval_only_for_same_content(desk):
+    sentence = add_review(I1, "문장 대조", "Claude Sonnet", "anthropic", "통과")
+    finding = add_review(I1, "해석 점검", "가상 모델 H", "google", "통과",
+                         findings=[{"field": "what_new", "note": "표현 확인"}])
+    h = sentence["content_hash"]
+    issue, evs = load(I1)
+    for uid, at in [(I2, "2026-11-20T12:00:00+09:00"), (I1, "2026-11-21T06:00:00+00:00"),
+                    (I1, "날짜 없음")]:
+        row = dict(id=uid, unit="issue", rev=1, content_hash=h, approved_at=at)
+        man = dict(revisions.EMPTY, entries=[row])
+        assert revisions.review_state(issue, evs, man) == "검토 대기"
+        assert revisions.missing_reviews(issue, evs, man) == ["해석 점검: openai 계열 통과가 없다"]
+
+    row["approved_at"] = "2026-11-21T05:59:59+00:00"
+    revisions.save_manifest(man)
+    assert revisions.status_rows([I1])[0]["review"] == "검토 완료"
+    assert revisions.missing_reviews(issue, evs) == []
+    edit(I1, lambda i: i.update(what_new="시험으로 고친 문장이다."))
+    add_review(I1, "수정 확인", "Claude Sonnet", "anthropic", "통과", before_hash=h, addresses=[finding["id"]])
+    assert revisions.review_state(*load(I1)) == "검토 대기"  # 옛 판의 단일 계열 통과를 이어받지 않는다
+    add_review(I1, "문장 대조", "Claude Sonnet", "anthropic", "통과")
+    add_review(I1, "해석 점검", "가상 모델 G", "openai", "통과")
+    assert revisions.missing_reviews(*load(I1)) == ["해석 점검: google 계열 통과가 없다"]
+    add_review(I1, "해석 점검", "가상 모델 H", "google", "통과")
+    assert revisions.review_state(*load(I1)) == "검토 완료"

@@ -36,7 +36,12 @@ if task == 'extract':
     if mode == 'missing': print('{{}}'); sys.exit(0)
     if mode == 'broken': print('not json'); sys.exit(0)
 if mode == 'fail': sys.exit(5)
-print(json.dumps(dict(lanes=dict(claude=dict(auto=dict(model=model, effort=effort))))))
+codex = dict(auto=dict(model='test-codex', effort='xhigh'))
+if mode == 'missing codex':
+    codex = dict()
+if mode == 'bad codex effort':
+    codex['auto']['effort'] = 'max'
+print(json.dumps(dict(lanes=dict(claude=dict(auto=dict(model=model, effort=effort)), codex=codex))))
 """)
     return calls
 
@@ -50,10 +55,13 @@ def test_routes_and_budgets(lanes, capsys):
     result = output(capsys)
     assert result["source"] == "lanes" and not result["notes"]
     calls = [json.loads(line) for line in lanes.read_text().splitlines()]
-    expected = [("implement", 2), ("read", 2), ("implement", 1), ("implement", 2), ("implement", 1), ("extract", 2)]
+    expected = [("implement", 2), ("read", 2), ("implement", 1), ("implement", 2), ("implement", 1), ("extract", 2), ("verify", 1)]
     for (name, row), (task, level), cmd in zip(result["roles"].items(), expected, calls, strict=True):
-        assert row == dict(task=task, level=level, effort="medium", source="lanes", model=roles.DEFAULT_ROLES[name])
-        assert cmd == ["route", "--task", task, "--level", str(level), *(["--with-budget"] if name != "review" else []), "--json"]
+        if name == "precheck":
+            assert row == dict(task="verify", level=1, model="test-codex", effort="xhigh", source="lanes")
+        else:
+            assert row == dict(task=task, level=level, effort="medium", source="lanes", model=roles.DEFAULT_ROLES[name])
+        assert cmd == ["route", "--task", task, "--level", str(level), *(["--with-budget"] if name not in ("review", "precheck") else []), "--json"]
 
 
 @pytest.mark.parametrize("mode", ["bad model", "bad effort", "missing", "broken"])
@@ -71,10 +79,13 @@ def test_failure_or_runner_returns_session_defaults(runner, lanes, capsys, monke
     monkeypatch.setenv("OZL_OPS_RUNNER", str(int(runner)))
     r = output(capsys)
     assert r["source"] == ("runner" if runner else "default")
-    assert {k: v["model"] for k, v in r["roles"].items()} == roles.DEFAULT_ROLES
+    precheck = r["roles"].pop("precheck")
+    expected = None if runner else dict(model="gpt-6.2-astra", effort="high", task="verify", level=1, source="default")
+    assert precheck == expected
+    assert {k: v["model"] for k, v in r["roles"].items()} == {k: v for k, v in roles.DEFAULT_ROLES.items() if k != "precheck"}
     assert not any(v.get("effort") for v in r["roles"].values())
     assert lanes.exists() != runner
-    assert len(r["notes"]) == (0 if runner else 6)
+    assert len(r["notes"]) == (0 if runner else 7)
 
 
 @pytest.mark.parametrize("mode", ["collision", "split", "fix collision"])
@@ -105,3 +116,10 @@ def test_timeout_falls_back(lanes, capsys, monkeypatch):
         raise subprocess.TimeoutExpired(cmd, timeout)
     monkeypatch.setattr(subprocess, "run", timeout)
     assert output(capsys)["source"] == "default"
+
+@pytest.mark.parametrize("mode", ["missing codex", "bad codex effort"])
+def test_only_precheck_route_falls_back(mode, lanes, monkeypatch, capsys):
+    monkeypatch.setenv("FAKE_MODE", mode)
+    r = output(capsys)
+    assert len(r["notes"]) == 1 and "precheck" in r["notes"][0]
+    assert r["roles"]["precheck"] == dict(task="verify", level=1, model="gpt-6.2-astra", effort="high", source="default")
