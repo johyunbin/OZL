@@ -34,5 +34,6 @@ apps/web/.pw-browsers/
 apps/web/test-results/
 apps/web/playwright-report/
 
-# 사용자가 여는 결과물 폴더(비공개 폴더로 가는 링크)
+# 사용자가 여는 결과물 폴더(비공개 폴더로 가는 링크) — 2026-11-21 이름을 results 로(옛 이름 링크는 호환 기간 무시)
+/results
 /결과물

@@ -21,7 +21,7 @@ ENV = "OZL_PRIVATE"
 # 이름 → private/ 아래의 지금 위치. 이름은 옛 최상위 폴더(또는 파일) 이름과 같고 바꾸지 않는다.
 LAYOUT: dict[str, str] = {
     # 사용자가 여는 입구
-    "결과물": "결과물",
+    "결과물": "results",   # 2026-11-21 폴더 이름만 results 로(키는 옛 이름 규칙대로 유지 · 옛 경로는 resolve 가 푼다)
     "templates": "templates",
     "README.md": "README.md",
     # 실시간 수집

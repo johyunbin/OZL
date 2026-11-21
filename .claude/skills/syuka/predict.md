@@ -7,7 +7,7 @@
 ## 받는 것과 내는 것
 
 - 받는 것: 방송 날짜(없으면 다음 일요일). 있으면 사용자가 꼭 넣거나 빼라고 한 이야기.
-- 내는 것: `<W>/prediction_<타임코드>_fixed.json`(후보 15, 확신 3, 뼈대 3, 기준선 A·B), `<W>/HASH.txt` 한 줄, 장부 등록(`predictions`, `prediction_items`), 한 장 요약 PDF(`private/결과물/` 아래), 실행 기록 `<W>/RUNLOG.md`.
+- 내는 것: `<W>/prediction_<타임코드>_fixed.json`(후보 15, 확신 3, 뼈대 3, 기준선 A·B), `<W>/HASH.txt` 한 줄, 장부 등록(`predictions`, `prediction_items`), 한 장 요약 PDF(`private/results/` 아래), 실행 기록 `<W>/RUNLOG.md`.
 - 사용자가 하는 일: 해시 한 줄을 따로 보관하는 것뿐이다. 고르기는 사용자가 원할 때만 묻는다.
 
 ## 하지 않는 것
@@ -84,6 +84,6 @@ mkdir -p private/data/derived/syuka/predictions/<D>/input private/data/derived/s
 
 ### 7. 사용자에게 보이기
 
-- 한 장 요약(후보 15의 이름과 분야, 확신 3, 뼈대 3의 중심 질문, 기준선 A·B 의 이름, 해시 전체)을 md 와 PDF 쌍으로 `private/결과물/` 아래 새 번호 폴더에 둔다(`~/.claude/knowledge/md2pdf_authoring.md`). 첫 쪽을 그림으로 열어 확인한다.
+- 한 장 요약(후보 15의 이름과 분야, 확신 3, 뼈대 3의 중심 질문, 기준선 A·B 의 이름, 해시 전체)을 md 와 PDF 쌍으로 `private/results/` 아래 새 번호 폴더에 둔다(`~/.claude/knowledge/md2pdf_authoring.md`). 첫 쪽을 그림으로 열어 확인한다.
 - 사용자에게 해시 한 줄을 따로 보관해 달라고 그 자리에서 한 번 요청한다.
 - `<W>/RUNLOG.md` 에 단계마다 시각, 모델과 강도, 입력 글자 수, 걸린 시간, 재시도, `get_usage` 앞뒤 값을 적는다. 다른 세션이 같은 한도를 쓰므로 한도 차이는 추정이라고 적는다.

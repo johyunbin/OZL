@@ -115,9 +115,9 @@ OZL/
   tracks/  skills/  .claude/      분석 결과(집계), 절차서, 대화 명령
   agent/                          일마다 먼저 읽는 작업 규칙
   tools/                          문자 인식 도구 같은 보조 프로그램
-  결과물 -> private/결과물        사용자가 여는 입구(링크)
+  results -> private/results     사용자가 여는 입구(링크)
   private/                        비공개 자료(저장소에 없음, 별도 비공개 백업)
-    결과물/  templates/            사용자가 여는 결과물, 바로 쓰는 덱 템플릿
+    results/  templates/           사용자가 여는 결과물, 바로 쓰는 덱 템플릿
     live/                          매시 수집이 쓰는 DB, 후보 판, 로그
     data/                          원자료(raw), 원자료에서 뽑은 것(derived), 전사 모델(models)
     outputs/                       자동으로 만든 덱, 미리보기, 보고서

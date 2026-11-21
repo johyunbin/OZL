@@ -6,7 +6,7 @@
 #
 # private/ 는 공개 저장소와 별개의 git 저장소다. 무엇이 올라가는지는 private/.gitignore 의 허용 목록이 정한다
 # (카드·클레임 정본, 수집 원본, 전체본·검증 시트, 계획, 설명서, 태그 파일, 수집 DB 스냅숏, 열람 문서, 덱 완성본,
-#  결과물 폴더의 글·PDF·템플릿).
+#  results/(사람이 여는 입구 · 2026-11-21 전 이름 결과물/) 의 글·PDF·템플릿).
 # 영상·전사·프레임·원문 사본·유튜브 통계는 올라가지 않는다.
 # 올리기 전에 원격이 OZL-private 이고 비공개인지 확인한다. 아니면 멈춘다.
 # (GitHub 는 저장소 이름의 대소문자를 가리지 않으므로 옛 소문자 주소 ozl-private 도 같은 저장소다 — 둘 다 받는다.)
@@ -30,7 +30,7 @@ PRIVATE="$(gh repo view "$SLUG" --json isPrivate -q .isPrivate 2>/dev/null)" || 
 
 # 허용 목록에 든 폴더만 이름으로 올린다(없는 폴더는 건너뛴다).
 for p in .gitignore README.md state/notion.json records/desk outputs/daily records/plan records/guide records/research \
-         data/raw/meta outputs/decks archive/backup outputs/out outputs/briefs records/handoff 결과물 templates; do
+         data/raw/meta outputs/decks archive/backup outputs/out outputs/briefs records/handoff results templates; do
   [ -e "$p" ] && git add -A -- "$p"
 done
 # 2026-11-21 개편 전 자리에 남은 추적 파일(옮겨져 사라진 것)의 삭제도 올린다. 아직 추적 중인 옛 최상위 이름만 고른다

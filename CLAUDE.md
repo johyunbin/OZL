@@ -6,7 +6,7 @@
 
 ## 진입 순서
 1. 이 문서 → `README.md` → `docs/how-it-works.md`(일의 흐름, 자동과 사람의 경계) → 하려는 일의 `agent/` 파일 → 그 일의 정본 문서(표의 끝 칸).
-2. 지금 진행 중인 일과 사용자가 정할 것은 `private/records/plan/재정비_진행판_20261114.md` 에 있다. 사용자의 요청을 항목으로 만든 목록은 같은 폴더의 `요청_등록부_20261114.md`, 한 일의 기록은 `재정비_조치기록_20261114.md` 다. 사용자가 여는 결과물은 `결과물/`(비공개 폴더로 가는 링크)에 모은다. 앞선 계획 문서(`ozl_plan_20261109_164333.md`, `ozl_tidy_plan_20261110_164038.md`, `ozl_redesign_plan_20261113_014132.md`, `ozl_service_plan_20261114_022800.md`)는 `~/.claude/plans/archive/` 에 있다. 2026-11-14 의 서비스 기획안으로 만든 이슈 화면과 카드는 같은 날 사용자가 반려했다. 아래 표의 이슈 기록 절차(`/ozl make`)는 같은 날 정한 글 형식(읽는 글 `article.yaml` 과 뒤쪽 검증 기록, 명세 `private/records/plan/글형식_명세_20261114.md`)에 맞춰 고쳤다.
+2. 지금 진행 중인 일과 사용자가 정할 것은 `private/records/plan/재정비_진행판_20261114.md` 에 있다. 사용자의 요청을 항목으로 만든 목록은 같은 폴더의 `요청_등록부_20261114.md`, 한 일의 기록은 `재정비_조치기록_20261114.md` 다. 사용자가 여는 결과물은 `results/`(비공개 폴더로 가는 링크 · 2026-11-21 전 이름 `결과물/`)에 모은다. 앞선 계획 문서(`ozl_plan_20261109_164333.md`, `ozl_tidy_plan_20261110_164038.md`, `ozl_redesign_plan_20261113_014132.md`, `ozl_service_plan_20261114_022800.md`)는 `~/.claude/plans/archive/` 에 있다. 2026-11-14 의 서비스 기획안으로 만든 이슈 화면과 카드는 같은 날 사용자가 반려했다. 아래 표의 이슈 기록 절차(`/ozl make`)는 같은 날 정한 글 형식(읽는 글 `article.yaml` 과 뒤쪽 검증 기록, 명세 `private/records/plan/글형식_명세_20261114.md`)에 맞춰 고쳤다.
 3. 지금 쌓인 일: `/ozl status`(만들기 대기열, 이슈 기록의 상태, 최근 고르기 기록, 옛 소재 카드 수를 모아 보인다). 명령으로 따로 볼 때는 `.venv/bin/python -m ozl.ops queue list`, `.venv/bin/python -m ozl.issues status`, `.venv/bin/python -m ozl.research status`.
 
 | 하려는 일 | 먼저 읽을 파일 | 정본 |
