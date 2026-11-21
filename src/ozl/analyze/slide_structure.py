@@ -9,6 +9,7 @@
 """
 from __future__ import annotations
 
+import argparse
 import json
 import pathlib
 import re
@@ -109,13 +110,66 @@ def label_input(r: dict) -> dict:
     return {"video_id": r["video_id"], "duration_sec": r["duration_sec"], "slides": out}
 
 
-def main() -> int:
+def _write_inputs(path, record):
+    path.write_text(json.dumps(record, ensure_ascii=False, indent=1), encoding="utf-8")
+    (LABEL / path.name).write_text(json.dumps(label_input(record), ensure_ascii=False, indent=1), encoding="utf-8")
+
+
+def _run_selected(only, missing, dry_run):
+    paths = {p.stem: p for p in sorted(DENSE.glob("*.json"))}
+    requested = dict.fromkeys(only) if only else paths
+    status = videos = slides = layouts = media = 0
+    for vid in requested:
+        if vid not in paths:
+            print(f"{vid}: dense 파일 없음", file=sys.stderr)
+            status = 1
+            continue
+        path = paths[vid]
+        record = json.loads(path.read_text(encoding="utf-8"))
+        if missing and not any(not s["flash"] and "layout" not in s for s in record["slides"]):
+            continue
+        videos += 1
+        if dry_run:
+            print(vid)
+            continue
+
+        before = [("layout" in s, s["kind"]) for s in record["slides"]]
+        record = enrich(record)
+        LABEL.mkdir(parents=True, exist_ok=True)
+        _write_inputs(path, record)
+
+        count = len(before)
+        added = changed = 0
+        for (had_layout, kind), slide in zip(before, record["slides"]):
+            added += not had_layout and "layout" in slide
+            changed += kind != "media" and slide["kind"] == "media"
+        slides += count
+        layouts += added
+        media += changed
+        print(f"{vid}: {count}장, layout 추가 {added}장, media 전환 {changed}장")
+
+    if dry_run:
+        print(f"합계: {videos}편")
+    else:
+        print(f"합계: {videos}편 {slides}장, layout 추가 {layouts}장, media 전환 {media}장")
+    return status
+
+
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser()
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--only", nargs="+", metavar="VID", help="지정한 편만 처리")
+    group.add_argument("--missing", action="store_true", help="반짝 장 외에 layout이 빠진 편만 처리")
+    parser.add_argument("--dry-run", action="store_true", help="처리할 편 번호와 수만 출력")
+    args = parser.parse_args(argv)
+    if args.only or args.missing or args.dry_run:
+        return _run_selected(args.only, args.missing, args.dry_run)
+
     LABEL.mkdir(parents=True, exist_ok=True)
     vids = []
     for p in sorted(DENSE.glob("*.json")):
         r = enrich(json.loads(p.read_text(encoding="utf-8")))
-        p.write_text(json.dumps(r, ensure_ascii=False, indent=1), encoding="utf-8")
-        (LABEL / p.name).write_text(json.dumps(label_input(r), ensure_ascii=False, indent=1), encoding="utf-8")
+        _write_inputs(p, r)
         vids.append(r)
     if not vids:
         print("private/slides_dense 비어 있음 — python -m ozl.analyze.slide_dense 먼저", file=sys.stderr)
@@ -179,4 +233,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main(sys.argv[1:]))
