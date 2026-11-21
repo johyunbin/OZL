@@ -153,7 +153,10 @@ def sample30(rows: list[dict]) -> pathlib.Path:
     return out
 
 
-def livemap(rows: list[dict]) -> pathlib.Path:
+def livemap(rows: list[dict]) -> pathlib.Path | None:
+    import os
+    from tempfile import NamedTemporaryFile
+
     tr_rows = list(csv.DictReader(EXPORT_IDX.open(encoding="utf-8"))) if EXPORT_IDX.exists() else []
     api_ids = {r["video_id"] for r in rows}
     lives = [{"video_id": r["video_id"], "published_kst": r["published_kst"], "duration_sec": r["duration_sec"], "title": r["title"], "src": "api"}
@@ -164,26 +167,36 @@ def livemap(rows: list[dict]) -> pathlib.Path:
     lives.sort(key=lambda r: r["published_kst"])
     clips = sorted([r for r in rows if r["kind"] == "video" and 600 <= r["duration_sec"] <= 3600], key=lambda r: r["published_kst"])
     out = META / "live_clip_map_syukaworld.csv"
-    n_map = 0
+    mappings = []
     per_live = Counter()
-    with out.open("w", newline="", encoding="utf-8") as f:
-        w = csv.writer(f)
-        w.writerow(["clip_id", "clip_published_kst", "clip_min", "clip_title", "live_id", "live_published_kst", "live_min", "days_after_live", "live_src"])
-        for c in clips:
-            cd = datetime.strptime(c["published_kst"], "%Y-%m-%d %H:%M")
-            prev = [l for l in lives if datetime.strptime(l["published_kst"][:16], "%Y-%m-%d %H:%M") <= cd]
-            if not prev:
-                continue
-            l = prev[-1]
-            ld = datetime.strptime(l["published_kst"][:16], "%Y-%m-%d %H:%M")
-            days = (cd - ld).days
-            if days > 8:
-                continue
-            w.writerow([c["video_id"], c["published_kst"], round(c["duration_sec"] / 60, 1), c["title"], l["video_id"], l["published_kst"], l["duration_sec"] // 60, days, l["src"]])
-            per_live[l["video_id"]] += 1
-            n_map += 1
+    for c in clips:
+        cd = datetime.strptime(c["published_kst"], "%Y-%m-%d %H:%M")
+        prev = [l for l in lives if datetime.strptime(l["published_kst"][:16], "%Y-%m-%d %H:%M") <= cd]
+        if not prev:
+            continue
+        live = prev[-1]
+        ld = datetime.strptime(live["published_kst"][:16], "%Y-%m-%d %H:%M")
+        days = (cd - ld).days
+        if days > 8:
+            continue
+        mappings.append([c["video_id"], c["published_kst"], round(c["duration_sec"] / 60, 1), c["title"],
+                         live["video_id"], live["published_kst"], live["duration_sec"] // 60, days, live["src"]])
+        per_live[live["video_id"]] += 1
+    if not mappings:
+        print("매핑 결과 0행 — 기존 파일을 그대로 둔다", file=sys.stderr)
+        return None
+    temp = NamedTemporaryFile("w", newline="", encoding="utf-8", dir=out.parent, delete=False)
+    try:
+        with temp as f:
+            writer = csv.writer(f)
+            writer.writerow(["clip_id", "clip_published_kst", "clip_min", "clip_title", "live_id",
+                             "live_published_kst", "live_min", "days_after_live", "live_src"])
+            writer.writerows(mappings)
+        os.replace(temp.name, out)
+    finally:
+        pathlib.Path(temp.name).unlink(missing_ok=True)
     recent = [l for l in lives if l["published_kst"] >= "2026-01"]
-    print(f"[livemap] lives={len(lives)} (api {sum(1 for l in lives if l['src']=='api')}, trading_only {sum(1 for l in lives if l['src']=='trading_only')}) · 2026 lives={len(recent)} · mapped clips={n_map} · clips/live(2026)={statistics.mean([per_live[l['video_id']] for l in recent]) if recent else 0:.1f}")
+    print(f"[livemap] lives={len(lives)} (api {sum(1 for l in lives if l['src']=='api')}, trading_only {sum(1 for l in lives if l['src']=='trading_only')}) · 2026 lives={len(recent)} · mapped clips={len(mappings)} · clips/live(2026)={statistics.mean([per_live[l['video_id']] for l in recent]) if recent else 0:.1f}")
     for l in recent[-6:]:
         print(f"  {l['video_id']} {l['published_kst'][:16]} {l['duration_sec']//60}분 clips={per_live[l['video_id']]} [{l['src']}] {l['title'][:50]}")
     return out
@@ -191,6 +204,9 @@ def livemap(rows: list[dict]) -> pathlib.Path:
 
 def main(argv: list[str]) -> int:
     cmd = argv[0] if argv else "all"
+    if cmd in ("-h", "--help"):
+        print(__doc__)
+        return 0
     if cmd in ("all", "catalog"):
         for h in HANDLES:
             rows = load(h)
@@ -200,7 +216,8 @@ def main(argv: list[str]) -> int:
     if cmd in ("all", "sample30"):
         sample30(load("syukaworld"))
     if cmd in ("all", "livemap"):
-        livemap(load("syukaworld"))
+        if livemap(load("syukaworld")) is None:
+            return 1
     return 0
 
 

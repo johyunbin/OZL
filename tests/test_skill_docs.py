@@ -23,7 +23,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 SKILLS = ROOT / ".claude" / "skills"
 DOCS = sorted(p for p in SKILLS.rglob("*") if p.is_file() and p.suffix in (".md", ".js"))
 # 스킬마다 첫머리 표에 있어야 하는 갈래
-BRANCHES = {"ozl": ["/ozl find", "/ozl make", "/ozl status"], "syuka": ["/syuka find", "/syuka deck", "/syuka ad"]}
+BRANCHES = {"ozl": ["/ozl find", "/ozl make", "/ozl status"], "syuka": ["/syuka find", "/syuka deck", "/syuka ad", "/syuka predict", "/syuka score"]}
 # --help 를 부를 때 주는 자료 루트. 도움말은 아무것도 쓰지 않아야 하므로 이 폴더는 끝까지 생기지 않는다.
 PROBE = pathlib.Path(tempfile.gettempdir()) / "ozl_skill_docs_probe_root"
 COLUMNS = ["언제 부르는가", "받는 것", "내는 것", "사용자가 하는 일", "스킬이 하는 일", "하지 않는 것"]
@@ -67,14 +67,15 @@ def doc_commands() -> list[tuple[str, str, str]]:
     return sorted(found)
 
 
-def doc_flags() -> list[tuple[str, str, str]]:
-    """명령 뒤에 같은 코드 조각 안에서 따라오는 긴 옵션(--이름). (모듈, 하위 명령, 옵션)"""
+def doc_flags() -> list[tuple[str, str, str, str]]:
+    """명령 뒤에 같은 코드 조각 안에서 따라오는 긴 옵션(--이름). (모듈, 하위 명령, 그 아래 명령 또는 "", 옵션)"""
     found = set()
     for p in DOCS:
         for line in text(p).splitlines():
             for m in CMD.finditer(line):
                 tail = line[m.end():].split("`", 1)[0]
-                found.update((m.group(1), m.group(2), f) for f in re.findall(r"(?<![\w-])(--[a-z][a-z-]*)", tail))
+                found.update((m.group(1), m.group(2), m.group(3) or "", f)
+                             for f in re.findall(r"(?<![\w-])(--[a-z][^\s=]*)", tail))
     return sorted(found)
 
 
@@ -118,10 +119,27 @@ def test_doc_command_exists_in_help(module, sub, sub2):
             assert sub2 in inner, f"{module} {sub} {sub2}: `python -m {module} {sub} --help` 에 없다"
 
 
-@pytest.mark.parametrize("module,sub,flag", doc_flags(), ids=str)
-def test_doc_command_option_exists_in_help(module, sub, flag):
-    assert re.search(rf"(?<![\w-]){re.escape(flag)}(?![\w-])", help_text(module, sub)), \
-        f"{module} {sub} {flag}: `python -m {module} {sub} --help` 에 없는 옵션이다"
+@pytest.mark.parametrize("module,sub,sub2,flag", doc_flags(), ids=lambda v: v or "-")
+def test_doc_command_option_exists_in_help(module, sub, sub2, flag):
+    # 그 아래 명령(예: score events)이 있으면 옵션은 그 명령의 도움말에 있다
+    argv = (module, sub, sub2) if sub2 and sub2 in choices(help_text(module, sub)) else (module, sub)
+    assert re.search(rf"(?<![\w-]){re.escape(flag)}(?![\w-])", help_text(*argv)), \
+        f"{' '.join(argv)} {flag}: `python -m {' '.join(argv)} --help` 에 없는 옵션이다"
+
+
+def test_flag_check_reads_whole_option_token(monkeypatch, tmp_path):
+    """옵션 이름은 토큰 전체로 읽는다: 숫자가 든 옵션은 통과하고, 그 뒤에 글자를 붙인 오타는 걸린다(그 아래 명령의 도움말에서 찾는다)."""
+    fake = tmp_path / "planted.md"
+    fake.write_text("`PY -m ozl.syuka score events P --from-v3 vidTEST0001 --from-v3_typo x --replace.typo`\n", encoding="utf-8")
+    monkeypatch.setattr(sys.modules[__name__], "DOCS", [fake])
+    found = doc_flags()
+    assert ("ozl.syuka", "score", "events", "--from-v3") in found
+    assert ("ozl.syuka", "score", "events", "--from-v3_typo") in found
+    assert ("ozl.syuka", "score", "events", "--replace.typo") in found
+    events_help = help_text("ozl.syuka", "score", "events")
+    assert re.search(r"(?<![\w-])--from-v3(?![\w-])", events_help)
+    assert not re.search(r"(?<![\w-])--from-v3_typo(?![\w-])", events_help)
+    assert not re.search(r"(?<![\w-])--replace\.typo(?![\w-])", events_help)
 
 
 def test_command_checks_catch_planted_errors():

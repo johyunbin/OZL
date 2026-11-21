@@ -11,11 +11,14 @@ from __future__ import annotations
 
 import csv
 import json
+import os
 import pathlib
 import re
 import statistics
 import sys
 from collections import defaultdict
+from contextlib import ExitStack
+from tempfile import NamedTemporaryFile
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 EXP = ROOT / "private" / "transcripts" / "trading_export" / "syuka"
@@ -113,25 +116,37 @@ def main() -> int:
                          "order_monotonic": f"{order_ok}/{max(0, len(starts) - 1)}",
                          "clip_total_min": round(sum(float(r["clip_min"]) for r in res)),
                          "span_total_min": round(sum(r["span_min"] or 0 for r in covered))})
-    with OUT_CSV.open("w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
-        w.writeheader()
-        w.writerows(rows)
+    if not rows:
+        print("정렬 결과 0행 — 기존 파일을 그대로 둔다", file=sys.stderr)
+        return 1
     covs = [r["coverage"] for r in rows]
     ctrls = [r["control_coverage"] for r in rows if r["control_coverage"] is not None]
+    first_starts = [p["first_start_min"] for p in per_live if p["first_start_min"] is not None]
     lines = ["# 라이브 풀버전 vs 주중 클립 — 정렬 집계 (2026)", "",
              f"- 대상: 라이브 {len(per_live)}회 · 클립 {len(rows)}편 · 셔글 {N}자(정규화) · 커버리지 = 클립 텍스트 중 라이브 전사에 존재하는 셔글 비율",
              f"- 커버리지 중앙값 {statistics.median(covs):.2f} · 평균 {statistics.mean(covs):.2f} · 0.3 이상 {sum(1 for c in covs if c >= 0.3)}/{len(covs)}편" if covs else "- 데이터 없음",
              f"- **대조군(직전 라이브) 커버리지** 중앙값 {statistics.median(ctrls):.2f} · 평균 {statistics.mean(ctrls):.2f} → 매핑 라이브가 대조군보다 높은 클립 {sum(1 for r in rows if r['control_coverage'] is not None and r['coverage'] > r['control_coverage'])}/{len(ctrls)}편" if ctrls else "- 대조군 없음",
              f"- 클립 합계 분량 / 라이브 분량 = {sum(p['clip_total_min'] for p in per_live)} / {sum(p['live_min'] for p in per_live)} 분",
              f"- 클립 업로드 순서가 라이브 진행 순서와 일치(단조): {sum(int(p['order_monotonic'].split('/')[0]) for p in per_live)}/{sum(int(p['order_monotonic'].split('/')[1]) for p in per_live)}",
-             f"- 첫 클립의 라이브 시작점(분) 중앙값: {statistics.median([p['first_start_min'] for p in per_live if p['first_start_min'] is not None]) if per_live else '-'} (도입·잡담 길이)",
+             f"- 첫 클립의 라이브 시작점(분) 중앙값: {statistics.median(first_starts) if first_starts else '-'} (도입·잡담 길이)",
              "", "| 라이브(KST) | 길이 | 클립 수 | 커버≥0.12 | 평균 커버 | 첫 클립 시작(분) | 순서 단조 | 클립 합계(분) | 라이브 내 구간 합계(분) |", "|---|---|---|---|---|---|---|---|---|"]
     for p in sorted(per_live, key=lambda x: x["live_id"]):
         lp = next((r["live_published_kst"] for r in rows if r["live_id"] == p["live_id"]), "")
         lines.append(f"| {lp[:10]} | {p['live_min']} | {p['clips']} | {p['covered']} | {p['mean_cov']} | {p['first_start_min']} | {p['order_monotonic']} | {p['clip_total_min']} | {p['span_total_min']} |")
     lines += ["", "해석: 라이브와 클립은 **각각 따로 전사**된 텍스트라 정확 셔글 일치는 STT 분산 때문에 ~25%에 머문다. 판정은 절대값이 아니라 **대조군(직전 라이브) 대비**로 한다 — 매핑 라이브 커버리지가 대조군(≈0.01)보다 10배 이상이면 '라이브에서 컷'. 클립 합계 분량이 라이브의 약 87%라는 점과 함께, 주중 클립은 일요 라이브 세그먼트를 편집한 것으로 본다. 라이브 내 구간 합계가 클립 합계보다 짧게 나오는 것은 매칭된 셔글의 5~95 백분위로 구간을 잡기 때문(과소 추정)."]
-    OUT_MD.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    with ExitStack() as cleanup:
+        with NamedTemporaryFile("w", dir=OUT_CSV.parent, newline="", encoding="utf-8", delete=False) as f:
+            csv_tmp = pathlib.Path(f.name)
+            cleanup.callback(csv_tmp.unlink, missing_ok=True)
+            writer = csv.DictWriter(f, fieldnames=rows[0])
+            writer.writeheader()
+            writer.writerows(rows)
+        with NamedTemporaryFile("w", dir=OUT_MD.parent, encoding="utf-8", delete=False) as f:
+            md_tmp = pathlib.Path(f.name)
+            cleanup.callback(md_tmp.unlink, missing_ok=True)
+            f.write("\n".join(lines) + "\n")
+        os.replace(csv_tmp, OUT_CSV)
+        os.replace(md_tmp, OUT_MD)
     print("\n".join(lines[:8]))
     return 0
 
