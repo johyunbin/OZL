@@ -4,7 +4,8 @@
     python -m ozl.render progress <card_id> --start [--by 이름] [--force]    # 시작
     python -m ozl.render progress <card_id> --resume [--by 이름] [--force]   # 끊긴 진행을 이어 받기
     python -m ozl.render progress <card_id> --mark <단계> [--by 이름] [--note 글] [--spec 사양.yaml]
-    python -m ozl.render progress <card_id> --done --final <완성본 폴더> [--by 이름] [--note 글] [--force]
+    python -m ozl.render progress <card_id> --mark 게이트 --spec <새 사양> --carry 검토 --reason "<의미를 바꾸지 않은 까닭>"
+    python -m ozl.render progress <card_id> --done --final <완성본 폴더> [--spec <최종 사양>] [--by 이름] [--note 글] [--force]
     python -m ozl.render progress <card_id> --abandon [--by 이름] [--note 사유] [--force]
 
 자리 = private/desk/builds/<card_id>/state.yaml(비공개 백업 대상). 단계마다 카드·기록 지문(cards.content_digest)과,
@@ -16,7 +17,13 @@
 - 임대가 살아 있는 동안 다른 이름(--by)으로는 이어 받기·단계 표시·완성을 받지 않는다(--force 로만). 만료된 기록에
   단계를 적으려면 먼저 --resume 한다 — 죽은 줄 알았던 세션과 새 세션이 같은 카드를 함께 고치지 않게(2026-11-13 점검).
 - --done 은 산출 앞의 단계(명제 … 재확인)를 이번 회차에 모두 지났을 때만 받는다(--force 로만 예외).
+- 이번 회차의 검토·빌드·게이트·재확인 중 사양 해시가 하나라도 있으면 --done 에는 --spec 이 필요하다. 최종 사양에서 큰 오류 없는
+  검토와 빌드 → 게이트 → 재확인의 마지막 기록 순서를 확인한다. 재확인 뒤 카드·기록 지문이 바뀌어도 거부한다(--force 로만 예외).
+  게이트에서 사유와 함께 이번 회차의 큰 오류 없는 검토만 이어받을 수 있다. 빌드·게이트·재확인은 최종 사양으로 다시 한다.
+  해시 없는 옛 회차는 종전처럼 완성한다. 상태 조회에 --spec 을 주면 해당 파일, 없으면 완성 시의 사양 또는 마지막 검토를 기준으로 비교한다.
 - 덱 빌드(`python -m ozl.render build`)는 한 편에 여러 번 부르므로 막지 않는다 — 진행 기록은 절차 단위의 상태다.
+- 알려진 한계: 같은 산출 폴더에서 두 빌드를 동시에 돌리거나 검사 도중 사양 파일을 바꾸는 것은 막지 못한다.
+  한 카드는 한 세션만 임대로 잡고 그 세션에서 빌드와 검사를 차례로 한다.
 - 판 상한(설계 5-7절): 검토는 3판(MAX_ROUNDS)까지다. '검토' 단계 기록에 큰 오류(major — 숫자 검사 실패, 근거 없는 사실 문장으로 기록된
   지적, 넘침이나 빈칸)를 남긴다. `--mark 검토 --spec 사양.yaml` 이면 그 사양을 엄격 모드로 검사한 실패를 큰 오류로 함께 적고(spec_major),
   문장 대조가 찾은 근거 없는 사실 문장은 `--major "글"`(여러 번)로 적는다. 판 = 이번 회차 '검토' 기록의 서로 다른 사양 sha256 수.
@@ -28,6 +35,7 @@ from __future__ import annotations
 import contextlib
 import fcntl
 import hashlib
+import json
 import os
 import pathlib
 import sys
@@ -46,6 +54,7 @@ INCOMPLETE = "미완성"
 MAX_ROUNDS = 3                 # 검토 판 상한
 ROUND_STEP = "검토"            # 판을 세는 단계
 MAJOR_STEPS = ("검토", "게이트")  # 큰 오류(major)를 남기는 단계
+GATED = ("검토", "빌드", "게이트", "재확인")
 
 
 def now() -> datetime:
@@ -214,8 +223,37 @@ def spec_major(spec_path: str) -> list[str]:
         return [f"검사를 돌리지 못했다({type(e).__name__}): {e}"]
 
 
+def _spec_hash(spec: str) -> str:
+    path = pathlib.Path(spec)
+    if not path.is_file():
+        raise ValueError(f"사양 파일이 없다: {spec}")
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _spec_digest(spec: dict, card_digest: str) -> str:
+    """카드 지문과 인용한 정본 파일의 바이트를 묶는다. 아직 없는 기록도 이후 등장을 감지한다."""
+    from ozl.render import spec as S
+    refs = {}
+    for cid in S.cited_ids(spec, all_refs=True):
+        checksum = None
+        if C.CLAIM_ID.fullmatch(cid):
+            path = C.claim_path(cid)
+            if not path.is_symlink() and path.is_file() and C.CLAIMS.resolve() in path.resolve().parents:
+                checksum = hashlib.sha256(path.read_bytes()).hexdigest()
+        refs[cid] = checksum
+    return hashlib.sha256(json.dumps([card_digest, refs], sort_keys=True).encode()).hexdigest()
+
+
+def _latest_reviews(steps: list[dict]) -> dict[str, dict]:
+    reviews = {}
+    for s in reversed(steps):
+        if s["step"] == ROUND_STEP and s.get("spec_sha256"):
+            reviews.setdefault(s["spec_sha256"], s)
+    return reviews
+
+
 def _mark_unlocked(card_id: str, step: str, note: str, spec: str | None, at: datetime, by: str = "", force: bool = False,
-                   major: list[str] | None = None) -> dict:
+                   major: list[str] | None = None, carry: str | None = None, reason: str = "") -> dict:
     if step not in STEPS:
         raise ValueError(f"단계 이름은 {', '.join(STEPS)} 가운데 하나다: {step!r}")
     st = load(card_id)
@@ -228,13 +266,35 @@ def _mark_unlocked(card_id: str, step: str, note: str, spec: str | None, at: dat
         raise ValueError(f"{card_id}: {why}")
     rec = {"step": step, "at": _iso(at), "note": note, "digest": digest(card_id)}
     if spec:
-        sp = pathlib.Path(spec)
-        if not sp.is_file():
+        path = pathlib.Path(spec)
+        if not path.is_file():
             raise ValueError(f"사양 파일이 없다: {spec}")
-        rec["spec"] = sp.name
-        rec["spec_sha256"] = hashlib.sha256(sp.read_bytes()).hexdigest()
+        raw = path.read_bytes()
+        try:
+            parsed = yaml.safe_load(raw)
+        except yaml.YAMLError as exc:
+            raise ValueError(f"사양의 card_id를 읽을 수 없다: {path}") from exc
+        if not isinstance(parsed, dict) or parsed.get("card_id") != card_id or st.get("card_id") != card_id:
+            raise ValueError(f"사양의 card_id가 진행 기록의 카드와 일치하지 않는다: {card_id}")
+        rec["spec"] = path.name
+        rec["spec_sha256"] = hashlib.sha256(raw).hexdigest()
+        rec["spec_digest"] = _spec_digest(parsed, rec["digest"])
+    if carry is not None:
+        if step != "게이트" or carry != ROUND_STEP or not spec:
+            raise ValueError("--carry 는 --mark 게이트 --spec <사양> 에서 검토만 이어받을 수 있다")
+        if not reason.strip():
+            raise ValueError("--carry 검토에는 의미를 바꾸지 않은 까닭(--reason)이 필요하다")
+        reviews = _latest_reviews(run_steps(st))
+        previous = next((s for s in reviews.values() if not s.get("major")), None)
+        if not previous:
+            raise ValueError("이번 회차에 이어받을 사양 해시와 큰 오류 없는 검토 기록이 없다")
+        rec.update(carried={ROUND_STEP: previous["spec_sha256"]}, carry_reason=reason.strip())
+    elif reason:
+        raise ValueError("--reason 은 --carry 검토와 함께 쓴다")
     if step in MAJOR_STEPS and (spec or major is not None):
         rec["major"] = (spec_major(spec) if spec else []) + [str(x) for x in major or []]
+        if spec and _spec_hash(spec) != rec["spec_sha256"]:
+            raise ValueError("검사 중에 사양이 바뀌었다 — 단계를 다시 적는다")
     st.setdefault("steps", []).append(rec)
     _renew(st, at)
     n = rounds(st)
@@ -247,28 +307,98 @@ def _mark_unlocked(card_id: str, step: str, note: str, spec: str | None, at: dat
 
 
 def mark(card_id: str, step: str, note: str = "", spec: str | None = None, at: datetime | None = None, by: str = "",
-         force: bool = False, major: list[str] | None = None) -> dict:
+         force: bool = False, major: list[str] | None = None, carry: str | None = None, reason: str = "") -> dict:
     """major = 이 단계가 찾은 큰 오류(검토 · 게이트). spec 을 주면 그 사양의 엄격 검사 실패를 더해 적는다."""
     with _locked(card_id):
-        st = _mark_unlocked(card_id, step, note, spec, at or now(), by, force, major)
+        st = _mark_unlocked(card_id, step, note, spec, at or now(), by, force, major, carry, reason)
         save(card_id, st)
         return st
 
 
-def done(card_id: str, final: str, note: str = "", at: datetime | None = None, by: str = "", force: bool = False) -> dict:
+def _check_final_steps(steps: list[dict], final_record: dict) -> None:
+    """시각이 아니라 이번 회차에 단계를 덧붙인 순서로 판정한다."""
+    final_hash = final_record.get("spec_sha256")
+    if not final_hash:
+        raise ValueError("이번 회차에 사양 해시가 있다 — --done 에 --spec <최종 사양>이 필요하다")
+    latest = {s["step"]: i for i, s in enumerate(steps) if s.get("spec_sha256") == final_hash}
+    redo = []
+    previous = -1
+    for step in GATED[1:]:
+        i = latest.get(step, -1)
+        if redo or i <= previous or steps[i].get("major"):
+            redo.append(step)
+        previous = i
+
+    reviews = _latest_reviews(steps)
+    review = reviews.get(final_hash)
+    if review is None and "게이트" not in redo:
+        gate_index = latest["게이트"]
+        gate = steps[gate_index]
+        source = (gate.get("carried") or {}).get(ROUND_STEP)
+        before = _latest_reviews(steps[:gate_index]).get(source)
+        reason = gate.get("carry_reason")
+        if before and not before.get("major") and isinstance(reason, str) and reason.strip():
+            review = reviews[source]
+    if review is None or review.get("major"):
+        redo.insert(0, ROUND_STEP)
+    if redo:
+        raise ValueError("다시 돌 게이트: " + " → ".join(redo))
+    recheck = steps[latest["재확인"]]
+    if not recheck.get("spec_digest"):
+        raise ValueError("최종 사양의 재확인 기록에 spec_digest가 없다 — 재확인을 다시 한다")
+    if recheck["spec_digest"] != final_record["spec_digest"]:
+        raise ValueError("재확인 뒤에 카드나 기록이 바뀌었다")
+
+
+def _matches_final(folder: pathlib.Path, sha: str) -> bool:
+    """폴더 바로 아래의 빌드 메타가 우선이다. 메타가 없을 때만 사양 사본 전부를 대조한다."""
+    from ozl.render.pictures import file_sha256
+
+    if folder.is_symlink():
+        return False
+    path = folder / "build_meta.json"
+    try:
+        if path.is_symlink():
+            return False
+        if path.exists():
+            if not path.is_file():
+                return False
+            meta = json.loads(path.read_bytes())
+            if not isinstance(meta, dict) or meta.get("spec_sha256") != sha or meta.get("draft") is not False:
+                return False
+            name = meta.get("pptx")
+            if not isinstance(name, str) or pathlib.Path(name).name != name or not name.lower().endswith(".pptx"):
+                return False
+            pptx = folder / name
+            return not pptx.is_symlink() and pptx.is_file() and file_sha256(pptx) == meta.get("pptx_sha256")
+        copies = [p for p in folder.iterdir() if p.suffix == ".yaml" and not p.is_symlink() and p.is_file()]
+        return bool(copies) and all(file_sha256(p) == sha for p in copies)
+    except (OSError, ValueError):
+        return False
+
+
+def done(card_id: str, final: str, note: str = "", at: datetime | None = None, by: str = "", force: bool = False,
+         spec: str | None = None) -> dict:
     if not pathlib.Path(final).is_dir():
         raise ValueError(f"완성본 폴더가 없다: {final}")
     with _locked(card_id):   # 단계 기록과 상태 바꿈을 한 번에 저장한다
         if not force:
             cur = load(card_id)
-            passed = {s["step"] for s in run_steps(cur)}
-            missing = [s for s in STEPS[:-1] if s not in passed]
+            steps = run_steps(cur)
+            hashed = any(s["step"] in GATED and s.get("spec_sha256") for s in steps)
+            passed = {s["step"] for s in steps}
+            missing = [s for s in STEPS[:-1] if s not in passed and not (hashed and s in GATED)]
             if missing:
                 raise ValueError(f"{card_id}: 아직 지나지 않은 단계가 있다({' → '.join(missing)}) — 완성으로 적지 않는다(--force 로만)")
             left = major_left(cur)
             if left:
                 raise ValueError(f"{card_id}: 큰 오류 {len(left)}건이 남았다(첫째: {left[0]}) — 완성으로 적지 않는다(--force 로만)")
-        st = _mark_unlocked(card_id, "산출", note or "완성본", None, at or now(), by, force)
+        st = _mark_unlocked(card_id, "산출", note or "완성본", spec, at or now(), by, force)
+        if not force and hashed:
+            record = st["steps"][-1]
+            _check_final_steps(steps, record)
+            if not _matches_final(pathlib.Path(final), record["spec_sha256"]):
+                raise ValueError(f"완성본 폴더의 빌드 메타와 pptx 또는 사양 사본이 최종 사양의 엄격판을 증명하지 못한다: {final}")
         st.update({"status": DONE, "final": str(final), "lease_until": ""})
         save(card_id, st)
         return st
@@ -289,7 +419,7 @@ def abandon(card_id: str, note: str = "", at: datetime | None = None, by: str = 
         return st
 
 
-def summary(st: dict, card_id: str) -> str:
+def summary(st: dict, card_id: str, spec: str | None = None) -> str:
     if not st:
         return f"{card_id}: 진행 기록 없음"
     steps = run_steps(st)
@@ -305,6 +435,19 @@ def summary(st: dict, card_id: str) -> str:
     left = major_left(st)
     if n or left:
         lines.append(f"검토 {n}판/{MAX_ROUNDS}판 · 남은 큰 오류 {len(left)}건" + (f" — {left[0]}" if left else ""))
+    latest = {s["step"]: s for s in steps}
+    if spec or any(s.get("spec_sha256") for s in steps if s["step"] in GATED):
+        reference = _spec_hash(spec) if spec else None
+        if not reference and st.get("status") == DONE:
+            reference = latest.get("산출", {}).get("spec_sha256")
+        if not reference:
+            reference = latest.get(ROUND_STEP, {}).get("spec_sha256")
+            if reference:
+                lines.append("최종 사양이 지정되지 않아 마지막 검토 기록과 비교한다")
+        for step in GATED:
+            sha = latest.get(step, {}).get("spec_sha256")
+            state = "비교 불가" if not sha or not reference else ("최종 사양과 같음" if sha == reference else "최종 사양과 다름")
+            lines.append(f"{step}: {sha[:10] if sha else '해시 없음'} · {state}")
     passed = [s["step"] for s in steps]
     rest = [s for s in STEPS if s not in passed]
     if st.get("status") == IN_PROGRESS and rest:
@@ -325,11 +468,15 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--by", default="")
     ap.add_argument("--note", default="")
     ap.add_argument("--spec")
+    ap.add_argument("--carry", choices=[ROUND_STEP])
+    ap.add_argument("--reason", default="")
     ap.add_argument("--final")
     ap.add_argument("--force", action="store_true")
     ap.add_argument("--major", action="append", default=None, help="검토·게이트가 찾은 큰 오류(여러 번). --spec 을 주면 그 사양의 엄격 검사 실패도 더해 적는다")
     a = ap.parse_args(argv)
     try:
+        if (a.carry or a.reason) and not a.mark:
+            raise ValueError("--carry 와 --reason 은 --mark 게이트에서 쓴다")
         if a.start:
             st = start(a.card_id, a.by, a.force)
         elif a.resume:
@@ -337,15 +484,17 @@ def main(argv: list[str]) -> int:
             print(text)
             return 0
         elif a.mark:
-            st = mark(a.card_id, a.mark, a.note, a.spec, by=a.by, force=a.force, major=a.major)
+            st = mark(a.card_id, a.mark, a.note, a.spec, by=a.by, force=a.force, major=a.major, carry=a.carry, reason=a.reason)
         elif a.done:
             if not a.final:
                 raise ValueError("--done 에는 --final <완성본 폴더> 가 있어야 한다")
-            st = done(a.card_id, a.final, a.note, by=a.by, force=a.force)
+            st = done(a.card_id, a.final, a.note, by=a.by, force=a.force, spec=a.spec)
         elif a.abandon:
             st = abandon(a.card_id, a.note, by=a.by, force=a.force)
         else:
             st = load(a.card_id)
+            print(summary(st, a.card_id, a.spec))
+            return 0
     except ValueError as e:
         print(f"[progress] {e}", file=sys.stderr)
         return 1

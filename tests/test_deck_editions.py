@@ -592,7 +592,8 @@ def test_plain_spec_build_is_unchanged(desk, arts, tmp_path):
     ts = d.name[len(CARD) + 1:]
     assert "editions" not in info and "edition" not in info and "registered" not in info and "spec" not in info
     assert {x.name for x in d.iterdir()} == {f"{d.name}.pptx", f"running_sheet_{ts}.md", f"그림_검수대장_{ts}.md", f"그림_검수대장_{ts}.json",
-                                             PIC.PUBLIC_FILE, f"links_{ts}.md", f"links_{ts}.csv"}
+                                             PIC.PUBLIC_FILE, f"links_{ts}.md", f"links_{ts}.csv",
+                                             "build_meta.json"}   # 2026-11-21: 완성 표시(--done --spec)가 폴더와 사양 해시를 대조하려고 빌드가 남긴다
     st = json.loads((d / PIC.PUBLIC_FILE).read_text(encoding="utf-8"))
     assert list(st) == ["card_id", "built_at", "draft", "public_ok", "blocking", "pictures", "rule", "keywords"] and st["keywords"] == ""
     assert list(json.loads((d / f"그림_검수대장_{ts}.json").read_text(encoding="utf-8"))) == ["card_id", "built_at", "draft", "pictures", "public"]

@@ -225,6 +225,7 @@ KIND_RULES: dict[str, Rule] = {
     "AI 개념도": Rule(USE, "사람이 없는 개념도만", mark=AI_MARK, needs=AI_FIELDS),
     "밈": Rule(DRAFT_ONLY, "원출처와 라이선스가 확인된 것만, 연습용 판에서만", needs=ORIGIN + CONTEXT),
     "통신사·언론사 사진": Rule(PRIVATE_ONLY, "보도 사진 — " + PRIVATE_NOTE, as_is=True, credit=True, needs=ORIGIN + CONTEXT),
+    "보도자료 첨부(유형 표시 없음)": Rule(PRIVATE_ONLY, "공공누리 유형 표시가 없는 정부·공공기관 보도자료 첨부 그림 — " + PRIVATE_NOTE, as_is=True, credit=True),
     "화제 그림": Rule(PRIVATE_ONLY, "널리 퍼진 그림(밈이 아닌 화제의 사진·그림) — " + PRIVATE_NOTE, as_is=True, credit=True, needs=ORIGIN + CONTEXT),
     "공공누리 2유형": Rule(PRIVATE_ONLY, "상업적 이용 금지 조건 — " + PRIVATE_NOTE, credit=True, license_has=("2유형",)),
     "공공누리 4유형": Rule(PRIVATE_ONLY, "상업적 이용과 변경 금지 조건 — " + PRIVATE_NOTE, as_is=True, credit=True, license_has=("4유형",)),

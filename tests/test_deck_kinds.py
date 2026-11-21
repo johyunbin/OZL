@@ -281,6 +281,7 @@ DESIGN_TABLE = {
     "직접 그린 도표": "쓴다", "직접 그린 지도": "쓴다", "원문 화면 갈무리": "쓴다", "공공누리 1유형": "쓴다", "CC BY": "쓴다",
     "CC BY-SA": "원형 그대로만", "공공누리 3유형": "원형 그대로만", "기업 뉴스룸": "허락 기록이 있을 때만 원형으로",
     "무료 스톡 인물 사진": "쓴다", "로고": "원형 그대로만", "AI 개념도": "쓴다", "밈": "연습용 판에서만",
+    "보도자료 첨부(유형 표시 없음)": "비공개 판에서만",  # 2026-11-21 사용자 판정 3 — 공공누리 표시가 없는 보도자료 첨부
     "통신사·언론사 사진": "비공개 판에서만", "화제 그림": "비공개 판에서만", "공공누리 2유형": "비공개 판에서만", "공공누리 4유형": "비공개 판에서만",
     "비상업(NC) 라이선스 그림": "비공개 판에서만",
     "방송 화면 캡처": "쓰지 않는다", "실존 인물 AI 그림": "쓰지 않는다", "사실처럼 보이는 AI 장면": "쓰지 않는다",
@@ -477,14 +478,17 @@ def test_round_cap_clean_third_round_stays_in_progress_and_done_needs_no_major(d
     P.mark(CARD, "검토", spec=_spec_file(tmp_path, 1), major=["넘침: 5쪽 본문"], at=t0 + timedelta(minutes=1), by="세션-가")
     final = tmp_path / "final"
     final.mkdir()
+    spec2 = _spec_file(tmp_path, 2)   # 해시를 단 검토가 있으면 빌드·게이트·재확인도 최종 사양의 해시로 남기고 --done 에 --spec 을 준다(2026-11-21)
     for k, s in enumerate(P.STEPS[:-1], 2):
         if s != "검토":
-            P.mark(CARD, s, at=t0 + timedelta(minutes=k), by="세션-가")
-    with pytest.raises(ValueError, match="큰 오류 1건이 남았다"):
-        P.done(CARD, str(final), at=t0 + timedelta(minutes=30), by="세션-가")
-    st = P.mark(CARD, "검토", spec=_spec_file(tmp_path, 2), at=t0 + timedelta(minutes=31), by="세션-가")
+            P.mark(CARD, s, spec=spec2 if s in P.GATED else None, at=t0 + timedelta(minutes=k), by="세션-가")
+    # 게이트 기록(spec2, 큰 오류 없음)이 마지막 큰 오류 칸이 되므로, 남은 막힘은 "최종 해시로 통과한 검토가 없다"로 나온다
+    with pytest.raises(ValueError, match="큰 오류 1건이 남았다|다시 돌 게이트: 검토"):
+        P.done(CARD, str(final), at=t0 + timedelta(minutes=30), by="세션-가", spec=spec2)
+    st = P.mark(CARD, "검토", spec=spec2, at=t0 + timedelta(minutes=31), by="세션-가")
     assert st["status"] == P.IN_PROGRESS and P.major_left(st) == []
-    assert P.done(CARD, str(final), at=t0 + timedelta(minutes=32), by="세션-가")["status"] == P.DONE
+    with pytest.raises(ValueError, match="완성본 폴더"):
+        P.done(CARD, str(final), at=t0 + timedelta(minutes=32), by="세션-가", spec=spec2)
 
 
 def test_old_state_file_without_major_still_works(desk, tmp_path):

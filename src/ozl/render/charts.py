@@ -37,6 +37,7 @@ from __future__ import annotations
 import math
 import pathlib
 import re
+import unicodedata
 from decimal import Decimal, InvalidOperation
 
 import matplotlib
@@ -187,8 +188,9 @@ def _label(pt) -> str | None:
     return None
 
 
-# [부호] 숫자(쉼표 자릿점 허용)[.소수] 또는 소수점 앞자리를 생략한 꼴(.5 · -.5) — 숫자는 ASCII 만(전각·다른 문자 체계의 숫자는 꼴이 아니다)
-_DISPLAY = re.compile(r"^([+\-−]?(?:(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?|\.\d+))\s*([^\d]*)$", re.ASCII)
+# [부호][통화 기호 하나] 숫자(쉼표 자릿점 허용)[.소수] 또는 소수점 앞자리를 생략한 꼴(.5 · -.5) — 숫자는 ASCII 만(전각·다른 문자 체계의 숫자는 꼴이 아니다).
+# 통화 기호($ € £ ¥ ₩)는 미국·유럽 원문이 금액 앞에 붙여 적는 표기('$61.5')를 그대로 꼬리표로 쓰려는 것이다(2026-11-21). 수의 값에는 들지 않는다.
+_DISPLAY = re.compile(r"^([+\-−]?)([$€£¥₩]?)((?:(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?|\.\d+))\s*([^\d]*)$")
 
 
 def _decimal_of(v) -> Decimal | None:
@@ -209,11 +211,19 @@ def _decimal_of(v) -> Decimal | None:
 def _display_matches(display: str, value) -> bool | None:
     """표시 문자열이 '[부호]숫자(쉼표 허용)[.소수]'(또는 .5 · -.5) 뒤에 숫자 없는 단위 꼬리만 붙은 꼴(4명 · 123.93 · 1,644,131 · -70.9% · .5%)이면
     그 수가 좌표값과 Decimal 로 정확히 같은지. 그 꼴이 아니면(1억 2,345 · 약 4명) None — 검사가 오류로 본다(표시 문자열로 실제 값을 숨기지 못하게)."""
+    currencies = [ch for ch in display if unicodedata.category(ch) == "Sc"]
+    if len(currencies) > 1:
+        return None
     m = _DISPLAY.match(display.strip())
-    if not m or any(ch.isnumeric() for ch in m.group(2)):
+    if not m or any(ch.isnumeric() for ch in m.group(4)) or not m.group(3).isascii():
         return None   # 단위 꼬리에 수의 성질을 가진 글자(½ ¾ ² ① 전각 숫자 …)가 있으면 값과 같은지 판정할 수 없다
+    if currencies:
+        tail = m.group(4)
+        signs = ("-", "−", "－", "+", "＋")
+        if tail.startswith(signs) or tail.replace(currencies[0], "").strip() in signs:
+            return None  # 금액 뒤의 부호는 단위가 이어져도 숫자에서 떼어 낼 수 없다.
     try:
-        shown = Decimal(m.group(1).replace(",", "").replace("−", "-"))
+        shown = Decimal((m.group(1) + m.group(3)).replace(",", "").replace("−", "-"))
     except InvalidOperation:
         return None
     want = _decimal_of(value)

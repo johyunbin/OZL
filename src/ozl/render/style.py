@@ -35,6 +35,8 @@ import math
 import pathlib
 import re
 import sys
+from collections import Counter
+from statistics import mean, median
 
 import yaml
 
@@ -65,6 +67,13 @@ SPEAK_CHARS_PER_MIN = 300            # build.SPEAK_CHARS_PER_MIN 과 같다
 SPEAK_SLACK = 1.3
 TEXT_ONLY_SRC = LAYOUT_SHARE["text_only"]
 TEXT_ONLY_MAX = 0.20
+# NORMS_FILE에는 편별 장 모양이 없다. 10%는 원본 비교표의 글만 장 4.7%의 약 두 배이며, 확인 덱 반려 판정에서 정한 상한이다.
+V1_TEXT_ONLY_MAX = 0.10
+V1_PICTURE_MIN = 0.90
+V1_COUNT_TOL = 0.15
+V1_TIME_TOL = 0.10
+V1_FULL_OR_PAIR_FROM = 30
+V1_RIGHT_FROM = 40
 COMPARE_TABLE_MAX = 0.05
 LAYOUT_TOL = {"image_left": 0.30}    # 그 밖의 모양은 LAYOUT_TOL_DEFAULT
 LAYOUT_TOL_DEFAULT = 0.15
@@ -94,14 +103,17 @@ KIND_LAYOUT = {
     "full_picture": "media", "image_stack": "image_stack", "image_pair": "image_pair",
     "closing": "text_only", "quote_line": "text_only", "compare_table": "text_only", "title_hook": "text_only",
 }
-SLOT_OPTIONAL = ("image_text", "number", "quote_translation")   # 그림 자리를 비울 수 있는 종류
+SLOT_OPTIONAL = S.SIDE_KINDS   # 그림 자리를 비울 수 있는 종류
 BODY_BOXES = ("본문", "원문·번역", "표 아래 글", "숫자 설명")    # 본문 줄 수를 세는 글상자(build.plan_slide 의 이름)
 
 
 def layout_of(sl: dict) -> str:
     k = sl.get("kind")
-    if k in SLOT_OPTIONAL and not S.visual_of(sl):
-        return "text_only"
+    if k in SLOT_OPTIONAL:
+        if not S.visual_of(sl):
+            return "text_only"
+        if sl.get("side") == "right":
+            return "image_right"
     return KIND_LAYOUT.get(k, "text_only")
 
 
@@ -158,6 +170,11 @@ def title_warnings(slides: list[dict]) -> list[str]:
     return warns
 
 
+def _positive_time(value) -> bool:
+    # math.isfinite 는 float 로 옮길 수 없는 큰 정수에서 예외를 낸다.
+    return type(value) in (int, float) and 0 < value <= sys.float_info.max
+
+
 def style_check(spec: dict) -> tuple[list[str], list[str]]:
     """style: syuka 사양의 장수·장당 초·장 모양 검사 — (실패, 경고)."""
     errs: list[str] = []
@@ -171,7 +188,7 @@ def style_check(spec: dict) -> tuple[list[str], list[str]]:
         if sec is None:
             errs.append(f"{i}쪽: seconds(이 장에서 말할 초)가 없다 — style: syuka 는 장마다 적는다")
             continue
-        if not isinstance(sec, (int, float)) or isinstance(sec, bool) or not math.isfinite(sec) or sec <= 0:
+        if not _positive_time(sec):
             errs.append(f"{i}쪽: seconds '{sec}' 는 양수여야 한다")
             continue
         secs.append(sec)
@@ -185,7 +202,7 @@ def style_check(spec: dict) -> tuple[list[str], list[str]]:
         if ch > cap:
             warns.append(f"{i}쪽: 말로 할 문장 {ch}자 — {sec:g}초에 말할 수 있는 양({sec / 60 * SPEAK_CHARS_PER_MIN:.0f}자)의 {SPEAK_SLACK}배를 넘는다")
     if secs and len(secs) == len(slides):
-        avg = sum(secs) / len(secs)
+        avg = mean(secs) if spec.get("template") == "v1" else sum(secs) / len(secs)
         lo, hi = SEC_PER_SLIDE_RANGE
         if not lo <= avg <= hi:
             errs.append(f"본편 장당 평균 {avg:.1f}초 — 원본 편별 범위 {lo}~{hi}초 밖이다(원본 {NORMS_VIDEOS}편 중앙값 {SEC_PER_SLIDE_MEDIAN}초)")
@@ -207,8 +224,106 @@ def style_check(spec: dict) -> tuple[list[str], list[str]]:
     return errs, warns
 
 
+def template_v1_check(spec: dict, draft: bool = False, *, sponsor: dict | None = None) -> tuple[list[str], list[str], list[str]]:
+    """판 하나의 검사. 본편 장수와 본편에 필요한 모양만 광고를 빼고, 시간·비율·그림 수는 비교표처럼 전체 장에서 잰다."""
+    from ozl.render import pictures as PIC
+
+    errs, warns = [], []
+    if spec.get("style") != "syuka":
+        errs.append("template: v1 에는 style: syuka 가 필요하다")
+    slides = []
+    counts = Counter()
+    main_layouts = []
+    # 단독 호출도 check와 같은 광고 판정을 쓴다.
+    if sponsor is None:
+        sponsor = S.sponsor_info(spec) or {}
+    ad_pages = set(sponsor.get("pages", []))
+    pages = spec.get("slides") or []
+    for page, sl in enumerate(pages, 1):
+        if not isinstance(sl, dict):
+            continue
+        slides.append(sl)
+        layout = layout_of(sl)
+        if layout == "image_pair":
+            slots = [v for _, v in S.slot_views(sl) if S.visual_of(v)]
+            if len(slots) != 2:
+                layout = "image_pair_partial" if slots else "text_only"
+        counts[layout] += 1
+        if page not in ad_pages:
+            main_layouts.append(layout)
+    main_count = len(main_layouts)
+    n = len(slides)
+    secs = [sl.get("seconds") for sl in slides]
+    timed = bool(secs) and all(_positive_time(s) for s in secs)
+    elapsed = None
+    if timed:
+        try:
+            elapsed = math.fsum(secs)
+        except OverflowError:
+            timed = False
+            errs.append("전체 seconds 합을 유한한 초로 나타낼 수 없다")
+    whole_ad = sponsor.get("whole")
+    count_for_target = n if whole_ad else main_count
+    count_label = "전체" if whole_ad else "본편"
+    target = None
+    minutes = spec.get("minutes")
+    planned = float(minutes) * 60 if _positive_time(minutes) else 0
+    if not planned or not math.isfinite(planned):
+        errs.append("minutes(발표 시간, 분)는 초로 나타낼 수 있는 유한한 양수여야 한다")
+    else:
+        target = max(1, round(planned / TARGET_SEC_PER_SLIDE))
+        if abs(count_for_target - target) > target * V1_COUNT_TOL:
+            errs.append(f"{count_label} {count_for_target}장 — 목표 {target}장의 ±{V1_COUNT_TOL:.0%} 밖이다")
+        if elapsed is not None:
+            # 분 → 초에서 생긴 부동소수점 한 자리 차이로 ±10% 경계값을 거부하지 않는다.
+            low = math.nextafter(planned * (1 - V1_TIME_TOL), -math.inf)
+            high = math.nextafter(planned * (1 + V1_TIME_TOL), math.inf)
+            if not low <= elapsed <= high:
+                errs.append(f"전체 seconds 합 {elapsed:g}초 — 발표 시간 {planned:g}초의 ±{V1_TIME_TOL:.0%} 밖이다")
+
+    text = counts["text_only"]
+    if n and text / n > V1_TEXT_ONLY_MAX:
+        errs.append(f"글만 있는 장 {text}/{n}장 — 상한 {V1_TEXT_ONLY_MAX:.0%}를 넘는다")
+    if n and (n - text) / n < V1_PICTURE_MIN:
+        errs.append(f"그림 든 장 {n - text}/{n}장 — 하한 {V1_PICTURE_MIN:.0%}에 못 미친다")
+    if main_count >= V1_FULL_OR_PAIR_FROM and not ("image_full" in main_layouts or "image_pair" in main_layouts):
+        errs.append(f"본편 {main_count}장에 그림 위주(image_full) 또는 그림 2장(image_pair)이 한 장도 없다")
+    if main_count >= V1_RIGHT_FROM and "image_right" not in main_layouts:
+        warns.append(f"본편 {main_count}장에 우 그림 + 좌 글(image_right)이 없다")
+
+    pics, _ = PIC.ledger(spec)
+    screen_kinds = {PIC.SCREEN, "보도자료 첨부(유형 표시 없음)"}
+    screen_kinds.update(k for k in PIC.KIND_RULES if k.startswith("공공누리 "))
+    captures = screens = 0
+    for i, sl in enumerate(slides, 1):
+        slots = [v for _, v in S.slot_views(sl)]
+        if any(v.get("image") for v in slots):
+            (warns if draft else errs).append(f"{i}쪽: 회색 그림 자리(image)가 남아 있다")
+        captures += any(S.visual_of(v) == "capture" for v in slots)
+        page_kinds = (pics.get(str(v["picture"]).strip(), {}).get("kind") for v in slots if S.visual_of(v) == "picture")
+        screens += any(str(k).strip() in screen_kinds for k in page_kinds)
+    if captures > screens:
+        warns.append(f"옮겨 그린 상자 {captures}장 > 화면 갈무리 {screens}장 — 원문 화면 갈무리를 먼저 쓴다")
+
+    def share(count: int) -> str:
+        return f"{round(count / n, 4):.1%}" if n else "모름"  # compare._share와 같은 표시 정밀도. 판정은 반올림하지 않는다.
+
+    layouts = list(LAYOUT_SHARE)
+    if counts["image_pair_partial"]:
+        layouts.append("image_pair_partial")
+    metrics = [
+        f"전체 {len(pages)}장 · 본편 {len(pages) if whole_ad else main_count}장 · "
+        + ("회차 전체가 광고 · 전체 목표 " if whole_ad else "목표 ") + f"{target if target is not None else '미정'}장",
+        f"그림 든 장 {share(n - text)} · 글만 장 {share(text)}",
+        f"장당 초: 평균 {mean(secs):.1f}초 · 중앙값 {median(secs):.1f}초" if timed else "장당 초: 산출 불가",
+        "장 모양: " + ", ".join(f"{k} {counts[k]}장({share(counts[k])})" for k in layouts),
+        f"옮겨 그린 상자 {captures}장 · 화면 갈무리 {screens}장",
+    ]
+    return errs, warns, metrics
+
+
 # ── 장 배분 ──────────────────────────────────────────────────────────────
-OUTLINE_KINDS = [   # (원본 장 모양, 쓸 종류) — image_right 는 좌우 뒤집기가 없어 image_left 에 합친다
+OUTLINE_KINDS = [   # (원본 장 모양, 쓸 종류) — 배분표에서는 좌우 배치를 한 종류로 합친다
     ("media", "full_picture"),
     ("image_left", "image_text · number · quote_translation"),
     ("image_stack", "image_stack"),

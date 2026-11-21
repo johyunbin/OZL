@@ -88,6 +88,7 @@ SPECS = ROOT / "private" / "decks" / "specs"
 KINDS = ("title_hook", "image_text", "quote_translation", "number", "compare_table", "quote_line", "closing",
          "capture_full", "photo_caption", "image_pair", "full_picture", "image_stack")
 STYLES = ("syuka",)   # 사양 맨 위 style — 있으면 그 규칙의 검사를 더한다(style.style_check). 없으면 2026-11-14 까지의 규칙 그대로
+SIDE_KINDS = ("image_text", "number", "quote_translation")
 
 # 카드 어휘(cards.STAGES) → 구성 템플릿 JSON 의 단계 키
 STAGE_KEY = {
@@ -463,7 +464,7 @@ def pair_shape_ok(sl: dict) -> bool:
     return isinstance(pair, list) and len(pair) == 2 and all(isinstance(x, dict) for x in pair)
 
 
-def visual_errors(sl: dict, claims: dict[str, dict], draft: bool, pics: dict | None = None) -> tuple[list[str], list[str], list[str]]:
+def visual_errors(sl: dict, claims: dict[str, dict], draft: bool, pics: dict | None = None, *, template_v1: bool = False) -> tuple[list[str], list[str], list[str]]:
     """그림 칸 검사 (실패, 그림 대기 id 목록, 경고). 그림 자리마다(slot_views) 본다.
     그림 대기 id = 원문 캡처의 claim_id 또는 검수 대장의 그림 번호."""
     from ozl.render import pictures as PIC
@@ -512,10 +513,11 @@ def visual_errors(sl: dict, claims: dict[str, dict], draft: bool, pics: dict | N
             e.append(f"그림 자리는 하나다 — {' · '.join(have)} 가운데 하나만 쓴다")
         if v.get("capture_focus") is not None and "capture" not in have:
             e.append("capture_focus 는 capture 를 쓴 쪽에서만 쓴다")
+        allowed = SLOT_KEYS.get("image_text" if template_v1 and kind == "quote_translation" else kind)
         for k in have:
-            if kind in SLOT_KEYS and k not in SLOT_KEYS[kind]:
-                e.append(f"'{k}' 는 {kind} 의 그림 자리에 쓰지 않는다({' · '.join(SLOT_KEYS[kind])} 가운데 하나)")
-            elif kind not in SLOT_KEYS and k != "image":
+            if allowed is not None and k not in allowed:
+                e.append(f"'{k}' 는 {kind} 의 그림 자리에 쓰지 않는다({' · '.join(allowed)} 가운데 하나)")
+            elif allowed is None and k != "image":
                 e.append(f"'{k}' 는 그림 자리가 있는 종류({', '.join(VISUAL_KINDS)})에서만 쓴다(지금 {kind})")
         if kind in PICTURE_FIRST and not have:
             e.append(f"그림 자리에 {' · '.join(SLOT_KEYS[kind])} 가운데 하나가 있어야 한다")
@@ -1118,9 +1120,10 @@ def sponsor_view(sl: dict, info: dict | None, page: int) -> dict:
     return sl
 
 
-def sponsorship_errors(spec: dict, pics: dict | None = None) -> list[str]:
+def sponsorship_errors(spec: dict, pics: dict | None = None, *, info: dict | None = None) -> list[str]:
     """광고 칸 검사(실패 목록). 광고 회차가 아니면(칸도 광고 장도 없다) 빈 목록."""
-    info = sponsor_info(spec)
+    if info is None:
+        info = sponsor_info(spec)
     if info is None:
         return []
     raw = spec.get(SPONSOR)
@@ -1313,6 +1316,7 @@ class Report:
     warnings: list[str] = field(default_factory=list)
     pending: dict[int, list[str]] = field(default_factory=dict)  # 초안 모드: 쪽 번호 → 검증 대기 claim_id
     exempt_idents: list[str] = field(default_factory=list)  # 대조에서 면제한 식별자(검토자가 볼 수 있게 출력한다)
+    metrics: list[str] = field(default_factory=list)  # v1 지표. 경고나 실패 건수에 포함하지 않는다.
 
     @property
     def ok(self) -> bool:
@@ -1353,33 +1357,35 @@ def load_claims(ids, claims_dirs=()) -> tuple[dict[str, dict], set[str]]:
     return out, staged
 
 
-def cited_ids(spec: dict) -> list[str]:
-    """사양이 인용한 기록(claim_ids · conversions). 장의 swap 칸(set · slide) 안에서는 claim_ids · conversions 에 더해
-    차트의 claims 와 원문 캡처 기록까지 모은다 — 바꾼판만 인용하는 기록도 읽어야 그 판을 검사할 수 있다."""
+def cited_ids(spec: dict, *, all_refs: bool = False) -> list[str]:
+    """검사가 읽을 기록을 모은다. all_refs는 지문용으로 장의 차트·캡처와 숫자 지정까지 따로 모은다."""
     seen: dict[str, None] = {}
-    for sl in spec.get("slides") or []:
-        for cid in sl.get("claim_ids") or []:
-            seen[str(cid)] = None
-        for cv in sl.get("conversions") or []:
-            if cv.get("claim_id"):
-                seen[str(cv["claim_id"])] = None
-        sw = sl.get("swap") if isinstance(sl, dict) else None
-        if isinstance(sw, dict):
-            for part in (sw.get("set"), sw.get("slide")):
-                for cid in _swap_cited(part):
-                    seen[cid] = None
+    slides = spec.get("slides")
+    for sl in slides if isinstance(slides, list) else []:
+        if not isinstance(sl, dict):
+            continue
+        seen.update(dict.fromkeys(_part_cited(sl, visuals=all_refs, number_claims=all_refs)))
+        swap = sl.get("swap")
+        if isinstance(swap, dict):
+            for part in (swap.get("set"), swap.get("slide")):
+                seen.update(dict.fromkeys(_part_cited(part, visuals=True, number_claims=all_refs)))
     return list(seen)
 
 
-def _swap_cited(part) -> list[str]:
-    """swap.set · swap.slide 한 덩어리가 인용한 기록 — 모양이 틀린 칸은 건너뛴다(모양 오류는 pictures.swap_errors 가 낸다)."""
+def _part_cited(part, *, visuals: bool, number_claims: bool) -> list[str]:
+    """장 또는 swap 한 덩어리에서 읽는다. 칸 모양 오류는 사양 검사가 낸다."""
     if not isinstance(part, dict):
         return []
     out: list[str] = []
     ids = part.get("claim_ids")
-    out += [str(c) for c in ids] if isinstance(ids, list) else []
-    cvs = part.get("conversions")
-    out += [str(cv["claim_id"]) for cv in (cvs if isinstance(cvs, list) else []) if isinstance(cv, dict) and cv.get("claim_id")]
+    if isinstance(ids, (list, dict)):
+        out.extend(str(c) for c in ids)
+    for key in (("conversions", NUMBER_CLAIMS) if number_claims else ("conversions",)):
+        rows = part.get(key)
+        if isinstance(rows, list):
+            out.extend(str(row["claim_id"]) for row in rows if isinstance(row, dict) and row.get("claim_id"))
+    if not visuals:
+        return out
     pair = part.get("pair")
     for v in [part] + [x for x in (pair if isinstance(pair, list) else []) if isinstance(x, dict)]:
         ch = v.get("chart")
@@ -1435,6 +1441,14 @@ def check(spec: dict, claims: dict[str, dict], template: dict, card: dict | None
     if style is not None and style not in STYLES:
         r.errors.append(f"style '{style}' 를 모른다({', '.join(STYLES)} — 옛 규칙이면 style 칸을 두지 않는다)")
         style = None
+    sponsor = sponsor_info(spec)
+    if spec.get("template") == "v1":
+        from ozl.render import style as ST
+        errs, warns, r.metrics = ST.template_v1_check(spec, draft=draft, sponsor=sponsor or {})
+        r.errors += errs
+        r.warnings += warns
+    elif "template" in spec:
+        r.errors.append(f"template '{spec['template']}' 를 모른다(v1 만 허용)")
     if not slides:
         r.errors.append("slides 가 비었다")
         return r
@@ -1457,7 +1471,6 @@ def check(spec: dict, claims: dict[str, dict], template: dict, card: dict | None
     links = link_plan(spec, claims) if style == "syuka" else None
     if links is not None:
         r.errors += link_errors(spec, claims) + links.errors   # 링크 없는 기록 · 받치는 기록을 정할 수 없는 수치 자리
-    sponsor = sponsor_info(spec)   # 광고 회차가 아니면 None — 아래 검사가 지금까지와 같다
     bare: list[int] = []  # 엄격 모드: 그림이 하나도 없는 image_text 쪽(경고 한 줄로 모은다)
     for i, sl in enumerate(slides, 1):
         tag = f"{i}쪽"
@@ -1465,6 +1478,11 @@ def check(spec: dict, claims: dict[str, dict], template: dict, card: dict | None
             r.errors.append(f"{tag}: 슬라이드가 사전(mapping)이 아니다")
             continue
         kind = sl.get("kind")
+        if "side" in sl:
+            if sl["side"] not in ("left", "right"):
+                r.errors.append(f"{tag}: side 는 left 또는 right 여야 한다")
+            elif kind not in SIDE_KINDS:
+                r.errors.append(f"{tag}: side 는 {', '.join(SIDE_KINDS)} 에서만 쓴다")
         if PIC.SWAP in sl:
             r.errors.append(f"{tag}: swap 칸이 남아 있다 — 판을 가른 사양(pictures.strip_swaps · apply_swaps)을 검사한다. "
                             "check · build 명령과 check_editions 가 가른다")
@@ -1521,7 +1539,7 @@ def check(spec: dict, claims: dict[str, dict], template: dict, card: dict | None
                     r.errors.append(f"{tag}: refs '{ref}' 는 사양 press_sources 에만 있다 — 카드 sources 에 반영되기 전에는 초안 모드(--draft)에서만 쓸 수 있다")
             elif card is not None or press:
                 r.errors.append(f"{tag}: refs '{ref}' 가 카드 sources 와 사양 press_sources 의 name 에 없다")
-        verrs, waits, vwarns = visual_errors(sl, claims, draft, pics)
+        verrs, waits, vwarns = visual_errors(sl, claims, draft, pics, template_v1=spec.get("template") == "v1")
         r.errors += [f"{tag}: {e}" for e in verrs]
         r.warnings += [f"{tag}: {w}" for w in vwarns]
         for wait in waits:
@@ -1548,7 +1566,7 @@ def check(spec: dict, claims: dict[str, dict], template: dict, card: dict | None
     else:   # 광고 장을 뺀 순서로 본다(알리는 쪽 번호는 원래 번호)
         keep = [(i, s) for i, s in enumerate(stages, 1) if s.strip() != SPONSOR_STAGE]
         errs, warns = stage_errors([s for _, s in keep], template, [i for i, _ in keep])
-        errs += sponsorship_errors(spec, pics)
+        errs += sponsorship_errors(spec, pics, info=sponsor)
     r.errors += errs
     r.warnings += warns
     if style == "syuka":

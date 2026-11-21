@@ -24,13 +24,19 @@ from __future__ import annotations
 
 import contextlib
 import datetime as dt
+import hashlib
+import json
 import math
+import os
 import re
 import pathlib
 import subprocess
+import tempfile
 import sys
 from dataclasses import dataclass, field
+from functools import cache
 
+import yaml
 from lxml import etree
 from pptx.dml.color import RGBColor
 from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
@@ -39,6 +45,7 @@ from pptx.util import Emu, Inches, Pt
 
 from ozl.render import deck
 from ozl.render import spec as S
+from ozl.render.pictures import file_sha256
 from ozl.research import cards as C
 
 ROOT = S.ROOT
@@ -310,6 +317,10 @@ def plan_slide(sl: dict) -> Plan:
     (차트·캡처·표는 자리 바로 아래, 회색 자리는 자리 안쪽 — 그 아래에 캡션 글상자가 온다).
     쪽 사본에 광고 띠 글(S.SPONSOR_KEY — 광고 구간의 쪽)이 있으면 오른쪽 위에 띠 글상자를 더한다. 검사와 빌드가 같은 계획을 쓰므로 띠도 넘침 검사를 받는다."""
     p = _plan_slide(sl)
+    if sl.get("side") == "right" and sl.get("kind") in S.SIDE_KINDS and p.imgs:
+        # side는 v1과 무관한 선택 칸이다. 제목은 고정하고 그림과 본문만 정수 EMU로 뒤집는다.
+        for shape in [*p.imgs, *(b for b in p.boxes if b.name != "제목")]:
+            shape.left = _in(deck.W - Inches(shape.left) - Inches(shape.width))
     if sl.get(S.SPONSOR_KEY):
         p.boxes.append(sponsor_band_box(str(sl[S.SPONSOR_KEY])))
     corner = ((sl.get(S.LINKS_KEY) or {}).get("corner") or {})
@@ -319,6 +330,7 @@ def plan_slide(sl: dict) -> Plan:
         label = corner.get(im.slot)
         if not label or im.kind == "picture":
             continue
+        # 링크 번호 글상자는 거울 배치하지 않고, 옮긴 그림 자리의 오른쪽 아래 귀퉁이에 고정한다.
         top = im.top + im.height - CORNER_H - 0.04 if im.kind == "slot" else im.top + im.height + 0.02
         p.boxes.append(_corner_box(label, im.left + im.width - (0.06 if im.kind == "slot" else 0.0), top))
     if corner.get("table") and p.tables:
@@ -1138,14 +1150,58 @@ def visual_label(sl: dict, waiting: bool = False, waits=None) -> str:
     return "없음"
 
 
-def build_pptx(spec: dict, claims: dict, card: dict, out: pathlib.Path, pending: dict[int, list[str]] | None = None, appendix: bool = True,
+def _read_build_source(path: pathlib.Path) -> tuple[dict, dict]:
+    """해시를 낸 바로 그 원본 바이트로 사양을 읽는다. 두 판으로 갈라도 출처는 같다."""
+    path = path.resolve()
+    raw = path.read_bytes()
+    return yaml.safe_load(raw) or {}, {"spec": str(path), "spec_sha256": hashlib.sha256(raw).hexdigest()}
+
+
+@cache
+def _warn_no_output_lock() -> None:
+    print("[경고] fcntl이 없어 빌드 잠금 없이 진행한다.", file=sys.stderr)
+
+
+@contextlib.contextmanager
+def _output_lock(folder: pathlib.Path):
+    """폴더마다 메타가 하나이므로 pptx와 메타를 바꿔 끼우는 동안 같은 폴더의 빌드를 직렬화한다."""
+    try:
+        import fcntl
+    except ImportError:
+        _warn_no_output_lock()
+        yield
+        return
+    fd = os.open(folder, os.O_RDONLY)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        yield
+    finally:
+        os.close(fd)
+
+
+def _write_build_meta(pptx: pathlib.Path, source: dict, expected_sha: str, *, draft: bool, edition: str | None) -> None:
+    meta = {**source, "draft": draft, "edition": edition, "pptx": pptx.name, "pptx_sha256": expected_sha, "built_at": C.now_kst()}
+    with tempfile.TemporaryDirectory(dir=pptx.parent) as staging:
+        temp = pathlib.Path(staging) / "meta.tmp"
+        temp.write_text(json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        if file_sha256(pptx) != expected_sha:
+            raise ValueError(f"빌드 뒤 pptx가 바뀌었다 — 메타를 저장하지 않는다: {pptx}")
+        temp.replace(pptx.parent / "build_meta.json")
+
+
+def build_pptx(spec: dict | pathlib.Path | str, claims: dict, card: dict, out: pathlib.Path, pending: dict[int, list[str]] | None = None, appendix: bool = True,
                edition: str | None = None) -> dict:
     """appendix=False 면 부록 쪽을 붙이지 않는다(견본집 — 기록을 인용하지 않는 지어낸 사양).
     edition = 판 이름(두 판 빌드) — 문서 속성 keywords 끝에 판 표시를 붙인다(pictures.keywords_value). 없으면 지금까지와 같다.
     style: syuka 사양은 새 규칙이다: 쪽 아래 출처 줄과 부록 쪽을 두지 않고, 화면 수치 뒤에 링크 번호(spec.link_plan)를 붙인다
     — 링크 목록 파일은 build 가 쓴다(links_<ts>.md · csv). 옛 사양은 종전 그대로."""
     from ozl.render import pictures as PIC
+    # 파일을 받은 직접 빌드만 원본을 증명할 수 있다. 사전으로 만드는 견본에는 지문을 꾸며 넣지 않는다.
+    source = None
+    if isinstance(spec, (str, pathlib.Path)):
+        spec, source = _read_build_source(pathlib.Path(spec))
     prs = deck.new_deck()
+    draft = pending is not None  # 초안은 대기 항목이 없어도 빈 사전을 받는다.
     pending = pending or {}
     labels = spec.get("source_labels") or {}
     pics, _ = PIC.ledger(spec)
@@ -1213,9 +1269,18 @@ def build_pptx(spec: dict, claims: dict, card: dict, out: pathlib.Path, pending:
     deck.clear_template_props(prs)
     deck.finish_package(prs)   # 문서 통계를 실제 값으로, 틀의 축소 그림과 인쇄 설정 파일을 뗀다 — 이 뒤로는 pptx 를 다시 쓰지 않는다(등록 대장의 해시)
     out.parent.mkdir(parents=True, exist_ok=True)
-    prs.save(str(out))
+    with tempfile.TemporaryDirectory(dir=out.parent) as staging:
+        saved = pathlib.Path(staging) / out.name
+        prs.save(str(saved))
+        pptx_sha = file_sha256(saved)
+        with _output_lock(out.parent):
+            saved.replace(out)
+            if source is None:
+                (out.parent / "build_meta.json").unlink(missing_ok=True)
+            else:
+                _write_build_meta(out, source, pptx_sha, draft=draft, edition=edition)
     private = PIC.PRIVATE_KEYWORD in kw.split()
-    return {"main": n_main, "appendix": appx, "total": n_main + len(appx)} | ({"public_ok": False} if private else {}) | \
+    return {"main": n_main, "appendix": appx, "total": n_main + len(appx), "pptx_sha256": pptx_sha} | ({"public_ok": False} if private else {}) | \
         ({"links": len(links.numbers)} if links is not None else {})
 
 
@@ -1513,7 +1578,6 @@ def write_picture_files(sp: dict, outdir: pathlib.Path, led_md: pathlib.Path, ts
     """그림_검수대장_<ts>.md · .json 과 공개_가부.json 을 쓴다(style: syuka 빌드와 두 판 빌드). 돌려주는 값은 빌드 출력 칸.
     edition 이 있으면 대장 머리에 판 이름과 「바꾼 장」 표를, 공개_가부.json 에 edition · pair(짝 폴더 이름) · swaps(바꾼 장 목록)를 더한다.
     비공개판은 막는 그림 목록이 비어도 public_ok 를 거짓으로 적는다."""
-    import json
     from ozl.render import pictures as PIC
     status = PIC.public_status(sp)
     if edition == PIC.EDITION_PRIVATE:
@@ -1569,13 +1633,12 @@ def register_private_outputs(sp: dict, outdir: pathlib.Path, pptx: pathlib.Path,
     return PIC.register_private(rows, registry_file())
 
 
-def spec_copy_text(sp: dict, source: pathlib.Path, ts: str, edition: str) -> str:
+def spec_copy_text(sp: dict, source: dict, ts: str, edition: str) -> str:
     """판의 사양 사본 — swap 을 떼거나(비공개판) 적용한(바꾼판) 뒤의 사양. compare <폴더> 와 검토자가 읽는다."""
-    import hashlib
-    import yaml
-    sha = hashlib.sha256(source.read_bytes()).hexdigest()
+    name = pathlib.Path(source["spec"]).name
+    sha = source["spec_sha256"]
     head = (f"# 판의 사양 사본 — {sp.get('card_id', '')} · {ts} · {edition}\n"
-            f"# 원래 사양: {source.name} (sha256 {sha[:16]}). build 가 썼다 — 고칠 때는 원래 사양을 고친다.\n")
+            f"# 원래 사양: {name} (sha256 {sha[:16]}). build 가 썼다 — 고칠 때는 원래 사양을 고친다.\n")
     return head + yaml.safe_dump(sp, allow_unicode=True, sort_keys=False)
 
 
@@ -1583,8 +1646,7 @@ def build(spec_path: pathlib.Path, export: bool = True, draft: bool = False, cla
     """사양 하나를 검사하고 만든다. 판을 가르지 않는 사양(막는 그림도 swap 도 없다, 또는 초안 모드)은 폴더 하나 — 돌려주는 값은 그 폴더의 출력 칸.
     두 판 사양(엄격 모드)은 같은 타임코드로 폴더 둘 — 돌려주는 값은 {"editions": {판 이름: 출력 칸}, "dropped": …}. edition 을 주면 그 판 하나만."""
     from ozl.render import pictures as PIC
-    spec_path = pathlib.Path(spec_path).resolve()
-    sp = S.load_spec(spec_path)
+    sp, source = _read_build_source(pathlib.Path(spec_path))
     dropped: list[str] = []
     if not draft:   # 완성본·공개용 판에는 밈을 넣지 않는다 — 빼고, 뺀 것을 출력과 러닝시트에 적는다
         sp, dropped = PIC.drop_memes(sp)
@@ -1597,14 +1659,13 @@ def build(spec_path: pathlib.Path, export: bool = True, draft: bool = False, cla
         raise SystemExit("사양 검사 실패 — build 하지 않는다:\n" + "\n".join(lines))
     ts = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
     if len(eds) == 1 and eds[0].name is None:
-        return _build_one(eds[0].spec, eds[0].report, card, claims, ts, export, draft, dropped)
+        return _build_one(eds[0].spec, eds[0].report, card, claims, ts, export, draft, dropped, source)
     cid = str(sp["card_id"])
     dirs = {e.name: out_paths(cid, ts, draft, e.name)[0] for e in eds}   # 만들기 전에 두 폴더 자리를 다 확인한다
     infos: dict[str, dict] = {}
     for e in eds:
         mate = next((d.name for n, d in dirs.items() if n != e.name), "")
-        infos[e.name] = _build_one(e.spec, e.report, card, claims, ts, export, draft, dropped, edition=e.name, pair=mate, swaps=e.swaps,
-                                   source=spec_path)
+        infos[e.name] = _build_one(e.spec, e.report, card, claims, ts, export, draft, dropped, source, edition=e.name, pair=mate, swaps=e.swaps)
     bad = []
     regs = [registry_file()] + PIC.registry_paths()
     for e in eds:   # 판의 표시와 public_check 의 판정이 어긋나면 생성기 결함이다 — 덱을 쓰지 말라고 멈춘다
@@ -1621,8 +1682,8 @@ def build(spec_path: pathlib.Path, export: bool = True, draft: bool = False, cla
     return out
 
 
-def _build_one(sp: dict, rep, card: dict, claims: dict, ts: str, export: bool, draft: bool, dropped: list[str],
-               edition: str | None = None, pair: str = "", swaps: list[dict] | None = None, source: pathlib.Path | None = None) -> dict:
+def _build_one(sp: dict, rep, card: dict, claims: dict, ts: str, export: bool, draft: bool, dropped: list[str], source: dict,
+               edition: str | None = None, pair: str = "", swaps: list[dict] | None = None) -> dict:
     """검사를 통과한 판 하나를 만든다. edition 이 없으면 지금까지의 빌드와 같은 폴더, 같은 파일이다.
     막는 그림이 든 판(비공개판, 막는 그림이 남은 초안 모드의 연습용 판)은 pptx 를 쓰기 시작한 뒤로 어디서 멈추든(내보내기의 시간 초과,
     도구 없음, 링크 번호 대응 실패, 중단) 그때까지 만든 파일을 등록 대장에 남긴다 — 등록이 빠지면 남은 PDF · 쪽 PNG 와 keywords 를 지운 사본이
@@ -1654,7 +1715,7 @@ def _build_one(sp: dict, rep, card: dict, claims: dict, ts: str, export: bool, d
         md.write_text(running_sheet(sp, card, claims, ts, rep.pending if draft else None, dropped, edition, swaps, pair), encoding="utf-8")
         info.update(dir=str(outdir), pptx=str(pptx), md=str(md), warnings=rep.warnings)
         if edition is not None:
-            spec_copy.write_text(spec_copy_text(sp, source, ts, edition) if source is not None else "", encoding="utf-8")
+            spec_copy.write_text(spec_copy_text(sp, source, ts, edition), encoding="utf-8")
             info.update(edition=edition, pair=pair, spec=str(spec_copy), swapped=len(swaps or []))
         if with_pics:
             info.update(write_picture_files(sp, outdir, led_md, ts, draft, edition, pair, swaps))
@@ -1687,4 +1748,6 @@ def _build_one(sp: dict, rep, card: dict, claims: dict, ts: str, export: bool, d
             registered = register_private_outputs(sp, outdir, pptx, ts)
     if private:
         info["registered"] = registered
+    with _output_lock(outdir):
+        _write_build_meta(pptx, source, info["pptx_sha256"], draft=draft, edition=edition)
     return info

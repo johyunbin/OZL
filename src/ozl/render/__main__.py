@@ -6,6 +6,7 @@ python -m ozl.render norms [--out <폴더>]                   # 원본 방송 �
 python -m ozl.render compare <사양.yaml 또는 산출 폴더> [--video <영상 id>] [--out <폴더>] [--edition 비공개판|바꾼판]   # 원본 비교표(ozl.render.compare)
 python -m ozl.render outline --minutes <분>                # style: syuka 덱의 목표 장수와 종류별 배분(ozl.render.style)
 python -m ozl.render samples [--out <폴더>] [--no-export]   # 종류별 견본집(ozl.render.style) — 광고 구간 두 장(지어낸 광고주) 포함
+python -m ozl.render potx [--out <폴더>] [--no-export]      # 렌더러 좌표로 레이아웃 12개가 든 정식 템플릿(.potx)과 확인용 pptx·PDF(ozl.render.potx)
 python -m ozl.render shot <url> --out <png> [--width 1280 --height 900] [--clip x,y,w,h]   # 원문 화면 갈무리와 대장 칸 초안(ozl.render.shots)
                                                            # 단계마다 robots.txt 먼저, 리다이렉트는 따라가기 전에 넘어갈 호스트의 robots.txt 를 본다
 python -m ozl.render shot --pdf <사본> --page <쪽> --source-url <원문 주소> --out <png> [--dpi 150] [--band 위,아래]
@@ -70,7 +71,7 @@ def _opts(argv: list[str]) -> tuple[list[str], bool, bool, list[str], str | None
 
 
 def main(argv: list[str]) -> int:
-    if argv and argv[0] in ("bundle", "progress", "norms", "compare"):   # 하위 명령은 각 모듈이 인자를 읽는다(_opts 는 사양 파일 명령 전용)
+    if argv and argv[0] in ("bundle", "progress", "norms", "compare", "potx"):   # 하위 명령은 각 모듈이 인자를 읽는다(_opts 는 사양 파일 명령 전용)
         from importlib import import_module
         return import_module(f"ozl.render.{argv[0]}").main(argv[1:])
     if argv and argv[0] in ("outline", "samples"):   # style: syuka 덱의 장 배분과 견본집(ozl.render.style)
@@ -128,6 +129,8 @@ def main(argv: list[str]) -> int:
             n = len(ed.spec.get("slides") or [])
             extra = f" · [검증 대기] {len(rep.pending)}장({', '.join(map(str, rep.pending))})" if draft else ""
             print(f"[check{tag}] {'통과' if rep.ok else '실패'}{' (초안 모드)' if draft else ''} · 본편 {n}장 · 실패 {len(rep.errors)} · 경고 {len(rep.warnings)}{extra}")
+            for m in rep.metrics:   # template: v1 사양의 지표(실패·경고 수에 넣지 않는다). 옛 사양은 빈 목록이라 출력이 그대로다
+                print(f"[v1{tag}]", m)
         return 0 if all(ed.report.ok for ed in eds) else 1
     try:
         info = B.build(path, export=export, draft=draft, claims_dirs=dirs, edition=edition)
