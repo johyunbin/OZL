@@ -8,7 +8,7 @@ python -m ozl.render compare <사양.yaml 또는 산출 폴더> [--video <영상
 python -m ozl.render outline --minutes <분>                # style: syuka 덱의 목표 장수와 종류별 배분(ozl.render.style)
 python -m ozl.render samples [--out <폴더>] [--no-export]   # 종류별 견본집(ozl.render.style) — 광고 구간 두 장(지어낸 광고주) 포함
 python -m ozl.render potx [--out <폴더>] [--no-export]      # 렌더러 좌표로 레이아웃 12개가 든 정식 템플릿(.potx)과 확인용 pptx·PDF(ozl.render.potx)
-python -m ozl.render shot <url> --out <png> [--width 1280 --height 900] [--clip x,y,w,h]   # 원문 화면 갈무리와 대장 칸 초안(ozl.render.shots)
+python -m ozl.render shot <url> --out <png> [--width 1280 --height 900] [--clip x,y,w,h] [--scale 2]   # 원문 화면 갈무리와 대장 칸 초안(ozl.render.shots)
                                                            # 단계마다 robots.txt 먼저, 리다이렉트는 따라가기 전에 넘어갈 호스트의 robots.txt 를 본다
 python -m ozl.render shot --pdf <사본> --page <쪽> --source-url <원문 주소> --out <png> [--dpi 150] [--band 위,아래]
 python -m ozl.render origin <덱 그림> <원 게시처에서 받은 파일> --url <주소>   # origin_check 칸 초안(지각 해시 거리와 구역 차이)
@@ -32,6 +32,7 @@ python -m ozl.render register-private [<폴더 또는 덱 파일>…] [--dry-run
                광고 회차는 사양 맨 위에 sponsorship: {kind: 유료 광고|협찬|협업, sponsor, label, whole, materials} 를 두고 구간의 장에 stage: 광고 를 쓴다.
                check 가 표시 문구와 구간의 짜임을 보고, build 가 구간의 장마다 오른쪽 위에 띠를 그린다.
 --clip         (shot) 찍은 화면에서 남길 범위. CSS 픽셀, 창 왼쪽 위가 0,0 이다. 창 밖의 범위는 받지 않는다(긴 화면은 --height 를 늘린다).
+--scale        (shot) 화면 배율 1~4. 범위는 CSS 픽셀 그대로이고 그림 픽셀만 그 배수가 된다.
 --band         (shot --pdf) 남길 높이 구간. 쪽 높이의 비율 둘(0~1, 예: 0.2,0.55). 범위와 구간은 대장 칸 초안의 shot_log 에 적힌다.
 """
 from __future__ import annotations

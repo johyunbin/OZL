@@ -672,6 +672,63 @@ def test_shot_clip_keeps_only_the_chosen_box(server, tmp_path, monkeypatch):
             SH.parse_band(bad)
 
 
+
+def test_shot_scale_multiplies_pixels_not_css_box(server, tmp_path, monkeypatch):
+    """--scale 2: Chrome 에 배율을 넘기고, 범위는 CSS 픽셀 그대로 두어 그림 픽셀만 두 배가 된다. 1 이면 명령도 기록도 예전과 같다."""
+    from PIL import Image
+    s = server({"/robots.txt": ALLOW, "/board": (200, PAGE)})
+    calls = []
+
+    def run(cmd, **kw):
+        calls.append(cmd)
+        k = next((float(a.split("=", 1)[1]) for a in cmd if a.startswith("--force-device-scale-factor=")), 1.0)
+        _art(pathlib.Path(next(a for a in cmd if a.startswith("--screenshot="))[len("--screenshot="):]), (round(1280 * k), round(900 * k)))
+        return type("R", (), {"returncode": 0, "stderr": ""})()
+    e = SH.shot(s.base + "/board", tmp_path / "s2.png", clock=_clock(tmp_path, FakeTime()), run=run, log=lambda x: None,
+                clip=(100, 50, 400, 300), scale=2)
+    assert "--force-device-scale-factor=2" in calls[-1]
+    with Image.open(tmp_path / "s2.png") as g:
+        assert g.size == (800, 600)
+    log = e["shot_log"]
+    assert log["clip"] == [100, 50, 400, 300] and log["scale"] == 2 and log["image"] == "800x600"
+    assert abs(PIC.screen_readable_pt(e, 4.0) - 14 * 4.0 / 400 * 72) < 1e-9          # 글자 어림은 CSS 폭(400)으로 잰다 — 배율과 무관
+    e1 = SH.shot(s.base + "/board", tmp_path / "s1.png", clock=_clock(tmp_path, FakeTime()), run=run, log=lambda x: None, clip=(100, 50, 400, 300))
+    assert not any(a.startswith("--force-device-scale-factor") for a in calls[-1]) and "scale" not in e1["shot_log"]
+    with pytest.raises(ValueError, match="1~4"):
+        SH.shot(s.base + "/board", tmp_path / "s5.png", clock=_clock(tmp_path, FakeTime()), run=run, scale=5)
+    monkeypatch.setattr(SH, "HOST_LOG", tmp_path / "h.json")
+    s.hits.clear()
+    for bad in (["--scale", "가"], ["--scale", "9"], ["--scale", "0.5"], ["--scale"]):
+        assert render_main(["shot", s.base + "/board", "--out", str(tmp_path / "c.png"), *bad]) == 2, bad
+    assert s.hits == [] and not (tmp_path / "c.png").exists()                      # 틀린 배율은 요청 전에 거부한다
+    for sc in ("1", "2"):                                                            # --pdf 와 함께면 값과 상관없이 사용법 오류
+        assert render_main(["shot", "--pdf", str(tmp_path / "없는.pdf"), "--source-url", "https://stats.example.org/a.pdf",
+                            "--out", str(tmp_path / "p.png"), "--scale", sc]) == 2
+
+
+def test_shot_cli_scale_crops_the_css_box_at_n_times_pixels(server, tmp_path, monkeypatch):
+    """CLI 의 --scale 2 --clip 100,50,400,300: 화면 그림의 (200,100)~(1000,700) 픽셀이 그대로 남는다(원점이 0,0 으로 밀리지 않는다)."""
+    from PIL import Image
+    s = server({"/robots.txt": ALLOW, "/board": (200, PAGE)})
+    seen = []
+
+    def fake_chrome_shot(url, out, width, height, run=None, chrome=None, scale=1.0):
+        seen.append(scale)
+        W, H = round(width * scale), round(height * scale)
+        im = Image.new("RGB", (W, H))
+        im.putdata([(x % 251, y % 241, (x // 251 + y // 241) % 256) for y in range(H) for x in range(W)])
+        im.save(out)
+    monkeypatch.setattr(SH, "chrome_shot", fake_chrome_shot)
+    monkeypatch.setattr(SH, "HOST_LOG", tmp_path / "h.json")
+    out = tmp_path / "cli2.png"
+    assert render_main(["shot", s.base + "/board", "--out", str(out), "--clip", "100,50,400,300", "--scale", "2"]) == 0
+    assert seen == [2.0]
+    with Image.open(out) as g:
+        assert g.size == (800, 600)
+        for (x, y) in ((0, 0), (799, 0), (0, 599), (799, 599), (321, 207)):
+            X, Y = x + 200, y + 100
+            assert g.getpixel((x, y)) == (X % 251, Y % 241, (X // 251 + Y // 241) % 256), (x, y)
+
 @pytest.mark.skipif(not SH.shutil.which("pdftoppm"), reason="pdftoppm 없음")
 def test_pdf_band_keeps_the_height_range(tmp_path):
     from PIL import Image

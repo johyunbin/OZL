@@ -1,6 +1,6 @@
 """원문 화면 갈무리 — 공식 문서와 통계 화면을 그림으로 찍고 그림 검수 대장 칸 초안을 낸다.
 
-    python -m ozl.render shot <url> --out <png> [--width 1280 --height 900] [--clip x,y,w,h]
+    python -m ozl.render shot <url> --out <png> [--width 1280 --height 900] [--clip x,y,w,h] [--scale 2]
     python -m ozl.render shot --pdf <저장된 PDF 사본> --page <쪽> --source-url <원문 주소> --out <png> [--dpi 150] [--band 위,아래]
 
 웹 화면(shot):
@@ -18,6 +18,8 @@
      있으면 멈추고 그렇게 적는다(우회하지 않는다).
   3. 마지막 주소를 Chrome headless 로, 매번 새 임시 사용자 폴더로 띄워 찍는다(사용자 프로필과 쿠키를 쓰지 않고, 로그인하지 않는다).
   4. --clip x,y,w,h 를 주면 찍은 화면에서 그 범위(CSS 픽셀, 창 왼쪽 위가 0,0)만 남긴다. 찍는 범위를 고른 것이라 as_is 는 참 그대로다.
+     --scale N(1~4)은 화면 배율이다(Chrome --force-device-scale-factor). 창과 범위는 CSS 픽셀 그대로이고 그림 픽셀만 N 배가 된다 —
+     작은 그래프 글자를 큰 자리에 놓을 때 흐려지지 않게 쓴다. 1 이 아니면 shot_log.scale 에 적는다.
   5. PNG 옆에 같은 이름의 .yaml 로 대장 칸 초안(종류 '원문 화면 갈무리', 해시, 받은 시각, 주소, 단계 기록 shot_log.hops, 창 크기와 범위)을 쓴다.
      권리자, 라이선스, 상업적 이용, 변경, 내용 점검은 비워 둔다 — 사람이나 에이전트가 기관의 이용 조건을 읽고 채운다(비면 엄격 모드 실패).
 PDF(--pdf): 저장된 사본에서 pdftoppm 으로 한 쪽을 그림으로 만든다. 웹을 다시 열지 않는다.
@@ -288,14 +290,17 @@ def block_reason(status: int, final_url: str, html: str) -> str:
     return ""
 
 
-def chrome_cmd(url: str, out: pathlib.Path, width: int, height: int, profile: pathlib.Path, chrome: pathlib.Path = CHROME) -> list[str]:
+def chrome_cmd(url: str, out: pathlib.Path, width: int, height: int, profile: pathlib.Path, chrome: pathlib.Path = CHROME,
+               scale: float = 1.0) -> list[str]:
+    extra = [f"--force-device-scale-factor={scale:g}"] if scale != 1 else []
     return [str(chrome), "--headless=new", f"--user-data-dir={profile}", "--no-first-run", "--no-default-browser-check", "--disable-extensions",
             "--disable-sync", "--disable-background-networking", "--disable-component-update", "--disable-gpu", "--hide-scrollbars",
             "--mute-audio", f"--user-agent={USER_AGENT}", f"--window-size={width},{height}", "--virtual-time-budget=8000",
-            f"--screenshot={out}", url]
+            *extra, f"--screenshot={out}", url]
 
 
-def chrome_shot(url: str, out: pathlib.Path, width: int, height: int, run=subprocess.run, chrome: pathlib.Path = CHROME) -> None:
+def chrome_shot(url: str, out: pathlib.Path, width: int, height: int, run=subprocess.run, chrome: pathlib.Path = CHROME,
+                scale: float = 1.0) -> None:
     """새 임시 사용자 폴더로 headless Chrome 을 띄워 찍는다. 폴더는 찍은 뒤 지운다.
     그림을 남기지 않았거나, 비정상 종료했거나(종료 코드가 0 이 아니다), CHROME_TIMEOUT 초 안에 끝나지 않으면 RuntimeError
     (명령은 '[shot] 오류'와 종료 코드 1 로 끝난다). 실패한 실행이 쓰다 만 그림은 지운다 — 남겨 두면 다음 실행이 '출력 파일이 이미 있다'로 멈춘다.
@@ -311,7 +316,7 @@ def chrome_shot(url: str, out: pathlib.Path, width: int, height: int, run=subpro
         return " — 쓰다 만 그림은 지웠다"
     with tempfile.TemporaryDirectory(prefix="ozl-shot-") as prof:
         try:
-            r = run(chrome_cmd(url, out, width, height, pathlib.Path(prof), chrome), capture_output=True, text=True, timeout=CHROME_TIMEOUT)
+            r = run(chrome_cmd(url, out, width, height, pathlib.Path(prof), chrome, scale), capture_output=True, text=True, timeout=CHROME_TIMEOUT)
         except subprocess.TimeoutExpired as x:
             raise RuntimeError(f"Chrome 이 {CHROME_TIMEOUT}초 안에 끝나지 않았다 — 그림을 쓰지 않는다{drop_leftover()}: {url}") from x
         except BaseException:   # 중단(Ctrl-C)이나 그 밖의 오류로 나가는 길에서도 쓰다 만 그림을 남기지 않는다
@@ -398,7 +403,8 @@ def _image_size(png: pathlib.Path) -> tuple[int, int]:
 
 
 def shot(url: str, out: pathlib.Path, width: int = 1280, height: int = 900, opener=_open, clock: HostClock | None = None,
-         run=subprocess.run, log=print, chrome: pathlib.Path = CHROME, clip: tuple[int, int, int, int] | None = None) -> dict:
+         run=subprocess.run, log=print, chrome: pathlib.Path = CHROME, clip: tuple[int, int, int, int] | None = None,
+         scale: float = 1.0) -> dict:
     """웹 화면을 찍고 대장 칸 초안(dict)을 돌려준다. 멈출 까닭이 있으면 Stop(Chrome 을 띄우지 않는다).
     페이지는 fetch_chain 이 단계마다 받는다(robots.txt → 간격 → 요청, 30x 와 meta refresh 는 다음 단계). clip = 찍은 화면에서 남길 범위(x, y, w, h — CSS 픽셀)."""
     if not url.startswith(("https://", "http://")):
@@ -406,6 +412,8 @@ def shot(url: str, out: pathlib.Path, width: int = 1280, height: int = 900, open
     out = pathlib.Path(out)
     if out.exists():
         raise Stop(f"출력 파일이 이미 있다 — 덮어쓰지 않는다: {out}")
+    if not 1 <= scale <= 4:
+        raise ValueError(f"--scale 는 1~4 다: {scale:g}")
     if clip is not None:
         x, y, w, h = clip
         if min(x, y) < 0 or w <= 0 or h <= 0 or x + w > width or y + h > height:
@@ -417,12 +425,12 @@ def shot(url: str, out: pathlib.Path, width: int = 1280, height: int = 900, open
     out.parent.mkdir(parents=True, exist_ok=True)
     clock.wait(host)
     try:
-        chrome_shot(final, out, width, height, run=run, chrome=chrome)
+        chrome_shot(final, out, width, height, run=run, chrome=chrome, scale=scale)
     finally:
         clock.mark(host)   # Chrome 이 실패해도(그림 없음 · 시간 초과) 그 호스트에 요청은 나갔다 — 다음 요청이 간격을 지키게 적는다
     size = _image_size(out)
     if clip is not None:
-        k = size[0] / width if width else 1.0   # 화면 배율(보통 1) — 그림 픽셀로 바꿔 자른다
+        k = size[0] / width if width else 1.0   # 화면 배율(보통 1, --scale 이면 그 값) — 그림 픽셀로 바꿔 자른다
         x, y, w, h = clip
         size = _crop_file(out, (round(x * k), round(y * k), min(round((x + w) * k), size[0]), min(round((y + h) * k), size[1])))
     if blank_image(out):
@@ -430,8 +438,9 @@ def shot(url: str, out: pathlib.Path, width: int = 1280, height: int = 900, open
     at = dt.datetime.now().astimezone().isoformat(timespec="seconds")
     meta = {"fetched_at": at, "requested_url": url, "final_url": final, "http_status": status, "robots": dict(hops[0]["robots"]), "hops": hops,
             "browser": "Chrome headless, 새 임시 사용자 폴더, 로그인 없음", "window": f"{width}x{height}",
-            **({"clip": list(clip)} if clip is not None else {}), "image": f"{size[0]}x{size[1]}"}
-    log(f"[shot] {out} · 창 {width}x{height}" + (f" · 범위 {','.join(map(str, clip))}" if clip is not None else "") + f" · 그림 {size[0]}x{size[1]} · {at}")
+            **({"clip": list(clip)} if clip is not None else {}), **({"scale": scale} if scale != 1 else {}), "image": f"{size[0]}x{size[1]}"}
+    log(f"[shot] {out} · 창 {width}x{height}" + (f" · 범위 {','.join(map(str, clip))}" if clip is not None else "")
+        + (f" · 배율 {scale:g}" if scale != 1 else "") + f" · 그림 {size[0]}x{size[1]} · {at}")
     return entry_draft(out, final, f"{host} 화면을 headless Chrome 으로 찍었다({at[:10]}, 로그인 없음)", meta)
 
 
@@ -471,7 +480,7 @@ def pdf_page(pdf: pathlib.Path, page: int, out: pathlib.Path, source_url: str, d
 
 def main(argv: list[str]) -> int:
     opts = {"--out": None, "--width": "1280", "--height": "900", "--pdf": None, "--page": "1", "--source-url": None, "--dpi": "150",
-            "--clip": None, "--band": None}
+            "--clip": None, "--band": None, "--scale": None}
     pos = []
     it = iter(argv)
     for a in it:
@@ -480,6 +489,9 @@ def main(argv: list[str]) -> int:
             return 0
         if a in opts:
             opts[a] = next(it, None)
+            if opts[a] is None:
+                print(f"[shot] {a} 에 값이 없다")
+                return 2
         elif a.startswith("--"):
             print(f"[shot] 모르는 옵션 {a}")
             return 2
@@ -488,12 +500,15 @@ def main(argv: list[str]) -> int:
     if not opts["--out"] or (not opts["--pdf"] and len(pos) != 1) or (opts["--pdf"] and (pos or not opts["--source-url"])):
         print(__doc__)
         return 2
-    if (opts["--clip"] and opts["--pdf"]) or (opts["--band"] and not opts["--pdf"]):
-        print("[shot] --clip 은 웹 화면에, --band 는 --pdf 에 쓴다")
+    if ((opts["--clip"] or opts["--scale"] is not None) and opts["--pdf"]) or (opts["--band"] and not opts["--pdf"]):
+        print("[shot] --clip 과 --scale 은 웹 화면에, --band 는 --pdf 에 쓴다")
         return 2
     try:
         clip = parse_clip(opts["--clip"]) if opts["--clip"] else None
         band = parse_band(opts["--band"]) if opts["--band"] else None
+        scale = float(opts["--scale"]) if opts["--scale"] is not None else 1.0
+        if not 1 <= scale <= 4:
+            raise ValueError(f"--scale 는 1~4 다: {opts['--scale']}")
     except ValueError as x:
         print(f"[shot] {x}")
         return 2
@@ -501,7 +516,7 @@ def main(argv: list[str]) -> int:
         if opts["--pdf"]:
             e = pdf_page(pathlib.Path(opts["--pdf"]), int(opts["--page"]), pathlib.Path(opts["--out"]), opts["--source-url"], int(opts["--dpi"]), band=band)
         else:
-            e = shot(pos[0], pathlib.Path(opts["--out"]), int(opts["--width"]), int(opts["--height"]), clip=clip)
+            e = shot(pos[0], pathlib.Path(opts["--out"]), int(opts["--width"]), int(opts["--height"]), clip=clip, scale=scale)
     except Stop as x:
         print(f"[shot] 멈춤: {x}")
         return 3
