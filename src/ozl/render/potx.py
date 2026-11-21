@@ -180,13 +180,15 @@ def _save_template(prs, empty, potx):
             dst.writestr(item, data)
 
 
-def build(out_root: pathlib.Path = OUT, export: bool = True) -> dict:
-    slides = template.template_spec()
+def build(out_root: pathlib.Path | None = None, export: bool = True, version: str = "v2") -> dict:
+    slides = template.template_spec(version)
+    out_root = out_root or (template.OUT_V2 if version == "v2" else OUT)
     problems = template.problems(slides)
     if problems:
         raise ValueError("\n".join(problems))
     stamp = dt.datetime.now(dt.timezone(dt.timedelta(hours=9))).strftime("%Y%m%d_%H%M%S")
-    stem = f"OZL_덱템플릿_{stamp}"
+    prefix = "OZL_덱템플릿_v2" if version == "v2" else "OZL_덱템플릿"
+    stem = f"{prefix}_{stamp}"
     out_root.mkdir(parents=True, exist_ok=True)
     potx = out_root / (stem + ".potx")
     preview = out_root / (stem + "_확인.pptx")
@@ -221,8 +223,9 @@ def build(out_root: pathlib.Path = OUT, export: bool = True) -> dict:
 
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(prog="python -m ozl.render potx", description=__doc__)
-    parser.add_argument("--out", type=pathlib.Path, default=OUT, help="출력 폴더")
+    parser.add_argument("--template", choices=("v1", "v2"), default="v2", help="레이아웃 템플릿 버전")
+    parser.add_argument("--out", type=pathlib.Path, help="출력 폴더")
     parser.add_argument("--no-export", action="store_true", help="확인본의 PDF와 PNG는 만들지 않는다")
     args = parser.parse_args(argv)
-    print(build(args.out, not args.no_export))
+    print(build(args.out, not args.no_export, args.template))
     return 0

@@ -32,15 +32,22 @@ KINDS = {
 }
 
 
+@pytest.fixture(scope="module", params=["v1", "v2"])
+def version(request):
+    return request.param
+
+
 @pytest.fixture(scope="module")
-def files(tmp_path_factory):
+def files(tmp_path_factory, version):
     root = tmp_path_factory.mktemp("potx")
-    assert main(["potx", "--out", str(root), "--no-export"]) == 0
+    options = ["--template", "v1"] if version == "v1" else []  # 기본은 v2
+    assert main(["potx", "--out", str(root), "--no-export", *options]) == 0
     potx, = root.glob("*.potx")
     preview, = root.glob("*.pptx")
     assert sorted(root.iterdir()) == sorted([potx, preview])
+    assert ("_v2_" in potx.name) == (version == "v2")
     ref = root / "reference.pptx"
-    renderer.build_pptx(template.template_spec(), {}, {}, ref, appendix=False)
+    renderer.build_pptx(template.template_spec(version), {}, {}, ref, appendix=False)
     return potx, preview, ref
 
 
@@ -48,7 +55,7 @@ def _geometry(shape):
     return shape.left, shape.top, shape.width, shape.height
 
 
-def test_packages(files):
+def test_packages(files, version):
     potx, preview, ref = files
     for path, main_type in ((potx, CT.PML_TEMPLATE_MAIN), (preview, CT.PML_PRESENTATION_MAIN)):
         with ZipFile(path) as z:
@@ -60,7 +67,7 @@ def test_packages(files):
         part = Package.open(path).main_document_part  # Presentation(path)는 정식 POTX MIME을 받지 않는다.
         assert part.content_type == main_type
         prs = part.presentation
-        assert len(prs.slides) == (0 if path == potx else len(spec.KINDS))
+        assert len(prs.slides) == (0 if path == potx else len(spec.KINDS) + (version == "v2"))
         assert len(prs.slide_masters) == 1
         assert (prs.slide_width, prs.slide_height) == (deck.W, deck.H)
     with ZipFile(potx) as a, ZipFile(preview) as b, ZipFile(ref) as c:
@@ -70,11 +77,13 @@ def test_packages(files):
         assert a.read("ppt/theme/theme1.xml") == c.read("ppt/theme/theme1.xml")
 
 
-def test_layouts_and_new_slide(files):
+def test_layouts_and_new_slide(files, version):
     prs = Package.open(files[0]).main_document_part.presentation
-    slides = template.template_spec()["slides"]
+    slides = template.template_spec(version)["slides"]
     assert set(KINDS) == set(spec.KINDS)
-    assert len(prs.slide_layouts) == len(KINDS)
+    assert len(prs.slide_layouts) == len(KINDS) + (version == "v2")
+    right = prs.slide_layouts.get_by_name("OZL image_text · 우 그림 + 좌 글")
+    assert (right is not None) == (version == "v2")
     for layout, sl in zip(prs.slide_layouts, slides, strict=True):
         kind = sl["kind"]
         assert layout.name == f"OZL {kind} · {style.LAYOUT_NAME[style.layout_of(sl)]}"

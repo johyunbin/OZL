@@ -202,7 +202,7 @@ def style_check(spec: dict) -> tuple[list[str], list[str]]:
         if ch > cap:
             warns.append(f"{i}쪽: 말로 할 문장 {ch}자 — {sec:g}초에 말할 수 있는 양({sec / 60 * SPEAK_CHARS_PER_MIN:.0f}자)의 {SPEAK_SLACK}배를 넘는다")
     if secs and len(secs) == len(slides):
-        avg = mean(secs) if spec.get("template") == "v1" else sum(secs) / len(secs)
+        avg = mean(secs) if spec.get("template") in ("v1", "v2") else sum(secs) / len(secs)
         lo, hi = SEC_PER_SLIDE_RANGE
         if not lo <= avg <= hi:
             errs.append(f"본편 장당 평균 {avg:.1f}초 — 원본 편별 범위 {lo}~{hi}초 밖이다(원본 {NORMS_VIDEOS}편 중앙값 {SEC_PER_SLIDE_MEDIAN}초)")
@@ -224,13 +224,31 @@ def style_check(spec: dict) -> tuple[list[str], list[str]]:
     return errs, warns
 
 
+def template_layout(sl: dict) -> str:
+    """두 그림 자리 중 실제로 채운 수까지 반영한 템플릿 장 모양."""
+    layout = layout_of(sl)
+    if layout == "image_pair":
+        slots = [v for _, v in S.slot_views(sl) if S.visual_of(v)]
+        if len(slots) != 2:
+            return "image_pair_partial" if slots else "text_only"
+    return layout
+
+
+def outside_count(count: int, target: int) -> bool:
+    return abs(count - target) > target * V1_COUNT_TOL
+
+
 def template_v1_check(spec: dict, draft: bool = False, *, sponsor: dict | None = None) -> tuple[list[str], list[str], list[str]]:
+    return _template_check(spec, draft, sponsor=sponsor, version="v1")
+
+
+def _template_check(spec, draft, *, sponsor, version, alternative_target=None):
     """판 하나의 검사. 본편 장수와 본편에 필요한 모양만 광고를 빼고, 시간·비율·그림 수는 비교표처럼 전체 장에서 잰다."""
     from ozl.render import pictures as PIC
 
     errs, warns = [], []
     if spec.get("style") != "syuka":
-        errs.append("template: v1 에는 style: syuka 가 필요하다")
+        errs.append(f"template: {version} 에는 style: syuka 가 필요하다")
     slides = []
     counts = Counter()
     main_layouts = []
@@ -243,11 +261,7 @@ def template_v1_check(spec: dict, draft: bool = False, *, sponsor: dict | None =
         if not isinstance(sl, dict):
             continue
         slides.append(sl)
-        layout = layout_of(sl)
-        if layout == "image_pair":
-            slots = [v for _, v in S.slot_views(sl) if S.visual_of(v)]
-            if len(slots) != 2:
-                layout = "image_pair_partial" if slots else "text_only"
+        layout = template_layout(sl)
         counts[layout] += 1
         if page not in ad_pages:
             main_layouts.append(layout)
@@ -272,8 +286,9 @@ def template_v1_check(spec: dict, draft: bool = False, *, sponsor: dict | None =
         errs.append("minutes(발표 시간, 분)는 초로 나타낼 수 있는 유한한 양수여야 한다")
     else:
         target = max(1, round(planned / TARGET_SEC_PER_SLIDE))
-        if abs(count_for_target - target) > target * V1_COUNT_TOL:
-            errs.append(f"{count_label} {count_for_target}장 — 목표 {target}장의 ±{V1_COUNT_TOL:.0%} 밖이다")
+        if outside_count(count_for_target, target) and (alternative_target is None or outside_count(count_for_target, alternative_target)):
+            goals = f"목표 {target}장" if alternative_target is None else f"v1 목표 {target}장과 v2 기대 {alternative_target}장 모두"
+            errs.append(f"{count_label} {count_for_target}장 — {goals}의 ±{V1_COUNT_TOL:.0%} 밖이다")
         if elapsed is not None:
             # 분 → 초에서 생긴 부동소수점 한 자리 차이로 ±10% 경계값을 거부하지 않는다.
             low = math.nextafter(planned * (1 - V1_TIME_TOL), -math.inf)
@@ -333,9 +348,15 @@ OUTLINE_KINDS = [   # (원본 장 모양, 쓸 종류) — 배분표에서는 좌
 ]
 
 
-def outline(minutes: float) -> dict:
+def outline(minutes: float, template: str = "v1") -> dict:
     """목표 장수(분 × 60 / 25)와 원본 비율 × 장수의 종류별 배분. 큰 나머지 순으로 반올림해 합을 맞추고, 여는 장 한 장(full_picture)을 둔다."""
-    target = max(1, round(minutes * 60 / TARGET_SEC_PER_SLIDE))
+    basis = {}
+    if template == "v2":
+        from ozl.render.design_v2 import v2_expected
+        target, reason = v2_expected(minutes)
+        basis = {"template": template, "basis": reason}
+    else:
+        target = max(1, round(minutes * 60 / TARGET_SEC_PER_SLIDE))
     share = dict(LAYOUT_SHARE)
     share["image_left"] += share.pop("image_right")
     raw = {k: share[k] * target for k, _ in OUTLINE_KINDS}
@@ -346,7 +367,7 @@ def outline(minutes: float) -> dict:
         big = max(cnt, key=cnt.get)
         cnt[big] -= 1
         cnt["media"] += 1
-    return {"minutes": minutes, "target": target, "sec_per_slide": TARGET_SEC_PER_SLIDE,
+    return {**basis, "minutes": minutes, "target": target, "sec_per_slide": minutes * 60 / target if basis else TARGET_SEC_PER_SLIDE,
             "rows": [(k, kinds, cnt[k], share[k]) for k, kinds in OUTLINE_KINDS],
             "table_max": math.floor(target * COMPARE_TABLE_MAX)}
 
@@ -354,6 +375,8 @@ def outline(minutes: float) -> dict:
 def outline_text(o: dict) -> str:
     L = [f"목표 장수 {o['target']}장 = {o['minutes']:g}분 × 60 ÷ {o['sec_per_slide']}초 (원본 {NORMS_VIDEOS}편의 장당 초 중앙값 {SEC_PER_SLIDE_MEDIAN}초)", "",
          "| 원본 장 모양 | 원본 비율 | 쓸 종류 | 장수 |", "|---|---|---|---|"]
+    if o.get("template") == "v2":
+        L[0] = f"목표 장수 {o['target']}장 · {o['minutes']:g}분 · v2 근거: {o['basis']}"
     for k, kinds, n, sh in o["rows"]:
         L.append(f"| {LAYOUT_NAME[k]} | {sh * 100:.1f}% | {kinds} | {n} |")
     L += ["", f"- 첫 장은 full_picture(제목 없는 그림 한 장)로 연다(원본 {OPEN_FIRST_MEDIA[1]}편 가운데 {OPEN_FIRST_MEDIA[0]}편).",
@@ -546,6 +569,14 @@ def main(argv: list[str]) -> int:
         print(__doc__)
         return 0
     if cmd == "outline":
+        version = "v1"
+        if "--template" in rest:
+            i = rest.index("--template")
+            if i + 1 >= len(rest) or rest[i + 1] not in ("v1", "v2"):
+                print("--template 은 v1 또는 v2 여야 한다", file=sys.stderr)
+                return 2
+            version = rest[i + 1]
+            rest = rest[:i] + rest[i + 2:]
         if len(rest) != 2 or rest[0] != "--minutes":
             print("python -m ozl.render outline --minutes <분>", file=sys.stderr)
             return 2
@@ -557,7 +588,10 @@ def main(argv: list[str]) -> int:
         if not (math.isfinite(m) and m > 0):
             print("--minutes 는 양수다", file=sys.stderr)
             return 2
-        print(outline_text(outline(m)))
+        if version == "v2" and not math.isfinite(m * 60):
+            print("--minutes 는 초로 나타낼 수 있는 유한한 양수여야 한다", file=sys.stderr)
+            return 2
+        print(outline_text(outline(m, template=version)))
         return 0
     out, export = SAMPLES, True
     it = iter(rest)

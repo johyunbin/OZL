@@ -134,8 +134,9 @@ def main(argv: list[str]) -> int:
             n = len(ed.spec.get("slides") or [])
             extra = f" · [검증 대기] {len(rep.pending)}장({', '.join(map(str, rep.pending))})" if draft else ""
             print(f"[check{tag}] {'통과' if rep.ok else '실패'}{' (초안 모드)' if draft else ''} · 본편 {n}장 · 실패 {len(rep.errors)} · 경고 {len(rep.warnings)}{extra}")
-            for m in rep.metrics:   # template: v1 사양의 지표(실패·경고 수에 넣지 않는다). 옛 사양은 빈 목록이라 출력이 그대로다
-                print(f"[v1{tag}]", m)
+            ver = "v2" if ed.spec.get("template") == "v2" else "v1"
+            for m in rep.metrics:   # template: v1·v2 사양의 지표(실패·경고 수에 넣지 않는다). 옛 사양은 빈 목록이라 출력이 그대로다
+                print(f"[{ver}{tag}]", m)
         return 0 if all(ed.report.ok for ed in eds) else 1
     try:
         info = B.build(path, export=export, draft=draft, claims_dirs=dirs, edition=edition)

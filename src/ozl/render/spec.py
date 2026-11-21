@@ -1021,7 +1021,8 @@ def _runs(stages: list[str]) -> list[tuple[str, int, int]]:
     return out
 
 
-def stage_errors(stages: list[str], template: dict, pages: list[int] | None = None) -> tuple[list[str], list[str]]:
+def stage_errors(stages: list[str], template: dict, pages: list[int] | None = None, *,
+                 free: frozenset[str] = frozenset()) -> tuple[list[str], list[str]]:
     """(실패, 경고). 실패 = 순서가 템플릿을 거스름. 경고 = 템플릿 규칙(적중률 기반)에서 벗어남.
     pages = stages 의 원래 쪽 번호(광고 장을 뺀 순서로 볼 때 — check 가 준다). 없으면 1부터 차례로. 비율(앞 35% · 15%)은 받은 목록 안에서 센다."""
     errs, warns = [], []
@@ -1053,7 +1054,7 @@ def stage_errors(stages: list[str], template: dict, pages: list[int] | None = No
             errs.append(f"{pg(a)}쪽: 닫는 장은 맨 끝에만 둔다")
     last_k, last_p = None, -1.0
     for k, a, b in runs:
-        if k in REPEATABLE:
+        if k in REPEATABLE or k in free:
             continue
         if pos[k] < last_p:
             ko = {v: kk for kk, v in STAGE_KEY.items()}
@@ -1442,13 +1443,21 @@ def check(spec: dict, claims: dict[str, dict], template: dict, card: dict | None
         r.errors.append(f"style '{style}' 를 모른다({', '.join(STYLES)} — 옛 규칙이면 style 칸을 두지 않는다)")
         style = None
     sponsor = sponsor_info(spec)
+    free = frozenset()
     if spec.get("template") == "v1":
         from ozl.render import style as ST
         errs, warns, r.metrics = ST.template_v1_check(spec, draft=draft, sponsor=sponsor or {})
         r.errors += errs
         r.warnings += warns
+    elif spec.get("template") == "v2":
+        from ozl.render import design_v2
+        errs, warns, r.metrics = design_v2.template_v2_check(spec, draft=draft, sponsor=sponsor or {}, card=card, claims=claims)
+        r.errors += errs
+        r.warnings += warns
+        if design_v2.branch_of(card) == "시장·기업":
+            free = frozenset({"data"})
     elif "template" in spec:
-        r.errors.append(f"template '{spec['template']}' 를 모른다(v1 만 허용)")
+        r.errors.append(f"template '{spec['template']}' 를 모른다(v1, v2 만 허용)")
     if not slides:
         r.errors.append("slides 가 비었다")
         return r
@@ -1539,7 +1548,7 @@ def check(spec: dict, claims: dict[str, dict], template: dict, card: dict | None
                     r.errors.append(f"{tag}: refs '{ref}' 는 사양 press_sources 에만 있다 — 카드 sources 에 반영되기 전에는 초안 모드(--draft)에서만 쓸 수 있다")
             elif card is not None or press:
                 r.errors.append(f"{tag}: refs '{ref}' 가 카드 sources 와 사양 press_sources 의 name 에 없다")
-        verrs, waits, vwarns = visual_errors(sl, claims, draft, pics, template_v1=spec.get("template") == "v1")
+        verrs, waits, vwarns = visual_errors(sl, claims, draft, pics, template_v1=spec.get("template") in ("v1", "v2"))
         r.errors += [f"{tag}: {e}" for e in verrs]
         r.warnings += [f"{tag}: {w}" for w in vwarns]
         for wait in waits:
@@ -1562,10 +1571,10 @@ def check(spec: dict, claims: dict[str, dict], template: dict, card: dict | None
         r.warnings.append(f"그림 자리가 비었다(image_text 인데 chart·capture·picture·image 가 없다): {', '.join(map(str, bare))}쪽 — 글만 있는 장이 의도면 그대로 둔다")
     stages = [str(sl.get("stage")) if isinstance(sl, dict) else "" for sl in slides]
     if sponsor is None:
-        errs, warns = stage_errors(stages, template)
+        errs, warns = stage_errors(stages, template, free=free)
     else:   # 광고 장을 뺀 순서로 본다(알리는 쪽 번호는 원래 번호)
         keep = [(i, s) for i, s in enumerate(stages, 1) if s.strip() != SPONSOR_STAGE]
-        errs, warns = stage_errors([s for _, s in keep], template, [i for i, _ in keep])
+        errs, warns = stage_errors([s for _, s in keep], template, [i for i, _ in keep], free=free)
         errs += sponsorship_errors(spec, pics, info=sponsor)
     r.errors += errs
     r.warnings += warns

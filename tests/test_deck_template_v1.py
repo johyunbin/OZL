@@ -37,7 +37,7 @@ def check(sp, draft=False):
 def test_template_is_opt_in_and_requires_syuka():
     sp = old.syuka()
     assert old.run(sp).metrics == []
-    for invalid in (None, "v2", []):
+    for invalid in (None, "v3", []):
         assert "를 모른다" in old.run({**sp, "template": invalid}).errors[0]
     del sp["style"]
     sp["template"] = "v1"
